@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Drawing } from '../types';
 import { loadCategoryIndex, loadDrawing, DATA_BASE_URL } from '../data/drawings';
 import { Navbar } from './Navbar';
 import './CategoryList.css';

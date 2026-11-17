@@ -1,6 +1,6 @@
 // 一笔一笔 StepDraw - Canvas 渲染工具
 
-import type { Drawing } from '../types';
+import type { Drawing, Stroke } from '../types';
 
 /**
  * 将采样点转换为平滑的二次贝塞尔曲线路径

@@ -39,9 +39,9 @@ export function useDrawingPlayer({ drawing, initialState }: UseDrawingPlayerProp
     return drawing.steps.map(step => getStepLength(step));
   }, [drawing.steps]);
 
-  const totalLength = useMemo(() => {
-    return stepLengths.reduce((sum, len) => sum + len, 0);
-  }, [stepLengths]);
+  // const totalLength = useMemo(() => {
+  //   return stepLengths.reduce((sum, len) => sum + len, 0);
+  // }, [stepLengths]);
 
   const [state, setState] = useState<PlayState>({
     currentStep: 0,
