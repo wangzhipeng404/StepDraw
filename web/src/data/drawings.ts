@@ -27,7 +27,7 @@ let mainIndexCache: MainIndex | null = null;
 
 interface MainIndex {
   viewBox: [number, number, number, number];
-  categories: Array<{ id: string; name: string; count: number; dir: string }>;
+  categories: Array<{ id: string; name: string; emoji: string; count: number; dir: string }>;
 }
 
 /**
