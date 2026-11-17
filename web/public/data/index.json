@@ -1,0 +1,112 @@
+{
+  "viewBox": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "categories": [
+     {
+      "id": "others",
+      "name": "精选",
+      "count": 45,
+      "dir": "others"
+    },
+    {
+      "id": "animals",
+      "name": "动物",
+      "count": 241,
+      "dir": "animals"
+    },
+    {
+      "id": "plants",
+      "name": "植物",
+      "count": 94,
+      "dir": "plants"
+    },
+    {
+      "id": "Buildings",
+      "name": "建筑",
+      "count": 53,
+      "dir": "Buildings"
+    },
+    {
+      "id": "Read",
+      "name": "阅读",
+      "count": 58,
+      "dir": "Read"
+    },
+    {
+      "id": "bear",
+      "name": "熊",
+      "count": 100,
+      "dir": "bear"
+    },
+    {
+      "id": "bird",
+      "name": "鸟",
+      "count": 100,
+      "dir": "bird"
+    },
+    {
+      "id": "cat",
+      "name": "猫",
+      "count": 100,
+      "dir": "cat"
+    },
+    {
+      "id": "cow",
+      "name": "牛",
+      "count": 100,
+      "dir": "cow"
+    },
+    {
+      "id": "dog",
+      "name": "狗",
+      "count": 100,
+      "dir": "dog"
+    },
+    {
+      "id": "elephant",
+      "name": "大象",
+      "count": 100,
+      "dir": "elephant"
+    },
+    {
+      "id": "family",
+      "name": "家庭",
+      "count": 20,
+      "dir": "family"
+    },
+    {
+      "id": "fish",
+      "name": "鱼",
+      "count": 100,
+      "dir": "fish"
+    },
+    {
+      "id": "horse",
+      "name": "马",
+      "count": 100,
+      "dir": "horse"
+    },
+    {
+      "id": "panda",
+      "name": "熊猫",
+      "count": 11,
+      "dir": "panda"
+    },
+    {
+      "id": "pig",
+      "name": "猪",
+      "count": 100,
+      "dir": "pig"
+    },
+    {
+      "id": "rabbit",
+      "name": "兔子",
+      "count": 100,
+      "dir": "rabbit"
+    }
+  ]
+}

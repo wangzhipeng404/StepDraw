@@ -32,7 +32,6 @@ quickdraw_animals/*.gz
 cocomaterial_svg/*.jsonl
 cocomaterial_svg/*.gz
 *.svg.zst
-web/public/data/
 datasets/
 
 # Generated files
