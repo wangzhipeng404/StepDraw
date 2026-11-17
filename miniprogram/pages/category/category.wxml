@@ -1,0 +1,55 @@
+<!-- 一笔一笔 StepDraw - 分类列表页 -->
+<view class="category-page">
+  <!-- 难度筛选 -->
+  <view class="difficulty-filter">
+    <block wx:for="{{difficulties}}" wx:key="*this">
+      <view
+        class="difficulty-btn {{selectedDifficulty === item ? 'active' : ''}}"
+        data-difficulty="{{item}}"
+        bindtap="onDifficultyChange"
+      >
+        {{item}}
+      </view>
+    </block>
+  </view>
+
+  <!-- 图案列表 -->
+  <view class="drawing-grid">
+    <block wx:if="{{loading && drawings.length === 0}}">
+      <view class="loading-state">
+        <text>加载中...</text>
+      </view>
+    </block>
+    <block wx:elif="{{filteredDrawings.length === 0}}">
+      <view class="empty-state">没有找到匹配的图案</view>
+    </block>
+    <block wx:else>
+      <block wx:for="{{filteredDrawings}}" wx:key="id" wx:for-item="drawing">
+        <view
+          class="drawing-card"
+          data-id="{{drawing.id}}"
+          bindtap="onDrawingTap"
+        >
+          <view class="thumbnail">
+            <image
+              wx:if="{{drawing.thumbnail}}"
+              class="thumbnail-image"
+              src="{{BASE_URL}}/{{drawing.thumbnail}}"
+              mode="aspectFit"
+              binderror="onImageError"
+            />
+            <view class="thumbnail-placeholder" wx:else>
+              <text class="placeholder-char">{{drawing.name.charAt(0)}}</text>
+            </view>
+          </view>
+          <view class="drawing-info">
+            <text class="drawing-name">{{drawing.name}}</text>
+            <view class="drawing-tags">
+              <text class="tag tag-difficulty">{{getDifficultyLabel(drawing.difficulty)}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+    </block>
+  </view>
+</view>

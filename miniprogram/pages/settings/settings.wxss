@@ -1,0 +1,82 @@
+/* 一笔一笔 StepDraw - 小程序设置页样式 */
+.settings {
+  min-height: 100vh;
+  background: #fafafa;
+}
+
+.header {
+  padding: 30rpx 20rpx;
+  background: #fff;
+  text-align: center;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.settings-group {
+  margin: 20rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.group-title {
+  padding: 24rpx 24rpx;
+  font-size: 26rpx;
+  color: #999;
+  background: #f9f9f9;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-label {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.setting-value {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.picker-value {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  font-size: 28rpx;
+  color: #666;
+}
+
+.arrow {
+  color: #ccc;
+}
+
+.about-section {
+  text-align: center;
+  padding: 60rpx 20rpx;
+}
+
+.version {
+  font-size: 26rpx;
+  color: #999;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.desc {
+  font-size: 24rpx;
+  color: #bbb;
+}

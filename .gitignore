@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Node.js / web subproject
+web/node_modules/
+web/dist/
+web/dist-ssr/
+web/*.local
+web/logs/
+web/*.log
+
+# 微信小程序 / miniprogram subproject
+miniprogram/node_modules/
+miniprogram/dist/
+miniprogram/.editorconfig
+miniprogram/project.config.json
+
+# Data files (large datasets)
+quickdraw_animals/*.jsonl
+quickdraw_animals/*.gz
+cocomaterial_svg/*.jsonl
+cocomaterial_svg/*.gz
+*.svg.zst
+web/public/data/
+datasets/
+
+# Generated files
+thumbnails/
+processed/
+*.local.json
+
+# Editor directories and files
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+Thumbs.db
+.DS_Store
+cocomaterial_svg/
+quickdraw_animals/
