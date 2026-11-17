@@ -6,7 +6,7 @@ name: Deploy to GitHub Pages
 on:
   # 当推送到 main 分支时自动触发
   push:
-    branches: [master]
+    branches: [main]
   # 允许手动触发
   workflow_dispatch:
 
