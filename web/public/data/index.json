@@ -9,102 +9,119 @@
      {
       "id": "others",
       "name": "精选",
+      "emoji": "✨",
       "count": 45,
       "dir": "others"
     },
     {
       "id": "animals",
       "name": "动物",
+      "emoji": "🐾",
       "count": 241,
       "dir": "animals"
     },
     {
       "id": "plants",
       "name": "植物",
+      "emoji": "🌿",
       "count": 94,
       "dir": "plants"
     },
     {
       "id": "Buildings",
       "name": "建筑",
+      "emoji": "🏛️",
       "count": 53,
       "dir": "Buildings"
     },
     {
       "id": "Read",
       "name": "阅读",
+      "emoji": "📚",
       "count": 58,
       "dir": "Read"
     },
     {
       "id": "bear",
       "name": "熊",
+      "emoji": "🐻",
       "count": 100,
       "dir": "bear"
     },
     {
       "id": "bird",
       "name": "鸟",
+      "emoji": "🐦",
       "count": 100,
       "dir": "bird"
     },
     {
       "id": "cat",
       "name": "猫",
+      "emoji": "🐱",
       "count": 100,
       "dir": "cat"
     },
     {
       "id": "cow",
       "name": "牛",
+      "emoji": "🐮",
       "count": 100,
       "dir": "cow"
     },
     {
       "id": "dog",
       "name": "狗",
+      "emoji": "🐶",
       "count": 100,
       "dir": "dog"
     },
     {
       "id": "elephant",
       "name": "大象",
+      "emoji": "🐘",
       "count": 100,
       "dir": "elephant"
     },
     {
       "id": "family",
       "name": "家庭",
+      "emoji": "👨‍👩‍👧‍👦",
       "count": 20,
       "dir": "family"
     },
     {
       "id": "fish",
       "name": "鱼",
+      "emoji": "🐟",
       "count": 100,
       "dir": "fish"
     },
     {
       "id": "horse",
       "name": "马",
+      "emoji": "🐴",
       "count": 100,
       "dir": "horse"
     },
     {
       "id": "panda",
       "name": "熊猫",
+      "emoji": "🐼",
       "count": 11,
       "dir": "panda"
     },
     {
       "id": "pig",
       "name": "猪",
+      "emoji": "🐷",
       "count": 100,
       "dir": "pig"
     },
     {
       "id": "rabbit",
       "name": "兔子",
+      "emoji": "🐰",
       "count": 100,
       "dir": "rabbit"
     }

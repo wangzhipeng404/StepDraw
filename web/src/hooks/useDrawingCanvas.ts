@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import type { Drawing } from '../types';
+import type { Drawing, UserStroke } from '../types';
 import { renderDrawing } from '../utils/canvas';
 
 interface UseDrawingCanvasProps {
@@ -7,6 +7,8 @@ interface UseDrawingCanvasProps {
   currentStep: number;
   stepProgress: number;
   showOutline: boolean;
+  userStrokes?: UserStroke[];
+  currentStroke?: UserStroke;
 }
 
 export function useDrawingCanvas() {
@@ -19,7 +21,15 @@ export function useDrawingCanvas() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    renderDrawing(ctx, props.drawing, props.currentStep, props.stepProgress, props.showOutline);
+    renderDrawing(
+      ctx,
+      props.drawing,
+      props.currentStep,
+      props.stepProgress,
+      props.showOutline,
+      props.userStrokes,
+      props.currentStroke
+    );
   }, []);
 
   return { canvasRef, render };

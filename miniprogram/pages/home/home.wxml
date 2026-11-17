@@ -1,5 +1,22 @@
 <!-- 一笔一笔 StepDraw - 小程序首页（分类卡片） -->
 <view class="home">
+  <!-- 导航栏 -->
+  <view class="navbar">
+    <view class="navbar-brand">
+      <view class="navbar-icon">✏️</view>
+      <view class="navbar-text">
+        <text class="navbar-title">StepDraw</text>
+        <text class="navbar-subtitle">一笔一笔学画画</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <text class="page-title">选择你想画的图案</text>
+    <text class="page-subtitle">从以下分类中选择一个开始绘画</text>
+  </view>
+
   <!-- 分类卡片网格 -->
   <view class="category-grid">
     <block wx:for="{{categories}}" wx:key="id">
@@ -10,7 +27,7 @@
         bindtap="onCategoryTap"
       >
         <view class="category-icon" style="background: {{item.iconBg}}; color: {{item.iconColor}}">
-          <text class="icon-char">{{item.icon}}</text>
+          <text class="icon-char">{{item.emoji || item.icon}}</text>
         </view>
         <text class="category-name">{{item.name}}</text>
         <text class="category-count">{{item.count}} 个图案</text>

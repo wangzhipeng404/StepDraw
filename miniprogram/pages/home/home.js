@@ -31,7 +31,7 @@ Page({
               const textColors = ['#FF6B6B', '#4A90D9', '#FFA500', '#8BC34A', '#9C27B0', '#4CAF50', '#00BCD4', '#E91E63', '#673AB7', '#FF4081'];
               return {
                 ...cat,
-                icon: cat.name.charAt(0),
+                icon: cat.emoji || cat.name.charAt(0),
                 iconBg: bgColors[index] || '#f5f5f5',
                 iconColor: textColors[index] || '#999'
               };

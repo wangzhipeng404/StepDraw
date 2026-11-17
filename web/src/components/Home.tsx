@@ -9,6 +9,7 @@ import './Home.css';
 interface Category {
   id: string;
   name: string;
+  emoji: string;
   count: number;
   dir: string;
 }
@@ -83,7 +84,7 @@ export function Home() {
               onClick={() => handleCategoryClick(category)}
             >
               <div className="category-icon">
-                <span>{category.name.charAt(0)}</span>
+                <span>{category.emoji || category.name.charAt(0)}</span>
               </div>
               <h3 className="category-name">{category.name}</h3>
               <p className="category-count">{category.count} 个图案</p>

@@ -7,33 +7,54 @@
   background: #fafafa;
 }
 
-.canvas-container {
+/* 主内容区域 - 用于横屏布局 */
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 画布区域 */
+.canvas-wrapper {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   background: #fff;
+  margin: 20px;
+  border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   position: relative;
+  overflow: hidden;
+}
+
+.canvas-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .drawing-canvas {
   background: #fff;
   width: 100%;
   height: 100%;
-  max-height: calc(100vh - 240px);
+  max-height: calc(100vh - 320px);
   aspect-ratio: 1;
 }
 
 /* 步骤提示固定在右下角 */
 .step-tip-overlay {
   position: absolute;
-  bottom: 0px;
-  right: 0px;
+  bottom: 20px;
+  right: 20px;
   padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border-top-left-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  z-index: 10;
 }
 
 .tip-text {
@@ -42,19 +63,30 @@
   font-weight: 500;
 }
 
+/* 工具栏区域 - 用于横屏布局 */
+.toolbar-wrapper {
+  width: 400px;
+  background: #fff;
+  border-left: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: calc(100vh - 40px);
+}
+
 /* 播放控制栏 */
 .control-bar {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
+  padding: 20px;
   background: #fff;
-  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
 }
 
 .control-btn-row {
   display: flex;
-  flex-shrink: 0;
   justify-content: center;
   align-items: center;
   gap: 16px;
@@ -66,9 +98,11 @@
   border: none;
   border-radius: 50%;
   background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  text-align: center;
 }
 
 .control-btn:hover {
@@ -84,31 +118,25 @@
 
 /* 轮廓按钮样式 */
 .outline-btn {
-  width: 46px;
-  height: 46px;
-  border: 2px solid #8a8a8a;
-  background: #fff;
-  color: #8a8a8a;
-  cursor: pointer;
-  transition: all 0.2s;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #8a8a8a;
+  background: #f5f5f5;
+  padding: 8px;
 }
 
 .outline-btn:hover {
-  background: #f0f0f0;
+  background: #e0e0e0;
 }
 
 .outline-btn.active {
-  border: 2px solid #aa3bff;
+  border: 1px solid #1890ff;
 }
 
-.outline-btn.active .outline-text {
-  color: #aa3bff;
-}
-
-.outline-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: #8a8a8a;
+.outline-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 /* 播放按钮样式 */
@@ -124,20 +152,20 @@
 .speed-btn {
   width: 46px;
   height: 46px;
-  border: 2px solid #8a8a8a;
+  border: none;
 }
 
 .speed-text {
-  font-size: 14px;
+  font-size: 24px;
   font-weight: 600;
   color: #000;
 }
 
 /* 进度条 */
 .progress-container {
-  padding: 20px;
+  padding: 12px;
   background: #fff;
-  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
 }
 
 .progress-bar {
@@ -160,14 +188,213 @@
   cursor: pointer;
 }
 
-@media (max-width: 480px) {
-  .canvas-container {
+/* 颜色选择器 */
+.color-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.color-item {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid #eee;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.color-item:hover {
+  border-color: #ccc;
+}
+
+.color-item.active {
+  border: 3px solid #aa3bff;
+}
+
+.color-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+/* 笔画粗细选择器 */
+.stroke-width-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.stroke-width-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.stroke-width-item:hover {
+  background: #f0f0f0;
+}
+
+.stroke-width-item.active {
+  background: #f0f0f0;
+  border-color: #aa3bff;
+  box-shadow: 0 0 8px rgba(170, 91, 255, 0.4);
+}
+
+.stroke-circle {
+  border-radius: 50%;
+  background: #000;
+}
+
+/* 画笔类型选择器 */
+.stroke-type-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.stroke-type-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 48px;
+  height: 48px;
+}
+
+.stroke-type-item:hover {
+  background: #e0e0e0;
+}
+
+.stroke-type-item.active {
+  background: #f0f0f0;
+  border-color: #aa3bff;
+  box-shadow: 0 0 8px rgba(170, 91, 255, 0.4);
+}
+
+.stroke-type-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.stroke-type-name {
+  display: none;
+}
+
+/* 绘图工具栏 */
+.draw-tools-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.draw-tool-btn {
+  flex: 1;
+  max-width: 100px;
+  height: 48px;
+  border-radius: 36px;
+  border: 1px solid #ddd;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.draw-tool-btn:hover {
+  background: #e0e0e0;
+}
+
+.draw-tool-btn.save-btn {
+  background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+  border: none;
+  color: #fff;
+}
+
+.draw-tool-btn.save-btn:hover {
+  background: linear-gradient(135deg, #57a65a 0%, #388e3c 100%);
+}
+
+/* 轮廓按钮样式 */
+.outline-btn {
+  width: 48px;
+  height: 48px;
+  border: 1px solid #8a8a8a;
+  background: #f5f5f5;
+  padding: 0;
+  overflow: hidden;
+}
+
+.outline-btn.active {
+  border: 1px solid #1890ff;
+}
+
+.outline-icon {
+  width: 32px;
+  height: 32px;
+}
+
+/* 响应式样式 - 竖屏/移动端布局 */
+@media (max-width: 900px) or (orientation: portrait) {
+  .main-content {
+    flex-direction: column;
+  }
+
+  .canvas-wrapper {
+    flex: none;
+    width: auto;
+    height: auto;
+    margin: 12px;
     padding: 12px;
   }
 
+  .toolbar-wrapper {
+    width: auto;
+    border-left: none;
+    border-top: 1px solid #eee;
+  }
+
+  .drawing-canvas {
+    max-height: calc(100vh - 320px);
+  }
+
   .step-tip-overlay {
-    bottom: 8px;
-    right: 8px;
+    bottom: 12px;
+    right: 12px;
     padding: 10px 16px;
   }
 
@@ -176,7 +403,7 @@
   }
 
   .control-bar {
-    padding: 10px;
+    padding: 12px;
   }
 
   .control-btn-row {
@@ -184,27 +411,99 @@
   }
 
   .control-btn {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
 
   .btn-icon {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
   }
 
-  .outline-btn,
-  .speed-btn {
-    width: 42px;
-    height: 42px;
+  .outline-btn {
+    min-width: 48px;
+    height: 48px;
   }
 
-  .outline-text,
-  .speed-text {
+  .outline-text {
     font-size: 12px;
+  }
+
+  .speed-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .speed-text {
+    font-size: 18px;
   }
 
   .progress-container {
     padding: 12px;
+  }
+
+  .color-bar {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .color-item {
+    width: 36px;
+    height: 36px;
+  }
+
+  .color-circle {
+    width: 24px;
+    height: 24px;
+  }
+
+  .stroke-width-bar {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .stroke-width-item {
+    padding: 4px;
+  }
+
+  .stroke-type-bar {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .stroke-type-item {
+    padding: 6px 12px;
+    min-width: 60px;
+  }
+
+  .stroke-type-icon {
+    font-size: 20px;
+  }
+
+  .stroke-type-name {
+    font-size: 11px;
+  }
+
+  .draw-tools-bar {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .draw-tool-btn {
+    max-width: 64px;
+    height: 32px;
+    font-size: 14px;
+  }
+}
+
+/* 横屏/桌面布局 - 工具栏在右侧 */
+@media (min-width: 901px) and (orientation: landscape) {
+  .canvas-wrapper {
+    margin: 10px;
+    padding: 10px;
+  }
+
+  .drawing-canvas {
+    max-height: calc(100vh - 100px);
   }
 }

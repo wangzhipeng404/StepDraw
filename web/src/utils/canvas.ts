@@ -1,6 +1,6 @@
 // 一笔一笔 StepDraw - Canvas 渲染工具
 
-import type { Drawing, Stroke } from '../types';
+import type { Drawing, Stroke, UserStroke } from '../types';
 
 /**
  * 将采样点转换为平滑的二次贝塞尔曲线路径
@@ -136,6 +136,159 @@ export function renderStroke(
 }
 
 /**
+ * 渲染用户笔画到 Canvas（支持不同画笔类型）
+ */
+export function renderUserStroke(
+  ctx: CanvasRenderingContext2D,
+  stroke: UserStroke,
+  progress: number = 1
+): void {
+  const color = stroke.color || '#E53935';
+  const width = stroke.width || 4;
+  const strokeType = stroke.type || 'pen';
+  const points = stroke.points;
+
+  if (points.length === 0) return;
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // 单个点：绘制点效果
+  if (stroke.points.length === 1) {
+    const [x, y] = stroke.points[0];
+    const radius = width / 2;
+
+    if (strokeType === 'pencil') {
+      // 铅笔：绘制不规则的小点
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      // 添加一些噪点效果
+      for (let i = 0; i < 3; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * radius * 0.5;
+        const nx = x + Math.cos(angle) * dist;
+        const ny = y + Math.sin(angle) * dist;
+        ctx.beginPath();
+        ctx.arc(nx, ny, radius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (strokeType === 'marker') {
+      // 马克笔：绘制椭圆形（模拟斜头笔）
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.4;
+      ctx.beginPath();
+      ctx.ellipse(x, y, radius * 1.5, radius, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (strokeType === 'brush') {
+      // 毛笔：绘制有渐变效果的圆
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.6;
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else {
+      // 钢笔：实心圆
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+
+  // 多个点：绘制路径
+  if (strokeType === 'pencil') {
+    // 铅笔：虚线效果
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.setLineDash([width, width / 2]);
+    ctx.globalAlpha = 0.7;
+    renderPath(ctx, stroke.points, progress);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  } else if (strokeType === 'marker') {
+    // 马克笔：半透明粗线
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width * 2;
+    ctx.globalAlpha = 0.4;
+    renderPath(ctx, stroke.points, progress);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  } else if (strokeType === 'brush') {
+    // 毛笔：渐变透明效果
+    const gradient = ctx.createLinearGradient(
+      stroke.points[0][0], stroke.points[0][1],
+      stroke.points[stroke.points.length - 1][0], stroke.points[stroke.points.length - 1][1]
+    );
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, color);
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = width * 1.5;
+    ctx.globalAlpha = 0.6;
+    renderPath(ctx, stroke.points, progress);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  } else {
+    // 钢笔：实线
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    renderPath(ctx, stroke.points, progress);
+    ctx.stroke();
+  }
+}
+
+/**
+ * 渲染路径（支持按进度绘制）
+ */
+function renderPath(ctx: CanvasRenderingContext2D, points: [number, number][], progress: number = 1): void {
+  if (points.length < 2) return;
+
+  if (progress >= 1) {
+    ctx.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i][0], points[i][1]);
+    }
+  } else {
+    const totalLength = calculateStrokeLengths(points).totalLength;
+    if (totalLength === 0) return;
+
+    const targetLength = progress * totalLength;
+    let accumulatedLength = 0;
+
+    ctx.moveTo(points[0][0], points[0][1]);
+
+    for (let i = 1; i < points.length; i++) {
+      const dx = points[i][0] - points[i - 1][0];
+      const dy = points[i][1] - points[i - 1][1];
+      const segmentLength = Math.sqrt(dx * dx + dy * dy);
+
+      if (accumulatedLength + segmentLength >= targetLength) {
+        const remaining = targetLength - accumulatedLength;
+        const segmentProgress = remaining / segmentLength;
+        ctx.lineTo(
+          points[i - 1][0] + (points[i][0] - points[i - 1][0]) * segmentProgress,
+          points[i - 1][1] + (points[i][1] - points[i - 1][1]) * segmentProgress
+        );
+        break;
+      }
+      ctx.lineTo(points[i][0], points[i][1]);
+      accumulatedLength += segmentLength;
+    }
+  }
+}
+
+/**
  * 渲染整个图案到 Canvas
  *
  * 逻辑：
@@ -145,13 +298,18 @@ export function renderStroke(
  *    - 已完成的笔画绘制为灰色
  *    - 当前正在绘制的笔画用强调色
  * 3. 未开始步骤：不绘制
+ *
+ * @param userStrokes - 用户绘制的笔画（可选）
+ * @param currentStroke - 当前正在绘制的笔画（可选）
  */
 export function renderDrawing(
   ctx: CanvasRenderingContext2D,
   drawing: Drawing,
   currentStep: number,
   stepProgress: number,
-  showOutline: boolean = false
+  showOutline: boolean = false,
+  userStrokes?: UserStroke[],
+  currentStroke?: UserStroke
 ): void {
   const { viewBox } = drawing;
   const canvas = ctx.canvas;
@@ -216,81 +374,87 @@ export function renderDrawing(
     const currentStepData = drawing.steps[currentStep];
     const strokes = currentStepData.strokes;
 
-    if (strokes.length === 0) {
-      ctx.restore();
-      return;
-    }
-
-    // 处理边界情况：progress = 1 时，绘制所有笔画（黑色）
-    if (stepProgress >= 1) {
-      for (let i = 0; i < strokes.length; i++) {
-        renderStroke(ctx, strokes[i], 1, '#000', false);
-      }
-      ctx.restore();
-      return;
-    }
-
-    // 计算每个笔画的长度，用于基于长度的进度映射
-    const strokeLengths: number[] = [];
-    let totalLength = 0;
-    for (const stroke of strokes) {
-      const { totalLength: len } = calculateStrokeLengths(stroke.points);
-      strokeLengths.push(len);
-      totalLength += len;
-    }
-
-    if (totalLength === 0) {
-      // 如果总长度为 0，按笔画数量分配进度
-      const totalStrokes = strokes.length;
-      const strokesProgress = stepProgress * totalStrokes;
-      const completedStrokes = Math.floor(strokesProgress);
-      const currentStrokeProgress = strokesProgress - completedStrokes;
-
-      for (let i = 0; i < completedStrokes; i++) {
-        renderStroke(ctx, strokes[i], 1, '#000', false);
-      }
-
-      if (completedStrokes < totalStrokes) {
-        const currentStroke = strokes[completedStrokes];
-        if (currentStroke) {
-          renderStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true);
+    if (strokes.length > 0) {
+      // 处理边界情况：progress = 1 时，绘制所有笔画（黑色）
+      if (stepProgress >= 1) {
+        for (let i = 0; i < strokes.length; i++) {
+          renderStroke(ctx, strokes[i], 1, '#000', false);
         }
-      }
-      ctx.restore();
-      return;
-    }
+      } else {
+        // 计算每个笔画的长度，用于基于长度的进度映射
+        const strokeLengths: number[] = [];
+        let totalLength = 0;
+        for (const stroke of strokes) {
+          const { totalLength: len } = calculateStrokeLengths(stroke.points);
+          strokeLengths.push(len);
+          totalLength += len;
+        }
 
-    // 基于长度计算当前进度应该显示到哪个笔画
-    const targetLength = stepProgress * totalLength;
-    let accumulatedLength = 0;
-    let completedStrokes = 0;
-    let currentStrokeProgress = 1;
+        if (totalLength === 0) {
+          // 如果总长度为 0，按笔画数量分配进度
+          const totalStrokes = strokes.length;
+          const strokesProgress = stepProgress * totalStrokes;
+          const completedStrokes = Math.floor(strokesProgress);
+          const currentStrokeProgress = strokesProgress - completedStrokes;
 
-    for (let i = 0; i < strokes.length; i++) {
-      if (accumulatedLength + strokeLengths[i] >= targetLength) {
-        completedStrokes = i;
-        currentStrokeProgress = strokeLengths[i] > 0
-          ? (targetLength - accumulatedLength) / strokeLengths[i]
-          : 1;
-        break;
-      }
-      accumulatedLength += strokeLengths[i];
-      completedStrokes = i + 1;
-    }
+          for (let i = 0; i < completedStrokes; i++) {
+            renderStroke(ctx, strokes[i], 1, '#000', false);
+          }
 
-    // 绘制已完成的笔画（黑色）
-    for (let i = 0; i < completedStrokes; i++) {
-      renderStroke(ctx, strokes[i], 1, '#000', false);
-    }
+          if (completedStrokes < totalStrokes) {
+            const currentStroke = strokes[completedStrokes];
+            if (currentStroke) {
+              renderStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true);
+            }
+          }
+        } else {
+          // 基于长度计算当前进度应该显示到哪个笔画
+          const targetLength = stepProgress * totalLength;
+          let accumulatedLength = 0;
+          let completedStrokes = 0;
+          let currentStrokeProgress = 1;
 
-    // 绘制当前正在绘制的笔画（红色）
-    if (completedStrokes < strokes.length) {
-      const currentStroke = strokes[completedStrokes];
-      if (currentStroke) {
-        renderStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true);
+          for (let i = 0; i < strokes.length; i++) {
+            if (accumulatedLength + strokeLengths[i] >= targetLength) {
+              completedStrokes = i;
+              currentStrokeProgress = strokeLengths[i] > 0
+                ? (targetLength - accumulatedLength) / strokeLengths[i]
+                : 1;
+              break;
+            }
+            accumulatedLength += strokeLengths[i];
+            completedStrokes = i + 1;
+          }
+
+          // 绘制已完成的笔画（黑色）
+          for (let i = 0; i < completedStrokes; i++) {
+            renderStroke(ctx, strokes[i], 1, '#000', false);
+          }
+
+          // 绘制当前正在绘制的笔画（红色）
+          if (completedStrokes < strokes.length) {
+            const currentStroke = strokes[completedStrokes];
+            if (currentStroke) {
+              renderStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true);
+            }
+          }
+        }
       }
     }
   }
 
+  // 恢复坐标系，然后绘制用户笔画（不使用 viewBox 变换，直接使用 CSS 像素坐标）
   ctx.restore();
+
+  // 绘制用户笔画作为底图（在变换恢复后绘制）
+  if (userStrokes) {
+    for (const stroke of userStrokes) {
+      renderUserStroke(ctx, stroke, 1);
+    }
+  }
+
+  // 绘制当前正在绘制的笔画
+  if (currentStroke && currentStroke.points.length >= 2) {
+    renderUserStroke(ctx, currentStroke, 1);
+  }
 }

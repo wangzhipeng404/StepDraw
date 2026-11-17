@@ -1,9 +1,9 @@
 // 一笔一笔 StepDraw - 全局配置
 
 // 基础 URL 配置
-const BASE_URL = 'http://localhost:5173/data';
+// const BASE_URL = 'http://localhost:5173/data';
 
-// const BASE_URL = 'https://www.opencax.cn/static_resource/stepdraw/data';
+const BASE_URL = 'https://wangzhipeng404.github.io/StepDraw/data';
 
 /**
  * 获取分类索引地址

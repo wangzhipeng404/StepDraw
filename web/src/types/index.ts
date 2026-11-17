@@ -42,3 +42,25 @@ export interface PlayState {
 
 // 演示模式
 export type DemoMode = 'discrete' | 'continuous'; // 离散步骤切换 | 连续笔画生长
+
+// 用户笔画（支持手绘功能）
+export interface UserStroke {
+  points: [number, number][];
+  width: number;
+  color: string;
+  type: StrokeType;
+}
+
+// 画笔类型
+export type StrokeType = 'pen' | 'pencil' | 'marker' | 'brush';
+
+// 画笔类型定义
+export const STROKE_TYPES: { key: StrokeType; name: string; icon: string }[] = [
+  { key: 'pen', name: '钢笔', icon: '🖊️' },
+  { key: 'pencil', name: '铅笔', icon: '✏️' },
+  { key: 'marker', name: '马克笔', icon: '🖍️' },
+  { key: 'brush', name: '毛笔', icon: '🖌️' }
+];
+
+// 绘图模式
+export type DrawMode = 'demo' | 'draw'; // 演示模式 | 绘图模式

@@ -9,6 +9,11 @@
   justify-content: center;
   gap: 20rpx;
   margin-bottom: 30rpx;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 100;
+  padding: 20rpx 0;
 }
 
 .difficulty-btn {

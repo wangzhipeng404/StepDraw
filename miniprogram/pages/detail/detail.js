@@ -37,11 +37,25 @@ Page({
     showOutline: true,
     totalSteps: 0,
     globalProgress: 0,
-    canvasSize: 0
+    canvasSize: 0,
+    // 绘图模式相关
+    userStrokes: [],
+    currentStroke: null,
+    strokeColor: '#000000',
+    strokeWidth: 4,
+    strokeType: 'pen', // pen, pencil, marker, brush
+    strokeTypes: [
+      { key: 'pen', name: '钢笔', icon: '🖊️' },
+      { key: 'pencil', name: '铅笔', icon: '✏️' },
+      { key: 'marker', name: '马克笔', icon: '🖍️' },
+      { key: 'brush', name: '毛笔', icon: '🖌️' }
+    ],
+    colorOptions: ['#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#000000']
   },
 
   canvasContext: null,
   canvas: null,
+  canvasRect: null, // 存储 Canvas 位置信息
 
   onLoad(options) {
     const drawingId = options.id;
@@ -63,7 +77,7 @@ Page({
 
   onReady() {
     // 初始化 Canvas 2D 接口
-    const query = wx.createSelectorQuery();
+    const query = wx.createSelectorQuery().in(this);
     query.select('#drawingCanvas')
       .fields({ node: true, size: true })
       .exec((res) => {
@@ -82,6 +96,20 @@ Page({
           this.canvas = canvas;
           this.canvasWidth = canvasWidth;
           this.canvasHeight = canvasHeight;
+
+          // 使用 setTimeout 确保 DOM 已完全渲染
+          setTimeout(() => {
+            const rectQuery = wx.createSelectorQuery().in(this);
+            rectQuery.select('#drawingCanvas').boundingClientRect().exec((rectRes) => {
+              if (rectRes[0]) {
+                this.canvasRect = {
+                  left: rectRes[0].left,
+                  top: rectRes[0].top
+                };
+                console.log('Canvas rect:', this.canvasRect);
+              }
+            });
+          }, 100);
 
           // 加载完成后绘制
           if (this.data.drawing) {
@@ -167,7 +195,7 @@ Page({
       ctx.globalAlpha = 0.15;
       for (const step of drawing.steps) {
         for (const stroke of step.strokes) {
-          this.drawStroke(ctx, stroke, 1, '#333', false);
+          this.drawStroke(ctx, stroke, 1, '#333', false, scale);
         }
       }
       ctx.globalAlpha = 1;
@@ -176,7 +204,7 @@ Page({
     // 绘制已完成步骤
     for (let i = 0; i < currentStep; i++) {
       for (const stroke of drawing.steps[i].strokes) {
-        this.drawStroke(ctx, stroke, 1, '#000', false);
+        this.drawStroke(ctx, stroke, 1, '#000', false, scale);
       }
     }
 
@@ -188,7 +216,7 @@ Page({
 
       if (progress >= 1) {
         for (const stroke of strokes) {
-          this.drawStroke(ctx, stroke, 1, '#000', false);
+          this.drawStroke(ctx, stroke, 1, '#000', false, scale);
         }
       } else {
         const strokesProgress = progress * totalStrokes;
@@ -197,29 +225,51 @@ Page({
 
         // 绘制已完成的笔画
         for (let i = 0; i < completedStrokes; i++) {
-          this.drawStroke(ctx, strokes[i], 1, '#000', false);
+          this.drawStroke(ctx, strokes[i], 1, '#000', false, scale);
         }
 
         // 绘制当前正在绘制的笔画
         if (completedStrokes < totalStrokes) {
           const currentStroke = strokes[completedStrokes];
           if (currentStroke) {
-            this.drawStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true);
+            this.drawStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true, scale);
           }
         }
       }
     }
 
+    // 用户笔画需要在变换后单独绘制（坐标已经是 CSS 像素，不需要再缩放）
+    // 先恢复坐标系，再绘制用户笔画
+    ctx.restore();
+
+    // 绘制用户笔画（不使用 scale 变换，直接使用 CSS 像素坐标）
+    for (const stroke of this.data.userStrokes) {
+      this.drawUserStroke(ctx, stroke);
+    }
+    // 绘制当前正在绘制的笔画
+    if (this.data.currentStroke && this.data.currentStroke.points.length >= 2) {
+      this.drawUserStroke(ctx, this.data.currentStroke);
+    }
+
     ctx.restore();
   },
 
-  drawStroke(ctx, stroke, progress, color, isCurrent) {
+  drawStroke(ctx, stroke, progress, color, isCurrent, userScale) {
     const points = stroke.points;
     if (points.length < 2) return;
 
     ctx.beginPath();
     ctx.strokeStyle = color;
-    ctx.lineWidth = stroke.width / this.canvasWidth * 256; // 按 viewBox 比例调整线宽
+    // 用户绘制的笔画：stroke.width 是 CSS 像素值
+    // 原始图案的笔画：stroke.width 是 viewBox 中的值
+    const isUserStroke = stroke.color !== undefined;
+    if (isUserStroke) {
+      // 用户笔画的宽度已经是 CSS 像素，但绘制时会被 scale 缩放，所以需要除以 scale
+      ctx.lineWidth = stroke.width / userScale;
+    } else {
+      // 原始图案笔画按 viewBox 比例转换
+      ctx.lineWidth = stroke.width / this.canvasWidth * 256;
+    }
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -260,6 +310,111 @@ Page({
     }
 
     ctx.stroke();
+  },
+
+  // 绘制用户笔画（不使用 viewBox 变换，直接使用 CSS 像素坐标）
+  drawUserStroke(ctx, stroke) {
+    const points = stroke.points;
+    if (points.length < 1) return;
+
+    const color = stroke.color || '#E53935';
+    const width = stroke.width || 4;
+    const strokeType = stroke.type || 'pen';
+
+    ctx.beginPath();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (points.length === 1) {
+      // 单个点：绘制一个圆形
+      const [x, y] = points[0];
+      const radius = width / 2;
+
+      if (strokeType === 'pencil') {
+        // 铅笔：绘制不规则的小点
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.8;
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        // 添加一些噪点效果
+        for (let i = 0; i < 3; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random() * radius * 0.5;
+          const nx = x + Math.cos(angle) * dist;
+          const ny = y + Math.sin(angle) * dist;
+          ctx.beginPath();
+          ctx.arc(nx, ny, radius * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      } else if (strokeType === 'marker') {
+        // 马克笔：绘制椭圆形（模拟斜头笔）
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.4;
+        ctx.ellipse(x, y, radius * 1.5, radius, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (strokeType === 'brush') {
+        // 毛笔：绘制有渐变效果的圆
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.6;
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, color);
+        gradient.addColorStop(1, color + '00'); // 透明
+        ctx.fillStyle = gradient;
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else {
+        // 钢笔：实心圆
+        ctx.fillStyle = color;
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // 多个点：绘制路径
+      ctx.moveTo(points[0][0], points[0][1]);
+
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i][0], points[i][1]);
+      }
+
+      if (strokeType === 'pencil') {
+        // 铅笔：虚线效果
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.setLineDash([width, width / 2]);
+        ctx.globalAlpha = 0.7;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+      } else if (strokeType === 'marker') {
+        // 马克笔：半透明粗线
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width * 2;
+        ctx.globalAlpha = 0.4;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (strokeType === 'brush') {
+        // 毛笔：渐变透明效果
+        const gradient = ctx.createLinearGradient(
+          points[0][0], points[0][1],
+          points[points.length - 1][0], points[points.length - 1][1]
+        );
+        gradient.addColorStop(0, color + '40'); // 半透明
+        gradient.addColorStop(1, color);
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = width * 1.5;
+        ctx.globalAlpha = 0.6;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else {
+        // 钢笔：实线
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.stroke();
+      }
+    }
   },
 
   // 计算笔画的总长度
@@ -473,5 +628,157 @@ Page({
       query: `id=${drawingId}`,
       imageUrl: drawing && drawing.thumbnail ? config.getAssetUrl(drawing.thumbnail) : undefined
     };
+  },
+
+  // ========== 绘图模式相关方法 ==========
+
+  // 触摸开始
+  onTouchStart(e) {
+    if (!this.canvasRect) return;
+
+    const touches = e.touches[0];
+    if (touches) {
+      const { strokeColor, strokeWidth, strokeType } = this.data;
+      // 使用 clientX/clientY 获取触摸位置（相对于视口）
+      const x = touches.clientX - this.canvasRect.left;
+      const y = touches.clientY - this.canvasRect.top;
+
+      this.setData({
+        currentStroke: {
+          points: [[x, y]],
+          width: strokeWidth,
+          color: strokeColor,
+          type: strokeType
+        }
+      });
+    }
+  },
+
+  // 触摸移动
+  onTouchMove(e) {
+    if (!this.data.currentStroke || !this.canvasRect) return;
+
+    const touches = e.touches[0];
+    if (touches) {
+      const x = touches.clientX - this.canvasRect.left;
+      const y = touches.clientY - this.canvasRect.top;
+
+      const currentStroke = this.data.currentStroke;
+      currentStroke.points.push([x, y]);
+      this.setData({ currentStroke });
+      this.draw();
+    }
+  },
+
+  // 触摸结束
+  onTouchEnd(e) {
+    if (!this.data.currentStroke) return;
+
+    const currentStroke = this.data.currentStroke;
+    // 保存完成的笔画（即使只有一个点也保存）
+    const userStrokes = [...this.data.userStrokes, currentStroke];
+    this.setData({
+      userStrokes,
+      currentStroke: null
+    });
+    this.draw();
+  },
+
+  // 切换画笔类型
+  onStrokeTypeSelect(e) {
+    const strokeType = e.currentTarget.dataset.type;
+    this.setData({ strokeType });
+  },
+
+  // 切换颜色
+  onColorSelect(e) {
+    const strokeColor = e.currentTarget.dataset.color;
+    this.setData({ strokeColor });
+  },
+
+  // 切换笔画粗细
+  onStrokeWidthSelect(e) {
+    const strokeWidth = e.currentTarget.dataset.width;
+    this.setData({ strokeWidth });
+  },
+
+  // 清除用户绘制
+  onClearUserDrawings() {
+    wx.showModal({
+      title: '确认清除',
+      content: '确定要清除所有绘制内容吗？',
+      success: (res) => {
+        if (res.confirm) {
+          this.setData({
+            userStrokes: [],
+            currentStroke: null
+          });
+          this.draw();
+          wx.showToast({
+            title: '已清除',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+
+  // 导出图片
+  onExportDrawing() {
+    if (!this.canvasContext || !this.canvas) return;
+
+    wx.showLoading({ title: '导出中...' });
+
+    // 先重新绘制一次确保所有内容都在
+    this.draw();
+
+    // 导出为图片
+    this.canvas.toTempFilePath({
+      x: 0,
+      y: 0,
+      width: this.canvasWidth,
+      height: this.canvasHeight,
+      destWidth: this.canvasWidth,
+      destHeight: this.canvasHeight,
+      success: (res) => {
+        const tempFilePath = res.tempFilePath;
+
+        // 保存到相册
+        wx.saveImageToPhotosAlbum({
+          filePath: tempFilePath,
+          success: () => {
+            wx.showToast({
+              title: '已保存到相册',
+              icon: 'success'
+            });
+          },
+          fail: (err) => {
+            console.error('保存失败:', err);
+            wx.showToast({
+              title: '保存失败',
+              icon: 'none'
+            });
+          },
+          complete: () => {
+            wx.hideLoading();
+          }
+        });
+      },
+      fail: (err) => {
+        console.error('导出失败:', err);
+        wx.showToast({
+          title: '导出失败',
+          icon: 'none'
+        });
+        wx.hideLoading();
+      }
+    });
+  },
+
+  // 撤销上一笔
+  onUndo() {
+    const userStrokes = this.data.userStrokes.slice(0, -1);
+    this.setData({ userStrokes });
+    this.draw();
   }
 })
