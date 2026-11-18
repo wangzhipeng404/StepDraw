@@ -50,7 +50,15 @@ Page({
       { key: 'marker', name: '马克笔', icon: '🖍️' },
       { key: 'brush', name: '毛笔', icon: '🖌️' }
     ],
-    colorOptions: ['#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#000000']
+    colorOptions: ['#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#000000'],
+    // 自定义颜色弹层
+    showColorPicker: false,
+    isCustomColor: false, // 当前颜色是否为自定义（不在预设色板中）
+    // 自定义画笔粗细（滑动条）
+    isCustomWidth: false, // 当前粗细是否为自定义（不在预设档位中）
+    presetWidths: [2, 4, 6, 8, 12],
+    minWidth: 1,
+    maxWidth: 40
   },
 
   canvasContext: null,
@@ -691,13 +699,59 @@ Page({
   // 切换颜色
   onColorSelect(e) {
     const strokeColor = e.currentTarget.dataset.color;
-    this.setData({ strokeColor });
+    const isCustomColor = !this.data.colorOptions.includes(strokeColor);
+    this.setData({ strokeColor, isCustomColor });
+  },
+
+  // 打开自定义颜色弹层
+  onCustomColorTap() {
+    // 记录打开前的颜色，取消时可回退
+    this._prevColor = this.data.strokeColor;
+    const prevColor = this.data.strokeColor;
+    const isCustomColor = !this.data.colorOptions.includes(prevColor);
+    this.setData({ showColorPicker: true, isCustomColor });
+
+    // 等弹层滑入动画结束后，重新测量 SV/色相条位置（组件初始在屏外，测量会偏差）
+    setTimeout(() => {
+      const cp = this.selectComponent('#colorPicker');
+      if (cp && cp.measure) cp.measure();
+    }, 320);
+  },
+
+  // 取消：回退到打开前的颜色
+  onCancelColorPicker() {
+    const prevColor = this._prevColor || this.data.strokeColor;
+    const isCustomColor = !this.data.colorOptions.includes(prevColor);
+    this.setData({
+      showColorPicker: false,
+      strokeColor: prevColor,
+      isCustomColor
+    });
+  },
+
+  // 颜色实时变化（组件内拖动/输入时触发，实时预览到画笔）
+  onColorPickerChange(e) {
+    const hex = e.detail.hex;
+    this.setData({ strokeColor: hex, isCustomColor: true });
+  },
+
+  // 确定选择自定义颜色
+  onConfirmColorPicker() {
+    this.setData({ showColorPicker: false });
   },
 
   // 切换笔画粗细
   onStrokeWidthSelect(e) {
-    const strokeWidth = e.currentTarget.dataset.width;
-    this.setData({ strokeWidth });
+    const strokeWidth = Number(e.currentTarget.dataset.width);
+    const isCustomWidth = !this.data.presetWidths.includes(strokeWidth);
+    this.setData({ strokeWidth, isCustomWidth });
+  },
+
+  // 滑动条调整粗细（拖动中 bindchanging 与结束时 bindchange 都会触发，更新预览）
+  onWidthSliderChange(e) {
+    const strokeWidth = Number(e.detail.value);
+    const isCustomWidth = !this.data.presetWidths.includes(strokeWidth);
+    this.setData({ strokeWidth, isCustomWidth });
   },
 
   // 清除用户绘制

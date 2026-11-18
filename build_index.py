@@ -36,6 +36,8 @@ EMOJI_MAP = {
     "single": "👤",
     "pair60": "👥",
     "upper80v2": "🦴",
+    "costume": "🧑",
+    "portrait": "👕"
 }
 
 

@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "图案详情"
+  "navigationBarTitleText": "图案详情",
+  "usingComponents": {
+    "color-picker": "/components/color-picker/index"
+  }
 }

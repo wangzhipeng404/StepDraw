@@ -23,14 +23,14 @@ import sys
 from PIL import Image, ImageDraw
 
 # ==================== 配置 ====================
-DATA_DIR = "./web/public/data"
+DATA_DIR = "./quickdraw_animals_json"
 SIZE = 256                          # 封面边长(px)，可改 512
 PADDING = 8                         # 边距(px)，基于 SIZE
 BG_COLOR = (255, 255, 255, 255)     # 白底；透明改 (0,0,0,0)
 LINE_COLOR = (51, 51, 51, 255)      # #333
 LINE_WIDTH_BASE = 3                 # 与 JSON 中 width 对应
 SMOOTH_SAMPLES = 8                  # 每段贝塞尔插值数；1 = 关闭平滑
-OVERWRITE = False                   # True = 覆盖已存在的 PNG
+OVERWRITE = True                   # True = 覆盖已存在的 PNG
 # =============================================
 
 
@@ -115,6 +115,126 @@ def load_category_index(cat_dir, cat):
     }
 
 
+def process_category(cat_dir, cat):
+    """处理一个类别目录，返回 (done, skip, fail)"""
+    try:
+        cat_index = load_category_index(cat_dir, cat)
+    except Exception as e:
+        print(f"[跳过] {cat}: {e}")
+        return 0, 0, 0
+
+    items = cat_index.get("items", [])
+    print(f"--- {cat} ({len(items)} 条) ---")
+
+    done = skip = fail = 0
+    for item in items:
+        cid = item.get("id")
+        if not cid:
+            fail += 1
+            continue
+
+        case_path = os.path.join(cat_dir, f"{cid}.json")
+        png_path = os.path.join(cat_dir, f"{cid}.png")
+        thumb_rel = f"{cat}/{cid}.png"
+
+        if not os.path.isfile(case_path):
+            fail += 1
+            continue
+
+        if os.path.isfile(png_path) and not OVERWRITE:
+            item["thumbnail"] = thumb_rel
+            skip += 1
+            continue
+
+        try:
+            with open(case_path, "r", encoding="utf-8") as f:
+                case = json.load(f)
+            img = draw_case(case, SIZE, PADDING)
+            img.save(png_path, "PNG", optimize=True)
+            item["thumbnail"] = thumb_rel
+            done += 1
+        except Exception as e:
+            print(f"  [失败] {cid}: {e}")
+            fail += 1
+
+    # 写回类别索引
+    cat_index["items"] = items
+    cat_index["count"] = len(items)
+    index_path = os.path.join(cat_dir, "index.json")
+    with open(index_path, "w", encoding="utf-8") as f:
+        json.dump(cat_index, f, ensure_ascii=False, separators=(",", ":"))
+
+    print(f"  生成 {done}, 跳过 {skip}, 失败 {fail}")
+    return done, skip, fail
+
+
+def process_flat_directory(data_dir):
+    """直接处理 data_dir 下的所有 JSON 文件 (无子类别目录模式)"""
+    cat_name = os.path.basename(os.path.abspath(data_dir))
+    json_files = [
+        fn for fn in os.listdir(data_dir)
+        if fn.endswith(".json") and fn != "index.json"
+    ]
+
+    if not json_files:
+        print("[错误] data/ 下没有 JSON 文件")
+        return 0, 0, 0
+
+    print(f"--- {cat_name} ({len(json_files)} 条) ---")
+
+    done = skip = fail = 0
+    items = []
+
+    for fn in json_files:
+        cid = os.path.splitext(fn)[0]
+        case_path = os.path.join(data_dir, fn)
+        png_path = os.path.join(data_dir, f"{cid}.png")
+        thumb_rel = f"{cat_name}/{cid}.png"
+
+        if os.path.isfile(png_path) and not OVERWRITE:
+            skip += 1
+        else:
+            try:
+                with open(case_path, "r", encoding="utf-8") as f:
+                    case = json.load(f)
+                img = draw_case(case, SIZE, PADDING)
+                img.save(png_path, "PNG", optimize=True)
+                done += 1
+            except Exception as e:
+                print(f"  [失败] {cid}: {e}")
+                fail += 1
+
+        # 收集 item 信息用于 index.json
+        try:
+            with open(case_path, "r", encoding="utf-8") as f:
+                case = json.load(f)
+            items.append({
+                "id": case.get("id", cid),
+                "name": case.get("name", ""),
+                "difficulty": case.get("difficulty", 1),
+                "stepCount": len(case.get("steps", [])),
+                "thumbnail": thumb_rel,
+            })
+        except Exception:
+            continue
+
+    # 写回 index.json
+    index_path = os.path.join(data_dir, "index.json")
+    cat_name = os.path.basename(data_dir)
+    index_data = {
+        "category": cat_name,
+        "name": cat_name,
+        "viewBox": [0, 0, 256, 256],
+        "count": len(items),
+        "items": items,
+    }
+    with open(index_path, "w", encoding="utf-8") as f:
+        json.dump(index_data, f, ensure_ascii=False, separators=(",", ":"))
+
+    print(f"  生成 {done}, 跳过 {skip}, 失败 {fail}")
+    return done, skip, fail
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -122,75 +242,35 @@ def main():
         pass
 
     if not os.path.isdir(DATA_DIR):
-        print(f"[错误] 数据目录不存在: {os.path.abspath(DATA_DIR)}")
+        print(f"[错误] 数据目录不存在：{os.path.abspath(DATA_DIR)}")
         return
 
-    categories = sorted(
+    # 检查是否有子类别目录
+    subdirs = sorted(
         d for d in os.listdir(DATA_DIR)
         if os.path.isdir(os.path.join(DATA_DIR, d))
     )
-    if not categories:
-        print("[错误] data/ 下没有类别目录")
-        return
 
     total_done = total_skip = total_fail = 0
 
-    for cat in categories:
-        cat_dir = os.path.join(DATA_DIR, cat)
-        try:
-            cat_index = load_category_index(cat_dir, cat)
-        except Exception as e:
-            print(f"[跳过] {cat}: {e}")
-            continue
-
-        items = cat_index.get("items", [])
-        print(f"--- {cat} ({len(items)} 条) ---")
-
-        done = skip = fail = 0
-        for item in items:
-            cid = item.get("id")
-            if not cid:
-                fail += 1
-                continue
-
-            case_path = os.path.join(cat_dir, f"{cid}.json")
-            png_path = os.path.join(cat_dir, f"{cid}.png")
-            thumb_rel = f"{cat}/{cid}.png"
-
-            if not os.path.isfile(case_path):
-                fail += 1
-                continue
-
-            if os.path.isfile(png_path) and not OVERWRITE:
-                item["thumbnail"] = thumb_rel
-                skip += 1
-                continue
-
-            try:
-                with open(case_path, "r", encoding="utf-8") as f:
-                    case = json.load(f)
-                img = draw_case(case, SIZE, PADDING)
-                img.save(png_path, "PNG", optimize=True)
-                item["thumbnail"] = thumb_rel
-                done += 1
-            except Exception as e:
-                print(f"  [失败] {cid}: {e}")
-                fail += 1
-
-        # 写回类别索引
-        cat_index["items"] = items
-        cat_index["count"] = len(items)
-        index_path = os.path.join(cat_dir, "index.json")
-        with open(index_path, "w", encoding="utf-8") as f:
-            json.dump(cat_index, f, ensure_ascii=False, separators=(",", ":"))
-
-        print(f"  生成 {done}, 跳过 {skip}, 失败 {fail}")
+    if subdirs:
+        # 有子类别目录：按原有逻辑处理
+        for cat in subdirs:
+            cat_dir = os.path.join(DATA_DIR, cat)
+            done, skip, fail = process_category(cat_dir, cat)
+            total_done += done
+            total_skip += skip
+            total_fail += fail
+    else:
+        # 没有子类别目录：直接处理当前目录
+        print(f"没有子类别目录，直接处理 {os.path.abspath(DATA_DIR)}")
+        done, skip, fail = process_flat_directory(DATA_DIR)
         total_done += done
         total_skip += skip
         total_fail += fail
 
     print("=" * 40)
-    print(f"完成: 生成 {total_done}, 跳过 {total_skip}, 失败 {total_fail}")
+    print(f"完成：生成 {total_done}, 跳过 {total_skip}, 失败 {total_fail}")
 
 
 if __name__ == "__main__":

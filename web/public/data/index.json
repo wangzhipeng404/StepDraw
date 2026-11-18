@@ -42,6 +42,34 @@
       "dir": "Read"
     },
     {
+      "id": "family",
+      "name": "家庭",
+      "emoji": "👨‍👩‍👧‍👦",
+      "count": 20,
+      "dir": "family"
+    },
+    {
+      "id": "pose",
+      "name": "姿态",
+      "emoji": "🧘",
+      "count": 100,
+      "dir": "pose"
+    },
+    {
+      "id": "portrait",
+      "name": "肖像",
+      "emoji": "🧑",
+      "count": 100,
+      "dir": "portrait"
+    },
+    {
+      "id": "costume",
+      "name": "服装",
+      "emoji": "👕",
+      "count": 100,
+      "dir": "costume"
+    },
+    {
       "id": "bear",
       "name": "熊",
       "emoji": "🐻",
@@ -82,13 +110,6 @@
       "emoji": "🐘",
       "count": 100,
       "dir": "elephant"
-    },
-    {
-      "id": "family",
-      "name": "家庭",
-      "emoji": "👨‍👩‍👧‍👦",
-      "count": 20,
-      "dir": "family"
     },
     {
       "id": "fish",

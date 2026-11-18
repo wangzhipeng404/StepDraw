@@ -280,6 +280,15 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
                 <span className="color-circle" style={{ backgroundColor: color }} />
               </button>
             ))}
+            <label className="color-picker-label" title="选择任意颜色">
+              <input
+                type="color"
+                value={strokeColor}
+                onChange={(e) => setStrokeColor(e.target.value)}
+                className="color-picker-input"
+              />
+              <span className="color-circle" style={{ backgroundColor: strokeColor }} />
+            </label>
           </div>
 
           {/* 笔画粗细选择器 */}
@@ -294,6 +303,18 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
                 <span className="stroke-circle" style={{ width, height: width }} />
               </button>
             ))}
+            {/* 自定义画笔大小滑块 */}
+            <div className="stroke-width-slider-wrapper" title="自定义画笔大小">
+              <input
+                type="range"
+                min="1"
+                max="20"
+                value={strokeWidth}
+                onChange={(e) => setStrokeWidth(parseInt(e.target.value))}
+                className="stroke-width-slider"
+              />
+              <span className="stroke-width-value">{strokeWidth}</span>
+            </div>
           </div>
 
           {/* 画笔类型选择器 */}

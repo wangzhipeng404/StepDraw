@@ -20,9 +20,9 @@ import math
 
 # ==================== 配置 ====================
 SRC_DIR = "quickdraw_animals"
-OUT_DIR = "./web/public/data"
+OUT_DIR = "quickdraw_animals_json"
 
-PER_CATEGORY = 100   # 每类最多转换多少条; 0 = 全部(不推荐)
+PER_CATEGORY = 0   # 每类最多转换多少条; 0 = 全部(不推荐)
 MAX_STROKES = 0      # 超过该笔画数跳过; 0 = 不过滤
 SIMPLIFY_EPS = 1.0   # 路径简化阈值; 0 = 不简化
 STROKE_WIDTH = 3

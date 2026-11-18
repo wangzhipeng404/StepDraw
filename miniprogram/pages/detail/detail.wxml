@@ -74,17 +74,36 @@
             bindtap="onColorSelect">
           <view class="color-circle" style="background-color: {{item}};"></view>
         </view>
+        <!-- 自定义颜色入口：显示当前选中颜色，中心 + 号，点击打开自定义选色 -->
+        <view class="color-item custom-color-item {{isCustomColor ? 'active' : ''}}" bindtap="onCustomColorTap">
+          <view class="custom-color-circle" style="background-color: {{strokeColor}};">
+            <text class="custom-color-plus">+</text>
+          </view>
+        </view>
       </view>
 
-      <!-- 笔画粗细选择器 -->
+      <!-- 笔画粗细选择器：左侧快捷选项，右侧滑动条微调 -->
       <view class="stroke-width-bar">
-        <view class="stroke-width-item {{strokeWidth === item ? 'active' : ''}}"
-            wx:for="{{[2, 4, 6, 8, 12]}}"
+        <view class="stroke-width-item {{strokeWidth === item && !isCustomWidth ? 'active' : ''}}"
+            wx:for="{{presetWidths}}"
             wx:key="index"
             data-width="{{item}}"
             bindtap="onStrokeWidthSelect">
           <view class="stroke-circle" style="width: {{item * 2}}px; height: {{item * 2}}px;"></view>
         </view>
+        <slider
+          class="width-slider"
+          min="{{minWidth}}"
+          max="{{maxWidth}}"
+          step="1"
+          value="{{strokeWidth}}"
+          block-size="16"
+          block-color="#aa3bff"
+          active-color="#aa3bff"
+          background-color="#e0e0e0"
+          bindchanging="onWidthSliderChange"
+          bindchange="onWidthSliderChange"
+        />
       </view>
 
       <!-- 画笔类型选择器 -->
@@ -110,6 +129,24 @@
           <text>保存</text>
         </view>
       </view>
+    </view>
+  </view>
+
+  <!-- 自定义颜色弹层：竖屏从底部弹出，横屏从右侧弹出 -->
+  <view wx:if="{{showColorPicker}}" class="cp-mask" bindtap="onCancelColorPicker"></view>
+  <view class="cp-panel {{showColorPicker ? 'open' : ''}}">
+    <view class="cp-panel-header">
+      <text class="cp-panel-title">自定义颜色</text>
+      <view class="cp-panel-close" bindtap="onCancelColorPicker">
+        <text>×</text>
+      </view>
+    </view>
+    <scroll-view class="cp-panel-body" scroll-y="true">
+      <color-picker id="colorPicker" value="{{strokeColor}}" bind:change="onColorPickerChange"></color-picker>
+    </scroll-view>
+    <view class="cp-panel-footer">
+      <view class="cp-footer-btn cancel" bindtap="onCancelColorPicker">取消</view>
+      <view class="cp-footer-btn confirm" bindtap="onConfirmColorPicker">确定</view>
     </view>
   </view>
 </view>

@@ -1,0 +1,57 @@
+<view class="cp">
+
+  <!-- 饱和度 / 明度面板 -->
+  <view
+    class="cp-sv"
+    style="background-image: linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, {{hueColor}});"
+    bindtouchstart="onSvTouch"
+    bindtouchmove="onSvTouch"
+    bindtouchend="onSvTouch"
+  >
+    <view
+      class="cp-sv-dot"
+      style="left: {{saturation}}%; top: {{100 - brightness}}%;"
+    ></view>
+  </view>
+
+  <!-- 色相条 -->
+  <view
+    class="cp-hue"
+    bindtouchstart="onHueTouch"
+    bindtouchmove="onHueTouch"
+    bindtouchend="onHueTouch"
+  >
+    <view
+      class="cp-hue-dot"
+      style="left: {{hue / 3.6}}%; background: {{hueColor}};"
+    ></view>
+  </view>
+
+  <!-- HEX 输入 -->
+  <view class="cp-row">
+    <view class="cp-hex">
+      <text class="cp-hex-label">#</text>
+      <input
+        class="cp-hex-input"
+        type="text"
+        value="{{hexInput}}"
+        maxlength="6"
+        bindinput="onHexInput"
+        bindblur="onHexBlur"
+      />
+    </view>
+    <view class="cp-swatch" style="background: {{hex}};"></view>
+  </view>
+
+  <!-- 预设色板 -->
+  <view class="cp-presets">
+    <view
+      wx:for="{{presets}}"
+      wx:key="*this"
+      class="cp-preset"
+      style="background: {{item}};"
+      data-color="{{item}}"
+      bindtap="onPresetTap"
+    ></view>
+  </view>
+</view>

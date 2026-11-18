@@ -1,17 +1,60 @@
-<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
- "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
-<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
- width="1280.000000pt" height="1280.000000pt" viewBox="0 0 1280.000000 1280.000000"
- preserveAspectRatio="xMidYMid meet">
-<metadata>
-Created by potrace 1.15, written by Peter Selinger 2001-2017
-Modified: background #13c2c2, content #f35721
-</metadata>
-<rect width="1280" height="1280" fill="#13c2c2"/>
-<g transform="translate(261.000000,1280.000000) scale(0.100000,-0.100000)"
-fill="#f35721" stroke="none">
-<path d="M5429 12789 c-8 -5 -28 -9 -46 -9 -112 0 -355 -95 -526 -206 -37 -24
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <defs>
+    <clipPath id="bg-clip">
+      <rect x="36" y="36" width="528" height="528" rx="100" ry="100"/>
+    </clipPath>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFF9F0;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#FFF0E0;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#7BB3F0;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9B59B6;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#C39BD3;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-green" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5DAE6E;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#82D490;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-red" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E74C6F;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#F4888E;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3BAEA9;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#7DD4CF;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B35;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#FFA07A;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-yellow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F5C842;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#FFE066;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E91E8C;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#F472B6;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-cat" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1"/>
+      <stop offset="50%" style="stop-color:#7BB3F0;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#3BAEA9;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 圆角方形背景 -->
+  <rect x="40" y="40" width="520" height="520" rx="96" ry="96" fill="url(#bg-grad)" stroke="#2C2C2C" stroke-width="5"/>
+
+  <g clip-path="url(#bg-clip)">
+    
+    <!-- ====== 猫的轮廓 ====== -->
+    <g transform="translate(242.7082, 472.3192) scale(0.020511, -0.020511)" fill="none" stroke="url(#grad-cat)" stroke-width="180" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M5429 12789 c-8 -5 -28 -9 -46 -9 -112 0 -355 -95 -526 -206 -37 -24
 -73 -42 -78 -38 -5 3 -8 0 -7 -6 2 -6 -14 -17 -35 -24 -70 -25 -205 -146 -350
 -316 -50 -58 -95 -105 -101 -105 -33 0 -196 28 -226 38 -70 24 -1037 3 -1267
 -27 -24 -3 -43 -2 -43 2 0 13 94 60 135 66 61 10 71 19 57 50 -11 24 -16 26
@@ -80,16 +123,249 @@ m1872 -147 c160 -76 231 -164 234 -287 1 -70 -9 -122 -23 -122 -4 0 -10 40
 175 -38z m-1714 -105 c19 -9 48 -32 64 -51 25 -28 29 -38 19 -49 -10 -13 -17
 -10 -43 15 -36 35 -93 61 -134 61 -16 0 -58 -14 -93 -32 -114 -56 -232 -199
 -274 -331 l-13 -42 -1 37 c-2 74 54 175 157 283 105 110 228 152 318 109z"/>
-<path d="M3438 11231 c-18 -9 -46 -37 -61 -63 -36 -58 -31 -105 14 -151 27
+      <path d="M3438 11231 c-18 -9 -46 -37 -61 -63 -36 -58 -31 -105 14 -151 27
 -26 35 -29 79 -25 61 6 97 29 117 76 20 47 6 96 -39 138 -42 40 -69 46 -110
 25z"/>
-<path d="M2070 11168 c-35 -13 -59 -37 -82 -82 -24 -47 -18 -93 17 -133 20
+      <path d="M2070 11168 c-35 -13 -59 -37 -82 -82 -24 -47 -18 -93 17 -133 20
 -25 30 -28 79 -27 68 0 105 24 124 79 16 49 3 90 -41 132 -37 35 -63 44 -97
 31z"/>
-<path d="M2735 10810 c-22 -5 -52 -13 -66 -19 -15 -5 -36 -7 -47 -4 -45 11
+      <path d="M2735 10810 c-22 -5 -52 -13 -66 -19 -15 -5 -36 -7 -47 -4 -45 11
 -123 -144 -91 -183 6 -7 9 -19 6 -26 -2 -7 0 -21 5 -31 31 -60 310 -97 400
 -53 90 44 148 141 111 187 -68 83 -95 98 -181 99 -25 0 -35 5 -39 20 -6 22
 -28 24 -98 10z m178 -82 c20 -23 14 -57 -12 -73 -53 -33 -108 -21 -126 29 -8
 25 -6 31 19 53 24 20 36 23 65 18 20 -3 44 -15 54 -27z"/>
-</g>
+    </g>
+
+    <!-- ====== 左爪挥舞轨迹（不变） ====== -->
+    <g fill="none" stroke-linecap="round">
+      <path d="M118,322 Q100,306 84,317" opacity="0.75" stroke="url(#grad-orange)" stroke-width="3.5"/>
+      <path d="M108,346 Q90,355 78,343" opacity="0.6" stroke="url(#grad-yellow)" stroke-width="3"/>
+    </g>
+
+    <!-- ====== 右爪挥舞轨迹（不变） ====== -->
+    <g fill="none" stroke-linecap="round">
+      <path d="M432,332 Q447,314 462,322" opacity="0.75" stroke="url(#grad-red)" stroke-width="3.5"/>
+      <path d="M436,349 Q454,340 468,345" opacity="0.6" stroke="url(#grad-purple)" stroke-width="3"/>
+    </g>
+
+    <!-- ====== 猫前方少量乱线（不变） ====== -->
+    <g fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M430,295 C459,281 482,290 476,263 C472,240 453,250 463,271 C473,288 489,272 485,256" opacity="0.65" stroke="url(#grad-blue)"/>
+      <path d="M432,328 C460,342 479,319 487,303 C492,287 470,266 454,283 C441,297 457,315 480,309" opacity="0.55" stroke="url(#grad-pink)"/>
+    </g>
+
+    <!-- ====== 左上区域：蓝色系（右移100px） ====== -->
+    <g fill="none" stroke="url(#grad-blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="270,150 292,108 314,151" opacity="0.75"/>
+      <circle cx="322" cy="128" r="16" opacity="0.7"/>
+      <rect x="282" y="153" width="22" height="22" rx="3" opacity="0.65"/>
+      <polygon points="304,137 315,125 327,137 315,149" opacity="0.6"/>
+      <path d="M329,151 L340,151 M335,145 L335,157" opacity="0.55"/>
+      <polygon points="242,142 250,130 258,142 250,154" opacity="0.5"/>
+      <circle cx="348" cy="113" r="9" opacity="0.5"/>
+      <rect x="350" y="153" width="14" height="14" rx="2" opacity="0.45"/>
+      <path d="M338,177 L348,168 L353,178" opacity="0.45"/>
+      <circle cx="360" cy="106" r="5" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 右上区域：紫色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-purple)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="467,163 477,154 490,167 487,179 472,182" opacity="0.75"/>
+      <path d="M503,173 C508,166 514,172 512,181 C510,187 503,186 499,180 C498,176 500,172 503,174" opacity="0.7"/>
+      <path d="M476,191 A13,13 0 0,1 499,191" opacity="0.65"/>
+      <polygon points="504,204 506,211 513,210 508,215 511,223 506,218 501,224 502,216 495,211 503,211" opacity="0.6"/>
+      <polygon points="449,153 457,141 464,153 455,163" opacity="0.55"/>
+      <circle cx="521" cy="163" r="8" opacity="0.5"/>
+      <rect x="522" y="183" width="13" height="13" rx="2" opacity="0.45"/>
+      <path d="M517,198 L527,189 L531,199" opacity="0.45"/>
+      <circle cx="535" cy="153" r="5" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 左下区域：绿色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M74,308 C74,291 88,286 96,296 C104,286 118,292 118,311 C118,329 96,343 96,343 C96,343 74,328 74,310Z" opacity="0.75"/>
+      <path d="M100,320 L126,307 M124,304 L129,310 L127,317" opacity="0.7"/>
+      <path d="M118,348 A16,16 0 1,1 145,359 A20,20 0 1,0 118,350Z" opacity="0.65"/>
+      <polygon points="61,355 80,347 92,360 68,367" opacity="0.6"/>
+      <polygon points="48,322 56,301 64,322" opacity="0.55"/>
+      <circle cx="140" cy="343" r="7" opacity="0.5"/>
+      <rect x="46" y="376" width="16" height="16" rx="2" opacity="0.5"/>
+      <path d="M134,372 L144,363 L149,373" opacity="0.45"/>
+      <circle cx="148" cy="390" r="5" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 右下区域：红色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-red)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="516" cy="368" r="6" opacity="0.75"/>
+      <circle cx="508" cy="376" r="6" opacity="0.7"/>
+      <circle cx="524" cy="378" r="6" opacity="0.65"/>
+      <circle cx="512" cy="386" r="6" opacity="0.6"/>
+      <circle cx="529" cy="388" r="6" opacity="0.55"/>
+      <circle cx="520" cy="379" r="5" fill="url(#grad-yellow)" opacity="0.75"/>
+      <path d="M519,393 L517,414" opacity="0.7"/>
+      <path d="M513,403 L521,399" opacity="0.65"/>
+      <polygon points="421,393 429,388 439,392 440,404 433,406 423,402" opacity="0.6"/>
+      <path d="M547,365 L549,384 M551,392 L552,395" opacity="0.55"/>
+      <polygon points="411,369 419,357 426,369" opacity="0.5"/>
+      <circle cx="550" cy="397" r="7" opacity="0.5"/>
+      <rect x="410" y="410" width="14" height="14" rx="2" opacity="0.45"/>
+      <path d="M405,388 L411,382 L416,390" opacity="0.45"/>
+    </g>
+
+    <!-- ====== 左侧补充：青色系（右移100px） ====== -->
+    <g fill="none" stroke="url(#grad-cyan)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="168,212 184,182 200,212" opacity="0.75"/>
+      <rect x="181" y="212" width="6" height="14" opacity="0.7"/>
+      <path d="M219,247 Q234,233 224,225 Q214,243 229,253" opacity="0.65"/>
+      <polygon points="161,277 178,258 194,279" opacity="0.6"/>
+      <line x1="178" y1="258" x2="178" y2="288" opacity="0.55"/>
+      <polygon points="206,300 209,307 216,307 210,311 212,318 206,314 200,318 202,311 196,307 203,307" opacity="0.55"/>
+      <path d="M161,343 L198,338 M196,335 L201,341 L199,347" opacity="0.6"/>
+      <polygon points="171,369 L171,349 L151,359 Z" opacity="0.65"/>
+      <rect x="171" y="353" width="18" height="16" opacity="0.55"/>
+      <rect x="178" y="359" width="6" height="10" opacity="0.5"/>
+      <path d="M156,395 Q171,382 188,396 Q204,410 221,399" opacity="0.6"/>
+      <circle cx="178" cy="435" r="5" opacity="0.65"/>
+      <circle cx="172" cy="442" r="5" opacity="0.6"/>
+      <circle cx="184" cy="442" r="5" opacity="0.55"/>
+      <circle cx="178" cy="438" r="3" fill="url(#grad-yellow)" opacity="0.65"/>
+      <path d="M178,440 L178,459" opacity="0.55"/>
+      <circle cx="236" cy="393" r="6" opacity="0.6"/>
+      <path d="M242,396 L242,375 L254,378 L254,386" opacity="0.55"/>
+      <path d="M224,417 Q232,433 239,422 Q242,415 231,411Z" opacity="0.6"/>
+      <path d="M236,299 L228,319 L238,321 L230,341" opacity="0.55"/>
+      <path d="M161,479 L161,502 L181,497 L161,499" opacity="0.55"/>
+      <polygon points="148,453 156,443 164,453" opacity="0.5"/>
+      <circle cx="240" cy="429" r="5" opacity="0.5"/>
+      <rect x="146" y="413" width="12" height="12" rx="2" opacity="0.5"/>
+      <path d="M230,450 L238,443 L242,452" opacity="0.45"/>
+      <circle cx="244" cy="293" r="4" opacity="0.45"/>
+      <path d="M148,533 Q156,540 164,536" opacity="0.45"/>
+      <polygon points="200,478 206,470 212,478" opacity="0.45"/>
+      <path d="M230,559 L238,566 M234,563 L234,571" opacity="0.4"/>
+      <circle cx="244" cy="577" r="4" opacity="0.4"/>
+      <path d="M148,575 L156,567 L164,576" opacity="0.4"/>
+      <rect x="200" y="579" width="10" height="10" rx="2" opacity="0.4"/>
+      <path d="M230,608 Q238,601 246,610" opacity="0.35"/>
+      <circle cx="248" cy="624" r="3" opacity="0.35"/>
+    </g>
+
+    <!-- ====== 左侧移到右侧的图案：橙色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="393" cy="257" r="7" opacity="0.75"/>
+      <path d="M399,261 L396,233 L409,236 L410,250" opacity="0.7"/>
+      <path d="M419,291 C429,309 436,314 442,308 C447,301 435,283 419,297Z" opacity="0.65"/>
+      <path d="M440,247 L432,271 L443,274 L434,299" opacity="0.6"/>
+      <path d="M376,301 L374,284 L392,286 L376,288" opacity="0.55"/>
+    </g>
+
+    <!-- ====== 猫右侧空白：橙色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M428,247 C431,236 446,240 449,250 C452,258 444,265 438,267 C435,271 433,280 435,286" opacity="0.75"/>
+      <circle cx="438" cy="295" r="3" fill="url(#grad-orange)" opacity="0.75"/>
+      <ellipse cx="509" cy="337" rx="9" ry="5" opacity="0.7"/>
+      <circle cx="511" cy="338" r="2.5" fill="url(#grad-orange)" opacity="0.7"/>
+      <path d="M512,396 L501,409 L526,410 Z" opacity="0.65"/>
+      <rect x="509" y="398" width="15" height="13" opacity="0.6"/>
+      <circle cx="547" cy="392" r="7" opacity="0.55"/>
+      <path d="M548,399 L546,417" opacity="0.55"/>
+      <polygon points="584,277 593,265 600,277" opacity="0.5"/>
+      <circle cx="604" cy="302" r="6" opacity="0.5"/>
+      <rect x="587" y="318" width="14" height="14" rx="2" opacity="0.45"/>
+      <path d="M582,345 L592,336 L598,347" opacity="0.45"/>
+      <circle cx="607" cy="358" r="5" opacity="0.4"/>
+      <path d="M589,428 Q595,435 603,430" opacity="0.45"/>
+      <polygon points="591,448 598,440 605,448" opacity="0.4"/>
+      <circle cx="609" cy="468" r="4" opacity="0.4"/>
+      <rect x="590" y="478" width="12" height="12" rx="2" opacity="0.35"/>
+      <path d="M583,502 L593,494 L597,504" opacity="0.35"/>
+      <circle cx="616" cy="517" r="4" opacity="0.35"/>
+      <path d="M571,533 L581,529 L577,540" opacity="0.3"/>
+      <circle cx="621" cy="548" r="3" opacity="0.3"/>
+    </g>
+
+    <!-- ====== 猫上方空白：黄色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-yellow)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="423" cy="170" r="13" opacity="0.75"/>
+      <path d="M422,151 L422,144 M435,157 L440,152 M437,170 L445,170 M431,179 L436,184 M424,183 L427,191 M411,178 L408,184 M404,170 L399,170 M410,158 L405,153" opacity="0.7"/>
+      <path d="M431,194 A28,28 0 0,0 488,194" opacity="0.65"/>
+      <path d="M438,194 A22,22 0 0,0 478,194" opacity="0.6"/>
+      <ellipse cx="353" cy="167" rx="9" ry="12" opacity="0.55"/>
+      <path d="M355,178 L356,191" opacity="0.55"/>
+      <path d="M285,188 L296,164 L301,188 Z" opacity="0.55"/>
+      <rect x="290" y="188" width="5" height="7" opacity="0.55"/>
+      <polygon points="201,158 210,146 218,158" opacity="0.5"/>
+      <circle cx="616" cy="148" r="8" opacity="0.5"/>
+      <rect x="668" y="158" width="14" height="14" rx="2" opacity="0.45"/>
+      <path d="M666,178 L676,169 L681,180" opacity="0.45"/>
+      <circle cx="683" cy="148" r="5" opacity="0.4"/>
+      <path d="M674,198 Q682,205 692,200" opacity="0.4"/>
+      <polygon points="680,212 686,204 693,212" opacity="0.35"/>
+      <circle cx="699" cy="228" r="4" opacity="0.35"/>
+      <rect x="678" y="238" width="12" height="12" rx="2" opacity="0.3"/>
+      <path d="M673,258 L683,250 L687,260" opacity="0.3"/>
+      <circle cx="703" cy="268" r="3" opacity="0.3"/>
+    </g>
+
+    <!-- ====== 下方补充：粉色系（上移100px） ====== -->
+    <g fill="none" stroke="url(#grad-pink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M61,410 Q91,397 121,412 Q151,427 181,414" opacity="0.75"/>
+      <circle cx="206" cy="420" r="5" opacity="0.7"/>
+      <circle cx="200" cy="429" r="5" opacity="0.65"/>
+      <circle cx="212" cy="431" r="5" opacity="0.6"/>
+      <circle cx="206" cy="425" r="3" fill="url(#grad-yellow)" opacity="0.7"/>
+      <path d="M206,427 L206,446" opacity="0.6"/>
+      <path d="M246,434 C246,424 256,418 264,426 C272,434 262,442 254,439Z" opacity="0.65"/>
+      <polygon points="283,408 L298,398 L313,409 L298,418 Z" opacity="0.6"/>
+      <circle cx="298" cy="412" r="3" fill="url(#grad-yellow)" opacity="0.6"/>
+      <polygon points="336,443 339,451 347,452 341,456 343,464 337,460 331,465 333,457 327,453 335,452" opacity="0.55"/>
+      <path d="M378,418 A14,14 0 1,1 403,437 A17,17 0 1,0 380,420Z" opacity="0.6"/>
+      <path d="M418,433 Q426,448 433,436 Q436,428 425,425Z" opacity="0.55"/>
+      <circle cx="458" cy="455" r="12" opacity="0.6"/>
+      <path d="M463,450 Q469,446 476,451" opacity="0.55"/>
+      <path d="M466,457 Q471,461 475,458" opacity="0.55"/>
+      <polygon points="496,473 L511,488 L484,490 Z" opacity="0.55"/>
+      <circle cx="614" cy="420" r="6" opacity="0.6"/>
+      <path d="M619,423 L618,402 L631,405 L632,413" opacity="0.55"/>
+      <path d="M249,468 L249,486 L264,481 L249,483" opacity="0.55"/>
+      <path d="M387,472 Q401,458 391,450 Q381,467 396,478" opacity="0.55"/>
+      <path d="M670,448 L684,448 M677,441 L677,455" opacity="0.55"/>
+      <path d="M679,494 L697,488 M694,486 L698,491 L696,497" opacity="0.5"/>
+      <polygon points="721,506 729,520 713,522" opacity="0.5"/>
+      <circle cx="723" cy="642" r="5" opacity="0.45"/>
+      <rect x="689" y="716" width="14" height="14" rx="2" opacity="0.45"/>
+      <path d="M688,640 L700,632 L704,643" opacity="0.4"/>
+      <circle cx="735" cy="658" r="4" opacity="0.4"/>
+      <path d="M709,768 Q719,778 729,770" opacity="0.35"/>
+      <polygon points="715,688 722,680 730,689" opacity="0.35"/>
+      <circle cx="745" cy="798" r="3" opacity="0.3"/>
+      <rect x="711" y="800" width="10" height="10" rx="2" opacity="0.3"/>
+      <path d="M160,458 Q170,448 180,458 Q190,468 200,458" opacity="0.5"/>
+      <circle cx="320" cy="448" r="5" opacity="0.5"/>
+      <circle cx="314" cy="456" r="5" opacity="0.45"/>
+      <circle cx="326" cy="458" r="5" opacity="0.4"/>
+      <circle cx="320" cy="453" r="3" fill="url(#grad-yellow)" opacity="0.5"/>
+      <path d="M320,455 L320,474" opacity="0.45"/>
+      <polygon points="350,478 358,468 366,478" opacity="0.45"/>
+      <path d="M440,480 Q450,470 460,480" opacity="0.45"/>
+      <circle cx="615" cy="458" r="5" opacity="0.45"/>
+      <path d="M620,461 L619,440 L633,443 L634,451" opacity="0.4"/>
+      <path d="M665,478 L675,470 L681,480" opacity="0.4"/>
+      <circle cx="710" cy="795" r="3" opacity="0.3"/>
+    </g>
+
+    <!-- ====== 下方移到上方的图案：粉色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-pink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M702,617 C720,612 726,627 709,633 L702,625 L696,633 C691,629 692,613 702,620Z" opacity="0.5"/>
+      <circle cx="701" cy="623" r="1.5" fill="url(#grad-pink)" opacity="0.5"/>
+    </g>
+
+    <!-- 散落的小圆点装饰 -->
+    <circle cx="731" cy="648" r="4" fill="url(#grad-orange)" opacity="0.7"/>
+    <circle cx="741" cy="639" r="3" fill="url(#grad-yellow)" opacity="0.6"/>
+    <circle cx="761" cy="652" r="3.5" fill="url(#grad-green)" opacity="0.55"/>
+    <circle cx="771" cy="666" r="2.5" fill="url(#grad-blue)" opacity="0.5"/>
+    <circle cx="781" cy="682" r="2" fill="url(#grad-purple)" opacity="0.45"/>
+
+  </g>
 </svg>
