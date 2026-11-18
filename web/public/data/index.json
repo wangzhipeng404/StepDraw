@@ -7,10 +7,17 @@
   ],
   "categories": [
      {
-      "id": "others",
+      "id": "linedrawer",
       "name": "精选",
       "emoji": "✨",
       "count": 45,
+      "dir": "linedrawer"
+    },
+    {
+      "id": "others",
+      "name": "动物",
+      "emoji": "✨",
+      "count": 241,
       "dir": "others"
     },
     {

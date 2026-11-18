@@ -613,7 +613,7 @@ Page({
    */
   onShareAppMessage() {
     const { drawing } = this.data;
-    const drawingId = this.data.drawingId || '';
+    const drawingId = this.drawingId || '';
 
     return {
       title: drawing ? `一起来画${drawing.name}吧！` : '一笔一笔 StepDraw',
@@ -627,7 +627,7 @@ Page({
    */
   onShareTimeline() {
     const { drawing } = this.data;
-    const drawingId = this.data.drawingId || '';
+    const drawingId = this.drawingId || '';
 
     return {
       title: drawing ? `一起来画${drawing.name}吧！` : '一笔一笔 StepDraw',

@@ -83,7 +83,7 @@ Page({
     return {
       title: '一笔一笔 StepDraw - 一起来学画画吧！',
       path: '/pages/home/home',
-      imageUrl: `${config.BASE_URL}/others/1775543.png`
+      imageUrl: `${config.BASE_URL}/plants/Cherry_tree.png`
     };
   },
 
@@ -94,7 +94,7 @@ Page({
     return {
       title: '一笔一笔 StepDraw - 一起来学画画吧！',
       query: '',
-      imageUrl: `${config.BASE_URL}/others/1775543.png`
+      imageUrl: `${config.BASE_URL}/plants/Cherry_tree.png`
     };
   }
 })

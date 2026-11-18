@@ -23,7 +23,7 @@ import sys
 from PIL import Image, ImageDraw
 
 # ==================== 配置 ====================
-DATA_DIR = "./quickdraw_animals_json"
+DATA_DIR = "./linedrawer_json_out"
 SIZE = 256                          # 封面边长(px)，可改 512
 PADDING = 8                         # 边距(px)，基于 SIZE
 BG_COLOR = (255, 255, 255, 255)     # 白底；透明改 (0,0,0,0)
