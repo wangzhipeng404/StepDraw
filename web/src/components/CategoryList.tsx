@@ -1,6 +1,6 @@
 // 一笔一笔 StepDraw - 分类下的图案列表
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loadCategoryIndex, loadDrawing, DATA_BASE_URL } from '../data/drawings';
 import { Navbar } from './Navbar';
@@ -21,14 +21,19 @@ interface CategoryData {
   items: DrawingItem[];
 }
 
+const LOAD_MORE_COUNT = 20;
+
 export function CategoryList() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
   const [category, setCategory] = useState<CategoryData | null>(null);
   const [items, setItems] = useState<DrawingItem[]>([]);
+  const [displayCount, setDisplayCount] = useState(LOAD_MORE_COUNT);
   const [selectedDifficulty, setSelectedDifficulty] = useState('全部');
   const [loading, setLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (categoryId) {
@@ -56,7 +61,6 @@ export function CategoryList() {
     try {
       const drawing = await loadDrawing(categoryId!, item.id);
       if (drawing) {
-        // 跳转到详情页，传递 categoryId 和 drawingId
         navigate(`/detail/${categoryId}/${item.id}`);
       }
     } catch (err) {
@@ -72,12 +76,38 @@ export function CategoryList() {
 
   const difficulties = ['全部', '入门', '简单', '进阶'];
 
-  const filteredDrawings = selectedDifficulty === '全部'
-    ? items
-    : items.filter(drawing => {
-        const difficultyMap: Record<string, number> = { '入门': 1, '简单': 2, '进阶': 3 };
-        return drawing.difficulty === difficultyMap[selectedDifficulty];
-      });
+  const filteredDrawings = useMemo(() => {
+    if (selectedDifficulty === '全部') {
+      return items;
+    }
+    const difficultyMap: Record<string, number> = { '入门': 1, '简单': 2, '进阶': 3 };
+    return items.filter(drawing => drawing.difficulty === difficultyMap[selectedDifficulty]);
+  }, [items, selectedDifficulty]);
+
+  const displayedDrawings = filteredDrawings.slice(0, displayCount);
+
+  useEffect(() => {
+    const container = document.querySelector('.drawing-grid');
+    if (!container || isLoadingMore) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      if (scrollHeight - scrollTop - clientHeight < 200 && displayCount < filteredDrawings.length) {
+        setIsLoadingMore(true);
+        setTimeout(() => {
+          setDisplayCount(prev => prev + LOAD_MORE_COUNT);
+          setIsLoadingMore(false);
+        }, 100);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [displayCount, filteredDrawings.length, isLoadingMore]);
+
+  useEffect(() => {
+    setDisplayCount(LOAD_MORE_COUNT);
+  }, [selectedDifficulty]);
 
   if (loading) {
     return (
@@ -92,10 +122,8 @@ export function CategoryList() {
 
   return (
     <div className="category-list">
-      {/* 导航栏 */}
       <Navbar showBack onBack={() => navigate('/')} />
 
-      {/* 内容区域 */}
       <div className="category-list-content">
         <div className="category-header">
           <h2 className="category-title">{category?.name || '分类'}</h2>
@@ -112,41 +140,46 @@ export function CategoryList() {
           </div>
         </div>
 
-        <div className="drawing-grid">
-          {filteredDrawings.length === 0 ? (
+        <div className="drawing-grid" ref={loadMoreRef}>
+          {displayedDrawings.length === 0 ? (
             <div className="empty-state">没有找到匹配的图案</div>
           ) : (
-            filteredDrawings.map(drawing => (
-              <div
-                key={drawing.id}
-                className="drawing-card"
-                onClick={() => handleDrawingClick(drawing)}
-              >
-                <div className="drawing-thumbnail">
-                  {drawing.thumbnail ? (
-                    <img
-                      src={`${DATA_BASE_URL}/${drawing.thumbnail}`}
-                      alt={drawing.name}
-                      className="thumbnail-image"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <div className="thumbnail-placeholder hidden" style={{ display: drawing.thumbnail ? 'none' : 'flex' }}>
-                    <span>{drawing.name.charAt(0)}</span>
+            <>
+              {displayedDrawings.map(drawing => (
+                <div
+                  key={drawing.id}
+                  className="drawing-card"
+                  onClick={() => handleDrawingClick(drawing)}
+                >
+                  <div className="drawing-thumbnail">
+                    <span className="difficulty-tag">{getDifficultyLabel(drawing.difficulty)}</span>
+                    {drawing.thumbnail ? (
+                      <img
+                        src={`${DATA_BASE_URL}/${drawing.thumbnail}`}
+                        alt={drawing.name}
+                        className="thumbnail-image"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className="thumbnail-placeholder hidden" style={{ display: drawing.thumbnail ? 'none' : 'flex' }}>
+                      <span>{drawing.name.charAt(0)}</span>
+                    </div>
+                  </div>
+                  <div className="drawing-info">
+                    <h3 className="drawing-name">{drawing.name}</h3>
                   </div>
                 </div>
-                <div className="drawing-info">
-                  <h3 className="drawing-name">{drawing.name}</h3>
-                  <div className="drawing-tags">
-                    <span className="tag tag-difficulty">{getDifficultyLabel(drawing.difficulty)}</span>
-                  </div>
+              ))}
+              {isLoadingMore && (
+                <div className="loading-more-container">
+                  <div className="loading-spinner-small"></div>
                 </div>
-              </div>
-            ))
+              )}
+            </>
           )}
         </div>
       </div>

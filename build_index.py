@@ -31,6 +31,11 @@ EMOJI_MAP = {
     "panda": "🐼",
     "pig": "🐷",
     "rabbit": "🐰",
+    "pose": "🧘",
+    "sexy": "💃",
+    "single": "👤",
+    "pair60": "👥",
+    "upper80v2": "🦴",
 }
 
 

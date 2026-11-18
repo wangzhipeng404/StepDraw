@@ -1,6 +1,6 @@
 /* 一笔一笔 StepDraw - 分类列表页样式 */
 .category-page {
-  padding: 20rpx;
+  padding: 0 20rpx 20rpx 20rpx;
   padding-bottom: 100rpx;
 }
 
@@ -45,11 +45,12 @@
 
 .thumbnail {
   aspect-ratio: 1;
-  background: #f5f5f5;
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border: 1px solid #f0f0f0;
 }
 
 .thumbnail-image {
@@ -108,5 +109,14 @@
   padding: 80rpx 20rpx;
   color: #999;
   font-size: 28rpx;
+  grid-column: 1 / -1;
+}
+
+.loading-more,
+.no-more {
+  text-align: center;
+  padding: 30rpx 20rpx;
+  color: #999;
+  font-size: 24rpx;
   grid-column: 1 / -1;
 }

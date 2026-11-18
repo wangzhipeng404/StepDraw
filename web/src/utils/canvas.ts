@@ -136,12 +136,12 @@ export function renderStroke(
 }
 
 /**
- * 渲染用户笔画到 Canvas（支持不同画笔类型）
+ * 渲染用户笔画到 Canvas（完全参考小程序逻辑）
+ * 用户绘制的坐标是 CSS 像素，直接使用 CSS 像素坐标绘制
  */
 export function renderUserStroke(
   ctx: CanvasRenderingContext2D,
-  stroke: UserStroke,
-  progress: number = 1
+  stroke: UserStroke
 ): void {
   const color = stroke.color || '#E53935';
   const width = stroke.width || 4;
@@ -150,12 +150,13 @@ export function renderUserStroke(
 
   if (points.length === 0) return;
 
+  ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  // 单个点：绘制点效果
-  if (stroke.points.length === 1) {
-    const [x, y] = stroke.points[0];
+  // 单个点：绘制一个圆形
+  if (points.length === 1) {
+    const [x, y] = points[0];
     const radius = width / 2;
 
     if (strokeType === 'pencil') {
@@ -203,89 +204,52 @@ export function renderUserStroke(
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
     }
-    return;
-  }
-
-  // 多个点：绘制路径
-  if (strokeType === 'pencil') {
-    // 铅笔：虚线效果
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.setLineDash([width, width / 2]);
-    ctx.globalAlpha = 0.7;
-    renderPath(ctx, stroke.points, progress);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 1;
-  } else if (strokeType === 'marker') {
-    // 马克笔：半透明粗线
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width * 2;
-    ctx.globalAlpha = 0.4;
-    renderPath(ctx, stroke.points, progress);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  } else if (strokeType === 'brush') {
-    // 毛笔：渐变透明效果
-    const gradient = ctx.createLinearGradient(
-      stroke.points[0][0], stroke.points[0][1],
-      stroke.points[stroke.points.length - 1][0], stroke.points[stroke.points.length - 1][1]
-    );
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, color);
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = width * 1.5;
-    ctx.globalAlpha = 0.6;
-    renderPath(ctx, stroke.points, progress);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
   } else {
-    // 钢笔：实线
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    renderPath(ctx, stroke.points, progress);
-    ctx.stroke();
-  }
-}
-
-/**
- * 渲染路径（支持按进度绘制）
- */
-function renderPath(ctx: CanvasRenderingContext2D, points: [number, number][], progress: number = 1): void {
-  if (points.length < 2) return;
-
-  if (progress >= 1) {
-    ctx.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i][0], points[i][1]);
-    }
-  } else {
-    const totalLength = calculateStrokeLengths(points).totalLength;
-    if (totalLength === 0) return;
-
-    const targetLength = progress * totalLength;
-    let accumulatedLength = 0;
-
+    // 多个点：绘制路径
+    ctx.beginPath();
     ctx.moveTo(points[0][0], points[0][1]);
 
     for (let i = 1; i < points.length; i++) {
-      const dx = points[i][0] - points[i - 1][0];
-      const dy = points[i][1] - points[i - 1][1];
-      const segmentLength = Math.sqrt(dx * dx + dy * dy);
-
-      if (accumulatedLength + segmentLength >= targetLength) {
-        const remaining = targetLength - accumulatedLength;
-        const segmentProgress = remaining / segmentLength;
-        ctx.lineTo(
-          points[i - 1][0] + (points[i][0] - points[i - 1][0]) * segmentProgress,
-          points[i - 1][1] + (points[i][1] - points[i - 1][1]) * segmentProgress
-        );
-        break;
-      }
       ctx.lineTo(points[i][0], points[i][1]);
-      accumulatedLength += segmentLength;
+    }
+
+    if (strokeType === 'pencil') {
+      // 铅笔：虚线效果
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash([width, width / 2]);
+      ctx.globalAlpha = 0.7;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    } else if (strokeType === 'marker') {
+      // 马克笔：半透明粗线
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width * 2;
+      ctx.globalAlpha = 0.4;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (strokeType === 'brush') {
+      // 毛笔：渐变透明效果
+      const gradient = ctx.createLinearGradient(
+        points[0][0], points[0][1],
+        points[points.length - 1][0], points[points.length - 1][1]
+      );
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, color);
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = width * 1.5;
+      ctx.globalAlpha = 0.6;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else {
+      // 钢笔：实线
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
     }
   }
+  ctx.restore();
 }
 
 /**
@@ -446,15 +410,15 @@ export function renderDrawing(
   // 恢复坐标系，然后绘制用户笔画（不使用 viewBox 变换，直接使用 CSS 像素坐标）
   ctx.restore();
 
-  // 绘制用户笔画作为底图（在变换恢复后绘制）
+  // 绘制用户笔画（完全参考小程序逻辑：直接使用 CSS 像素坐标）
   if (userStrokes) {
     for (const stroke of userStrokes) {
-      renderUserStroke(ctx, stroke, 1);
+      renderUserStroke(ctx, stroke);
     }
   }
 
   // 绘制当前正在绘制的笔画
-  if (currentStroke && currentStroke.points.length >= 2) {
-    renderUserStroke(ctx, currentStroke, 1);
+  if (currentStroke && currentStroke.points.length >= 1) {
+    renderUserStroke(ctx, currentStroke);
   }
 }

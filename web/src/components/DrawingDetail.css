@@ -199,6 +199,25 @@
   border-bottom: 1px solid #eee;
 }
 
+.current-color-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.current-color-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.current-color-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #eee;
+}
+
 .color-item {
   width: 32px;
   height: 32px;
@@ -224,6 +243,155 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
+}
+
+.color-picker-btn {
+  border: 2px dashed #aaa;
+}
+
+/* 颜色选择器弹窗 */
+.color-picker-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.color-picker-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.color-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.color-picker-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.color-picker-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.color-picker-close:hover {
+  background: #e0e0e0;
+}
+
+.color-picker-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.color-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+}
+
+.color-palette-item {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: 2px solid #eee;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.color-palette-item:hover {
+  border-color: #999;
+  transform: scale(1.1);
+  z-index: 1;
+}
+
+.color-palette-item.active {
+  border: 3px solid #aa3bff;
+  box-shadow: 0 0 8px rgba(170, 91, 255, 0.4);
+}
+
+.color-picker-footer {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.color-preview-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.color-preview-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.color-preview-box {
+  width: 60px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  text-transform: uppercase;
+}
+
+.color-picker-confirm {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-picker-confirm:hover {
+  background: linear-gradient(135deg, #57a65a 0%, #388e3c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(67, 160, 71, 0.4);
 }
 
 /* 笔画粗细选择器 */
@@ -447,6 +615,15 @@
     gap: 12px;
   }
 
+  .current-color-circle {
+    width: 32px;
+    height: 32px;
+  }
+
+  .current-color-label {
+    font-size: 12px;
+  }
+
   .color-item {
     width: 36px;
     height: 36px;
@@ -455,6 +632,44 @@
   .color-circle {
     width: 24px;
     height: 24px;
+  }
+
+  /* 颜色选择器弹窗响应式 */
+  .color-picker-content {
+    width: 95%;
+    padding: 16px;
+  }
+
+  .color-picker-header h3 {
+    font-size: 16px;
+  }
+
+  .color-palette-grid {
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+  }
+
+  .color-palette-item {
+    border-radius: 3px;
+  }
+
+  .color-preview-wrapper {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .color-preview-box {
+    width: 50px;
+    height: 35px;
+  }
+
+  .color-value {
+    font-size: 11px;
+  }
+
+  .color-picker-confirm {
+    height: 44px;
+    font-size: 14px;
   }
 
   .stroke-width-bar {
@@ -492,6 +707,43 @@
   .draw-tool-btn {
     max-width: 64px;
     height: 32px;
+    font-size: 14px;
+  }
+
+  /* 颜色选择器模态框响应式 */
+  .color-picker-content {
+    width: 95%;
+    padding: 20px;
+  }
+
+  .color-picker-header h3 {
+    font-size: 16px;
+  }
+
+  .color-input {
+    height: 50px;
+  }
+
+  .color-preview-box {
+    height: 50px;
+  }
+
+  .color-value {
+    font-size: 16px;
+  }
+
+  .color-presets-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+  }
+
+  .preset-color-item {
+    width: 36px;
+    height: 36px;
+  }
+
+  .color-picker-confirm {
+    height: 44px;
     font-size: 14px;
   }
 }

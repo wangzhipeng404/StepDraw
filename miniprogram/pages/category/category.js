@@ -1,6 +1,8 @@
 // 一笔一笔 StepDraw - 分类列表页
 const config = require('../../config');
 
+const LOAD_MORE_COUNT = 20;
+
 Page({
   data: {
     BASE_URL: config.BASE_URL,
@@ -8,9 +10,13 @@ Page({
     categoryName: '',
     drawings: [],
     filteredDrawings: [],
+    displayedDrawings: [],
     selectedDifficulty: '全部',
     difficulties: ['全部', '入门', '简单', '进阶'],
-    loading: true
+    loading: true,
+    displayCount: LOAD_MORE_COUNT,
+    isLoadingMore: false,
+    hasMore: true
   },
 
   onLoad(options) {
@@ -39,10 +45,14 @@ Page({
           console.log('分类数据响应:', res);
           const data = res.data;
           const drawings = data.items || [];
+          const displayCount = Math.min(LOAD_MORE_COUNT, drawings.length);
           this.setData({
             drawings,
             filteredDrawings: drawings,
-            loading: false
+            displayedDrawings: drawings.slice(0, displayCount),
+            loading: false,
+            displayCount: displayCount,
+            hasMore: drawings.length > LOAD_MORE_COUNT
           });
         },
         fail: (err) => {
@@ -80,7 +90,13 @@ Page({
       filtered = filtered.filter(function(d) { return d.difficulty === targetDiff; });
     }
 
-    this.setData({ filteredDrawings: filtered });
+    const displayCount = Math.min(LOAD_MORE_COUNT, filtered.length);
+    this.setData({
+      filteredDrawings: filtered,
+      displayedDrawings: filtered.slice(0, displayCount),
+      displayCount: displayCount,
+      hasMore: filtered.length > LOAD_MORE_COUNT
+    });
   },
 
   onDrawingTap(e) {
@@ -126,5 +142,33 @@ Page({
       query: `id=${this.data.categoryId}&name=${encodeURIComponent(categoryName)}`,
       imageUrl: firstDrawing && firstDrawing.thumbnail ? `${config.BASE_URL}/${firstDrawing.thumbnail}` : undefined
     };
+  },
+
+  /**
+   * 滚动到底部触发加载更多
+   */
+  onReachBottom() {
+    const { displayCount, filteredDrawings, isLoadingMore, hasMore } = this.data;
+
+    if (isLoadingMore || !hasMore) return;
+
+    this.setData({ isLoadingMore: true });
+
+    setTimeout(() => {
+      const newDisplayCount = displayCount + LOAD_MORE_COUNT;
+      this.setData({
+        displayedDrawings: filteredDrawings.slice(0, newDisplayCount),
+        displayCount: newDisplayCount,
+        isLoadingMore: false,
+        hasMore: newDisplayCount < filteredDrawings.length
+      });
+    }, 300);
+  },
+
+  /**
+   * 页面滚动监听
+   */
+  onPageScroll(e) {
+    // 可用来优化滚动体验
   }
 })

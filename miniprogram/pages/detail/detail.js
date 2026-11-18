@@ -250,8 +250,6 @@ Page({
     if (this.data.currentStroke && this.data.currentStroke.points.length >= 2) {
       this.drawUserStroke(ctx, this.data.currentStroke);
     }
-
-    ctx.restore();
   },
 
   drawStroke(ctx, stroke, progress, color, isCurrent, userScale) {
@@ -725,15 +723,89 @@ Page({
 
   // 导出图片
   onExportDrawing() {
-    if (!this.canvasContext || !this.canvas) return;
+    if (!this.canvasContext || !this.canvas) {
+      wx.showToast({
+        title: 'Canvas 未初始化',
+        icon: 'none'
+      });
+      return;
+    }
+
+    if (!this.data.drawing) {
+      wx.showToast({
+        title: '暂无图案内容',
+        icon: 'none'
+      });
+      return;
+    }
 
     wx.showLoading({ title: '导出中...' });
 
     // 先重新绘制一次确保所有内容都在
     this.draw();
 
-    // 导出为图片
-    this.canvas.toTempFilePath({
+    // 等待一小段时间确保绘制完成
+    setTimeout(() => {
+      try {
+        // 创建离屏 2D canvas 实例（尺寸与原 Canvas 相同）
+        const offscreenCanvas = wx.createOffscreenCanvas({
+          type: '2d',
+          width: this.canvasWidth,
+          height: this.canvasHeight
+        });
+        const offscreenCtx = offscreenCanvas.getContext('2d');
+
+        // 填充白色背景
+        offscreenCtx.fillStyle = '#FFFFFF';
+        offscreenCtx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+        // 使用 wx.getImageInfo 加载 Logo 图片
+        const logoPath = `${config.BASE_URL}/../logo.png`;
+
+        wx.getImageInfo({
+          src: logoPath,
+          success: (info) => {
+            const logoImage = offscreenCanvas.createImage();
+            logoImage.src = info.path;
+
+            logoImage.onload = () => {
+              // 绘制原 Canvas 内容
+              offscreenCtx.drawImage(this.canvas, 0, 0, this.canvasWidth, this.canvasHeight);
+
+              // 绘制小 Logo（右下角）
+              const logoSize = this.canvasWidth * 0.1;
+              const margin = this.canvasWidth * 0;
+              const logoX = this.canvasWidth - logoSize - margin;
+              const logoY = this.canvasHeight - logoSize - margin;
+
+              offscreenCtx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+
+              this.exportCanvas(offscreenCanvas);
+            };
+
+            logoImage.onerror = () => {
+              this.exportCanvas(offscreenCanvas);
+            };
+          },
+          fail: () => {
+            this.exportCanvas(offscreenCanvas);
+          }
+        });
+      } catch (err) {
+        console.error('导出异常:', err);
+        wx.showToast({
+          title: '导出失败',
+          icon: 'none'
+        });
+        wx.hideLoading();
+      }
+    }, 300);
+  },
+
+  // 导出 Canvas 为图片的辅助方法
+  exportCanvas(offscreenCanvas) {
+    wx.canvasToTempFilePath({
+      canvas: offscreenCanvas,
       x: 0,
       y: 0,
       width: this.canvasWidth,
@@ -741,28 +813,27 @@ Page({
       destWidth: this.canvasWidth,
       destHeight: this.canvasHeight,
       success: (res) => {
-        const tempFilePath = res.tempFilePath;
-
-        // 保存到相册
-        wx.saveImageToPhotosAlbum({
-          filePath: tempFilePath,
-          success: () => {
-            wx.showToast({
-              title: '已保存到相册',
-              icon: 'success'
-            });
-          },
-          fail: (err) => {
-            console.error('保存失败:', err);
-            wx.showToast({
-              title: '保存失败',
-              icon: 'none'
-            });
-          },
-          complete: () => {
-            wx.hideLoading();
-          }
-        });
+        if (res && res.tempFilePath) {
+          wx.saveImageToPhotosAlbum({
+            filePath: res.tempFilePath,
+            success: () => {
+              wx.showToast({
+                title: '已保存到相册',
+                icon: 'success'
+              });
+            },
+            fail: (err) => {
+              console.error('保存失败:', err);
+              wx.showToast({
+                title: '保存失败',
+                icon: 'none'
+              });
+            },
+            complete: () => {
+              wx.hideLoading();
+            }
+          });
+        }
       },
       fail: (err) => {
         console.error('导出失败:', err);

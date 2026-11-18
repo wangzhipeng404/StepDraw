@@ -43,7 +43,26 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [strokeType, setStrokeType] = useState<StrokeType>('pen');
   const [isDrawing, setIsDrawing] = useState(false);
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
+
+  // 存储 Canvas 位置信息（完全参考小程序逻辑）
+  const canvasRectRef = useRef<{ left: number; top: number } | null>(null);
+
+  // 获取 Canvas 位置（在组件挂载后获取，并在窗口大小变化时更新）
+  useEffect(() => {
+    const updateCanvasRect = () => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        canvasRectRef.current = { left: rect.left, top: rect.top };
+      }
+    };
+
+    updateCanvasRect();
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', updateCanvasRect);
+    return () => window.removeEventListener('resize', updateCanvasRect);
+  }, [canvasRef]);
 
   // 持续重绘循环
   useEffect(() => {
@@ -68,61 +87,63 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     };
   }, [drawing, state.currentStep, state.progress, state.showOutline, userStrokes]);
 
-  // 获取 Canvas 相对于视口的位置
-  const getCanvasOffset = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { left: 0, top: 0 };
-    const rect = canvas.getBoundingClientRect();
-    return { left: rect.left, top: rect.top };
-  }, [canvasRef]);
-
-  // 将鼠标/触摸坐标转换为 Canvas 坐标
-  const getCanvasCoordinates = useCallback((clientX: number, clientY: number) => {
-    const { left, top } = getCanvasOffset();
-    return {
-      x: clientX - left,
-      y: clientY - top
-    };
-  }, [getCanvasOffset]);
-
-  // 使用 ref 存储当前笔画，避免状态更新延迟导致的断线
+  // 使用 ref 存储当前笔画（完全参考小程序逻辑）
   const currentStrokeRef = useRef<UserStroke | null>(null);
 
-  // 开始绘制
+  // 开始绘制（完全参考小程序 onTouchStart 逻辑）
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    setIsDrawing(true);
 
-    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
-    currentStrokeRef.current = {
-      points: [[x, y]],
-      width: strokeWidth,
-      color: strokeColor,
-      type: strokeType
-    };
-  }, [getCanvasCoordinates, strokeWidth, strokeColor, strokeType]);
+    if (!canvasRectRef.current) return;
 
-  // 绘制中
+    const touch = e;
+    if (touch) {
+      // 完全参考小程序：直接使用 clientX - canvasRect.left，不做缩放转换
+      const x = touch.clientX - canvasRectRef.current.left;
+      const y = touch.clientY - canvasRectRef.current.top;
+
+      currentStrokeRef.current = {
+        points: [[x, y]],
+        width: strokeWidth,
+        color: strokeColor,
+        type: strokeType
+      };
+      setIsDrawing(true);
+    }
+  }, [strokeWidth, strokeColor, strokeType]);
+
+  // 绘制中（完全参考小程序 onTouchMove 逻辑）
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !currentStrokeRef.current) return;
+    if (!isDrawing || !currentStrokeRef.current || !canvasRectRef.current) return;
 
     e.preventDefault();
-    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
 
-    // 直接修改 ref，避免创建新对象导致的性能问题
-    currentStrokeRef.current.points.push([x, y]);
-  }, [isDrawing, getCanvasCoordinates]);
+    const touch = e;
+    if (touch) {
+      // 完全参考小程序：直接使用 clientX - canvasRect.left
+      const x = touch.clientX - canvasRectRef.current.left;
+      const y = touch.clientY - canvasRectRef.current.top;
 
-  // 结束绘制
+      // 直接修改 ref，避免创建新对象
+      currentStrokeRef.current.points.push([x, y]);
+    }
+  }, [isDrawing]);
+
+  // 结束绘制（完全参考小程序 onTouchEnd 逻辑）
   const handlePointerUp = useCallback(() => {
     if (!isDrawing || !currentStrokeRef.current) return;
 
-    setIsDrawing(false);
-
-    // 保存笔画（即使只有一个点也保存）
-    const newStroke = currentStrokeRef.current;
+    // 保存笔画（即使只有一个点也保存）- 完全参考小程序
+    const currentStroke = currentStrokeRef.current;
+    const newStroke = {
+      points: [...currentStroke.points],
+      width: currentStroke.width,
+      color: currentStroke.color,
+      type: currentStroke.type
+    };
     setUserStrokes(prev => [...prev, newStroke]);
     currentStrokeRef.current = null;
+    setIsDrawing(false);
   }, [isDrawing]);
 
   // 撤销上一笔
@@ -169,21 +190,19 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       <div className="main-content">
         {/* 画布区 */}
         <div className="canvas-wrapper">
-          <div className="canvas-container" ref={canvasContainerRef}>
-            <canvas
-              ref={canvasRef}
-              className="drawing-canvas"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              style={{ touchAction: 'none' }}
-            />
-            {/* 步骤提示固定在右下角 */}
-            <div className="step-tip-overlay">
-              <span className="tip-text">{currentStepData?.tip || ''}</span>
-            </div>
+          <canvas
+            ref={canvasRef}
+            className="drawing-canvas"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            style={{ touchAction: 'none' }}
+          />
+          {/* 步骤提示固定在右下角 */}
+          <div className="step-tip-overlay">
+            <span className="tip-text">{currentStepData?.tip || ''}</span>
           </div>
         </div>
 

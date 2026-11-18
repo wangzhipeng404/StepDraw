@@ -14,6 +14,7 @@
           bindtouchmove="onTouchMove"
           bindtouchend="onTouchEnd"
           bindtouchcancel="onTouchEnd"
+          disable-scroll="{{true}}"
         ></canvas>
         <!-- 步骤提示固定在右下角 -->
         <view class="step-tip-overlay">
