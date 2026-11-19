@@ -16,8 +16,8 @@ from svgelements import SVG, Path, Shape, Move, Close, Line, Color
 from PIL import Image, ImageDraw
 
 # ==================== 配置 ====================
-SRC_ROOT = "cocomaterial_svg"
-OUT_ROOT = "./web/public/data"
+SRC_ROOT = r"C:\Users\epro\Downloads\hiroshima\sketches_svg\svg"
+OUT_ROOT = r"C:\Users\epro\Downloads\hiroshima\sketches_svg\svg_out"
 OVERWRITE = False  # 强制重新生成，确保覆盖之前错误的黑白封面
 
 TARGET_SIZE = 256

@@ -24,7 +24,9 @@ interface CategoryData {
 const LOAD_MORE_COUNT = 20;
 
 export function CategoryList() {
-  const { categoryId } = useParams<{ categoryId: string }>();
+  const params = useParams<{ '*': string }>();
+  // categoryId 可能带路径，如 "quickdraw/cat"
+  const categoryId = params['*'] || '';
   const navigate = useNavigate();
   const [category, setCategory] = useState<CategoryData | null>(null);
   const [items, setItems] = useState<DrawingItem[]>([]);
@@ -34,6 +36,11 @@ export function CategoryList() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // 返回目标：多级分类回所属主分类，扁平分类（如 linedrawer）回首页
+  const backPath = categoryId.includes('/')
+    ? `/group/${categoryId.split('/')[0]}`
+    : '/';
 
   useEffect(() => {
     if (categoryId) {
@@ -122,7 +129,7 @@ export function CategoryList() {
 
   return (
     <div className="category-list">
-      <Navbar showBack onBack={() => navigate('/')} />
+      <Navbar showBack onBack={() => navigate(backPath)} />
 
       <div className="category-list-content">
         <div className="category-header">

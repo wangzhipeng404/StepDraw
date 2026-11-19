@@ -1,0 +1,207 @@
+/* 一笔一笔 StepDraw - 子分类页样式 */
+
+.group-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #fafafa;
+}
+
+.group-page-content {
+  flex: 1;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding-bottom: 60px;
+}
+
+.group-page-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.group-page-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 14px;
+  background: linear-gradient(135deg, #f0e6ff 0%, #e6f0ff 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-page-icon span {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.group-page-header h1 {
+  font-size: 26px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 6px;
+}
+
+.group-page-header p {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+}
+
+/* 子分类网格 */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+}
+
+.category-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 20px;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #f0f0f0;
+}
+
+.category-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(170, 59, 255, 0.15);
+}
+
+.category-icon {
+  width: 70px;
+  height: 70px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-icon span {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.category-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-count {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #999;
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #aa3bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-state button {
+  padding: 10px 20px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  background: #aa3bff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.error-state button:hover {
+  background: #9333ea;
+}
+
+@media (max-width: 768px) {
+  .group-page-content {
+    padding: 16px;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .category-card {
+    padding: 20px 14px;
+  }
+
+  .category-icon {
+    width: 55px;
+    height: 55px;
+    margin-bottom: 10px;
+  }
+
+  .category-icon span {
+    font-size: 26px;
+  }
+
+  .category-name {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .group-page-content {
+    padding: 12px;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .category-card {
+    padding: 16px 12px;
+  }
+
+  .category-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 8px;
+  }
+
+  .category-icon span {
+    font-size: 24px;
+  }
+
+  .category-name {
+    font-size: 14px;
+  }
+}

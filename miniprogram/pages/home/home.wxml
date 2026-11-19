@@ -1,4 +1,4 @@
-<!-- 一笔一笔 StepDraw - 小程序首页（分类卡片） -->
+<!-- 一笔一笔 StepDraw - 小程序首页（二级分类：分组 + 分类卡片） -->
 <view class="home">
   <!-- 导航栏 -->
   <view class="navbar">
@@ -14,23 +14,23 @@
   <!-- 页面标题 -->
   <view class="page-header">
     <text class="page-title">选择你想画的图案</text>
-    <text class="page-subtitle">从以下分类中选择一个开始绘画</text>
+    <text class="page-subtitle">先选主分类，再选具体图案</text>
   </view>
 
-  <!-- 分类卡片网格 -->
-  <view class="category-grid">
-    <block wx:for="{{categories}}" wx:key="id">
+  <!-- 主分类卡片 -->
+  <view class="group-grid">
+    <block wx:for="{{groups}}" wx:key="id">
       <view
-        class="category-card"
+        class="group-card"
         data-id="{{item.id}}"
         data-name="{{item.name}}"
-        bindtap="onCategoryTap"
+        bindtap="onGroupTap"
       >
-        <view class="category-icon" style="background: {{item.iconBg}}; color: {{item.iconColor}}">
-          <text class="icon-char">{{item.emoji || item.icon}}</text>
+        <view class="group-icon">
+          <text class="group-emoji">{{item.emoji}}</text>
         </view>
-        <text class="category-name">{{item.name}}</text>
-        <text class="category-count">{{item.count}} 个图案</text>
+        <text class="group-name">{{item.name}}</text>
+        <text class="group-meta">{{item.categoryCount}} 个子分类 · {{item.count}} 个图案</text>
       </view>
     </block>
   </view>

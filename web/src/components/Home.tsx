@@ -14,9 +14,34 @@ interface Category {
   dir: string;
 }
 
+interface Group {
+  id: string;
+  name: string;
+  emoji: string;
+  categories: Category[];
+}
+
+// 按一级分组归类（id 精确等于或前缀匹配，目录结构保证唯一）
+function groupCategories(index: { groups?: Array<{ id: string; name: string; emoji: string }>; categories: Category[] }): Group[] {
+  const groupsRaw = index.groups && index.groups.length > 0
+    ? index.groups
+    : [{ id: 'all', name: '全部', emoji: '' }];
+
+  return groupsRaw
+    .map(group => ({
+      id: group.id,
+      name: group.name,
+      emoji: group.emoji || group.name.charAt(0),
+      categories: index.categories.filter(
+        cat => cat.id === group.id || cat.dir.startsWith(group.id + '/')
+      )
+    }))
+    .filter(group => group.categories.length > 0);
+}
+
 export function Home() {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +50,7 @@ export function Home() {
       setLoading(true);
       setError(null);
       const index = await loadMainIndex();
-      setCategories(index.categories);
+      setGroups(groupCategories(index));
     } catch (err) {
       setError('加载数据失败，请刷新页面重试');
       console.error(err);
@@ -38,8 +63,13 @@ export function Home() {
     loadInitialData();
   }, [loadInitialData]);
 
-  const handleCategoryClick = (category: Category) => {
-    navigate(`/category/${category.id}`);
+  const handleGroupClick = (group: Group) => {
+    // 只有一个分类且就是组本身（如 linedrawer）：直接进入图案列表，少一次点击
+    if (group.categories.length === 1 && group.categories[0].id === group.id) {
+      navigate(`/category/${group.categories[0].id}`);
+      return;
+    }
+    navigate(`/group/${group.id}`);
   };
 
   if (loading) {
@@ -73,21 +103,23 @@ export function Home() {
       <div className="home-content">
         <div className="page-header">
           <h1>选择你想画的图案</h1>
-          <p>从以下分类中选择一个开始绘画</p>
+          <p>先选主分类，再选具体图案</p>
         </div>
 
-        <div className="category-grid">
-          {categories.map(category => (
+        <div className="group-grid">
+          {groups.map(group => (
             <div
-              key={category.id}
-              className="category-card"
-              onClick={() => handleCategoryClick(category)}
+              key={group.id}
+              className="group-card"
+              onClick={() => handleGroupClick(group)}
             >
-              <div className="category-icon">
-                <span>{category.emoji || category.name.charAt(0)}</span>
+              <div className="group-icon">
+                <span>{group.emoji}</span>
               </div>
-              <h3 className="category-name">{category.name}</h3>
-              <p className="category-count">{category.count} 个图案</p>
+              <h3 className="group-name">{group.name}</h3>
+              <p className="group-meta">
+                {group.categories.length} 个子分类 · {group.categories.reduce((sum, c) => sum + c.count, 0)} 个图案
+              </p>
             </div>
           ))}
         </div>

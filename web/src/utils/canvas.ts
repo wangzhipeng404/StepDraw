@@ -253,6 +253,74 @@ export function renderUserStroke(
 }
 
 // ============================================================
+// 视图变换（缩放 / 平移）
+//
+// 图像坐标系：view.scale=1、tx=0、ty=0 时与画布 CSS 像素坐标一致。
+// 视图变换叠加在画布之上：以画布中心为缩放中心，单指/拖拽平移整图。
+// 用户笔画以图像坐标存储，缩放/平移只是显示层变换，导出与复位不受影响。
+// ============================================================
+
+export interface ViewTransform {
+  scale: number; // 缩放倍率（1 = 原始大小）
+  tx: number;    // 平移量（CSS 像素）
+  ty: number;
+}
+
+export const IDENTITY_VIEW: ViewTransform = { scale: 1, tx: 0, ty: 0 };
+
+/** 把视图变换叠加到 ctx 上（内部已合成 dpr），之后按 CSS 像素坐标绘制即可。 */
+export function applyViewTransform(
+  ctx: CanvasRenderingContext2D,
+  dpr: number,
+  cssW: number,
+  cssH: number,
+  view: ViewTransform
+): void {
+  const s = view.scale;
+  const cx = cssW / 2;
+  const cy = cssH / 2;
+  // 图像点 p -> 屏幕点 p' = s*(p - c) + c + (tx, ty)，其中 c = (cssW/2, cssH/2)
+  ctx.setTransform(
+    dpr * s, 0, 0, dpr * s,
+    dpr * (cx + view.tx - s * cx),
+    dpr * (cy + view.ty - s * cy)
+  );
+}
+
+/** 视口坐标（clientX/Y）-> 图像坐标（CSS 像素），绘制时把指针落点还原到未缩放/未平移的图。 */
+export function toImagePoint(
+  clientX: number,
+  clientY: number,
+  rectLeft: number,
+  rectTop: number,
+  cssW: number,
+  cssH: number,
+  view: ViewTransform
+): [number, number] {
+  const cx = clientX - rectLeft - cssW / 2;
+  const cy = clientY - rectTop - cssH / 2;
+  return [
+    (cx - view.tx) / view.scale + cssW / 2,
+    (cy - view.ty) / view.scale + cssH / 2
+  ];
+}
+
+// 以画布中心为缩放中心：给定锚点前的 scale 与平移，返回缩放后使锚点保持不动的平移。
+export function zoomAnchored(
+  view: ViewTransform,
+  newScale: number,
+  anchorCssX: number, // 相对画布中心（CSS 像素）
+  anchorCssY: number
+): ViewTransform {
+  const factor = newScale / view.scale;
+  return {
+    scale: newScale,
+    tx: anchorCssX - factor * (anchorCssX - view.tx),
+    ty: anchorCssY - factor * (anchorCssY - view.ty)
+  };
+}
+
+// ============================================================
 // 三层画布渲染（与小程序端同构）
 //
 // outline（底层）：JSON 图案数据 —— 轮廓底图 / 已完成步骤 / 当前动画笔画
@@ -274,6 +342,8 @@ export interface LayerState {
   outlineCache: CanvasLike | null;
   /** 已完成步骤离屏缓存 */
   doneCache: CanvasLike | null;
+  /** 用户笔画离屏缓存（仅笔画增删时重建，缩放/平移时直接 drawImage） */
+  userCache: CanvasLike | null;
   outlineKey: string;
   doneKey: string;
   /** 历史层已绘制的笔画数（用于增量/重建判断） */
@@ -287,6 +357,8 @@ export interface RenderLayersArgs {
   showOutline: boolean;
   userStrokes: UserStroke[];
   currentStroke: UserStroke | null;
+  /** 视图变换（缩放/平移），默认无变换 */
+  view?: ViewTransform;
 }
 
 // 创建与主画布同尺寸的离屏画布（用于静态内容缓存）
@@ -366,6 +438,97 @@ function rebuildOutlineCache(
   state.outlineCache = cache;
 }
 
+// 重建"用户笔画"离屏缓存（新增/撤销/清除时调用，缩放/平移时复用）
+function rebuildUserCache(state: LayerState, userStrokes: UserStroke[]): void {
+  const cache = createCacheCanvas(state.size);
+  const ctx = cache.getContext('2d');
+  if (!ctx) {
+    state.userCache = null;
+    return;
+  }
+  const dpr = state.size.dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  for (const stroke of userStrokes) {
+    renderUserStroke(ctx, stroke);
+  }
+  state.userCache = cache;
+}
+
+// 绘制当前步骤的动画部分（viewBox 变换 + 进度映射）。
+// ctx 需已处于目标坐标系；内部 save/translate/scale/restore，不影响外部变换（如视图变换）。
+function renderCurrentStep(
+  ctx: CanvasRenderingContext2D,
+  size: { cssW: number; cssH: number },
+  drawing: Drawing,
+  currentStep: number,
+  stepProgress: number
+): void {
+  const currentStepData = drawing.steps[currentStep];
+  if (!currentStepData || currentStepData.strokes.length === 0) return;
+  const strokes = currentStepData.strokes;
+  const { scale, offsetX, offsetY } = getTransform(size, drawing);
+
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+
+  if (stepProgress >= 1) {
+    for (const stroke of strokes) {
+      renderStroke(ctx, stroke, 1, '#000', false);
+    }
+  } else {
+    // 基于笔画总长度做进度映射
+    const strokeLengths: number[] = [];
+    let totalLength = 0;
+    for (const stroke of strokes) {
+      const { totalLength: len } = calculateStrokeLengths(stroke.points);
+      strokeLengths.push(len);
+      totalLength += len;
+    }
+
+    if (totalLength === 0) {
+      // 总长度为 0，按笔画数量分配进度
+      const strokesProgress = stepProgress * strokes.length;
+      const completedStrokes = Math.floor(strokesProgress);
+      const currentStrokeProgress = strokesProgress - completedStrokes;
+
+      for (let i = 0; i < completedStrokes; i++) {
+        renderStroke(ctx, strokes[i], 1, '#000', false);
+      }
+      if (completedStrokes < strokes.length) {
+        const current = strokes[completedStrokes];
+        if (current) renderStroke(ctx, current, currentStrokeProgress, '#E53935', true);
+      }
+    } else {
+      const targetLength = stepProgress * totalLength;
+      let accumulatedLength = 0;
+      let completedStrokes = 0;
+      let currentStrokeProgress = 1;
+
+      for (let i = 0; i < strokes.length; i++) {
+        if (accumulatedLength + strokeLengths[i] >= targetLength) {
+          completedStrokes = i;
+          currentStrokeProgress = strokeLengths[i] > 0
+            ? (targetLength - accumulatedLength) / strokeLengths[i]
+            : 1;
+          break;
+        }
+        accumulatedLength += strokeLengths[i];
+        completedStrokes = i + 1;
+      }
+
+      for (let i = 0; i < completedStrokes; i++) {
+        renderStroke(ctx, strokes[i], 1, '#000', false);
+      }
+      if (completedStrokes < strokes.length) {
+        const current = strokes[completedStrokes];
+        if (current) renderStroke(ctx, current, currentStrokeProgress, '#E53935', true);
+      }
+    }
+  }
+  ctx.restore();
+}
+
 /**
  * 每帧入口：检查缓存有效性后分三层绘制，返回更新后的状态。
  * - outline 层：静态内容（轮廓底图、已完成步骤）走离屏缓存，每帧仅
@@ -394,6 +557,7 @@ export function renderLayers(
       size: { cssW: displayWidth, cssH: displayHeight, dpr },
       outlineCache: null,
       doneCache: null,
+      userCache: null,
       outlineKey: '',
       doneKey: '',
       historyCount: 0
@@ -415,7 +579,7 @@ export function renderLayers(
     }
   }
 
-  // ---- outline 层：静态内容走离屏缓存 ----
+  // ---- outline 层：静态内容走离屏缓存，整体叠加视图变换 ----
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, targetWidth, targetHeight);
 
@@ -432,98 +596,39 @@ export function renderLayers(
     state.doneKey = doneKey;
   }
 
+  const view = args.view || IDENTITY_VIEW;
+  const cssW = state.size.cssW;
+  const cssH = state.size.cssH;
+
+  // 叠加视图变换（以画布中心为缩放中心），缓存按图像坐标 blit
+  applyViewTransform(ctx, dpr, cssW, cssH, view);
   if (state.outlineCache) {
-    ctx.drawImage(state.outlineCache, 0, 0);
+    ctx.drawImage(state.outlineCache, 0, 0, cssW, cssH);
   }
   if (state.doneCache) {
-    ctx.drawImage(state.doneCache, 0, 0);
+    ctx.drawImage(state.doneCache, 0, 0, cssW, cssH);
   }
 
-  // 当前步骤的动画部分
-  const currentStepData = drawing.steps[currentStep];
-  if (currentStepData && currentStepData.strokes.length > 0) {
-    const strokes = currentStepData.strokes;
-    const { scale, offsetX, offsetY } = getTransform(state.size, drawing);
+  // 当前步骤的动画部分（在视图变换之上再叠加 viewBox 变换）
+  renderCurrentStep(ctx, state.size, drawing, currentStep, stepProgress);
 
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.translate(offsetX, offsetY);
-    ctx.scale(scale, scale);
-
-    if (stepProgress >= 1) {
-      for (const stroke of strokes) {
-        renderStroke(ctx, stroke, 1, '#000', false);
-      }
-    } else {
-      // 基于笔画总长度做进度映射
-      const strokeLengths: number[] = [];
-      let totalLength = 0;
-      for (const stroke of strokes) {
-        const { totalLength: len } = calculateStrokeLengths(stroke.points);
-        strokeLengths.push(len);
-        totalLength += len;
-      }
-
-      if (totalLength === 0) {
-        // 总长度为 0，按笔画数量分配进度
-        const strokesProgress = stepProgress * strokes.length;
-        const completedStrokes = Math.floor(strokesProgress);
-        const currentStrokeProgress = strokesProgress - completedStrokes;
-
-        for (let i = 0; i < completedStrokes; i++) {
-          renderStroke(ctx, strokes[i], 1, '#000', false);
-        }
-        if (completedStrokes < strokes.length) {
-          const current = strokes[completedStrokes];
-          if (current) renderStroke(ctx, current, currentStrokeProgress, '#E53935', true);
-        }
-      } else {
-        const targetLength = stepProgress * totalLength;
-        let accumulatedLength = 0;
-        let completedStrokes = 0;
-        let currentStrokeProgress = 1;
-
-        for (let i = 0; i < strokes.length; i++) {
-          if (accumulatedLength + strokeLengths[i] >= targetLength) {
-            completedStrokes = i;
-            currentStrokeProgress = strokeLengths[i] > 0
-              ? (targetLength - accumulatedLength) / strokeLengths[i]
-              : 1;
-            break;
-          }
-          accumulatedLength += strokeLengths[i];
-          completedStrokes = i + 1;
-        }
-
-        for (let i = 0; i < completedStrokes; i++) {
-          renderStroke(ctx, strokes[i], 1, '#000', false);
-        }
-        if (completedStrokes < strokes.length) {
-          const current = strokes[completedStrokes];
-          if (current) renderStroke(ctx, current, currentStrokeProgress, '#E53935', true);
-        }
-      }
-    }
+  // ---- history 层：用户笔画走离屏缓存，叠加视图变换 ----
+  // 笔画数变化（新增/撤销/清除）时重建缓存，缩放/平移时仅 drawImage 一次
+  if (userStrokes.length !== state.historyCount) {
+    rebuildUserCache(state, userStrokes);
+    state.historyCount = userStrokes.length;
+  }
+  historyCtx.setTransform(1, 0, 0, 1, 0, 0);
+  historyCtx.clearRect(0, 0, targetWidth, targetHeight);
+  applyViewTransform(historyCtx, dpr, cssW, cssH, view);
+  if (state.userCache) {
+    historyCtx.drawImage(state.userCache, 0, 0, cssW, cssH);
   }
 
-  // ---- history 层（增量）----
-  historyCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (userStrokes.length > state.historyCount) {
-    // 只画新增的笔画
-    for (let i = state.historyCount; i < userStrokes.length; i++) {
-      renderUserStroke(historyCtx, userStrokes[i]);
-    }
-  } else if (userStrokes.length < state.historyCount) {
-    // 撤销/清除：整体重建
-    historyCtx.clearRect(0, 0, displayWidth, displayHeight);
-    for (const stroke of userStrokes) {
-      renderUserStroke(historyCtx, stroke);
-    }
-  }
-  state.historyCount = userStrokes.length;
-
-  // ---- brush 层（仅当前一笔）----
-  brushCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  brushCtx.clearRect(0, 0, displayWidth, displayHeight);
+  // ---- brush 层（仅当前一笔），叠加视图变换 ----
+  brushCtx.setTransform(1, 0, 0, 1, 0, 0);
+  brushCtx.clearRect(0, 0, targetWidth, targetHeight);
+  applyViewTransform(brushCtx, dpr, cssW, cssH, view);
   if (currentStroke && currentStroke.points.length >= 1) {
     renderUserStroke(brushCtx, currentStroke);
   }
@@ -532,28 +637,38 @@ export function renderLayers(
 }
 
 /**
- * 合并三层画布导出为 PNG dataURL
+ * 合并三层画布导出为 PNG dataURL。
+ * 使用离屏缓存按"原始视图"合成，导出不受当前缩放/平移影响，始终为完整原图比例。
+ * state 需为最近一次 renderLayers 返回的状态（缓存已就绪）。
  */
 export function exportLayersToDataURL(
-  outlineCanvas: HTMLCanvasElement | null,
-  historyCanvas: HTMLCanvasElement | null,
-  brushCanvas: HTMLCanvasElement | null
+  state: LayerState | null,
+  drawing: Drawing,
+  currentStep: number,
+  stepProgress: number
 ): string | null {
-  if (!outlineCanvas || !historyCanvas || !brushCanvas) return null;
-  const { width, height } = outlineCanvas;
-  if (width === 0 || height === 0) return null;
+  if (!state) return null;
+  const { cssW, cssH, dpr } = state.size;
+  if (cssW === 0 || cssH === 0) return null;
 
   const out = document.createElement('canvas');
-  out.width = width;
-  out.height = height;
+  out.width = Math.round(cssW * dpr);
+  out.height = Math.round(cssH * dpr);
   const ctx = out.getContext('2d');
   if (!ctx) return null;
 
-  // 白色背景（与小程序端导出一致）
+  // 白色背景（与小程序端导出一致），按原始视图（无缩放/平移）合成
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(outlineCanvas, 0, 0);
-  ctx.drawImage(historyCanvas, 0, 0);
-  ctx.drawImage(brushCanvas, 0, 0);
+  ctx.fillRect(0, 0, out.width, out.height);
+
+  if (state.outlineCache) ctx.drawImage(state.outlineCache, 0, 0, out.width, out.height);
+  if (state.doneCache) ctx.drawImage(state.doneCache, 0, 0, out.width, out.height);
+  if (state.userCache) ctx.drawImage(state.userCache, 0, 0, out.width, out.height);
+
+  // 当前步骤动画部分（viewBox 变换，dpr 缩放）
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  renderCurrentStep(ctx, state.size, drawing, currentStep, stepProgress);
+
   return out.toDataURL('image/png');
 }

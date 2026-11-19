@@ -1,5 +1,15 @@
 // 一笔一笔 StepDraw - 类型定义
 
+// 画笔图标
+import penIcon from '../assets/fountain_pen.png';
+import penIconActive from '../assets/fountain_active.png';
+import pencilIcon from '../assets/pencil.png';
+import pencilIconActive from '../assets/pencil_active.png';
+import markerIcon from '../assets/markpen.png';
+import markerIconActive from '../assets/mark_pen_active.png';
+import brushIcon from '../assets/ink_brush.png';
+import brushIconActive from '../assets/ink_brush_active.png';
+
 // 笔画：一组点构成的线条
 export interface Stroke {
   width: number;
@@ -55,11 +65,11 @@ export interface UserStroke {
 export type StrokeType = 'pen' | 'pencil' | 'marker' | 'brush';
 
 // 画笔类型定义
-export const STROKE_TYPES: { key: StrokeType; name: string; icon: string }[] = [
-  { key: 'pen', name: '钢笔', icon: '🖊️' },
-  { key: 'pencil', name: '铅笔', icon: '✏️' },
-  { key: 'marker', name: '马克笔', icon: '🖍️' },
-  { key: 'brush', name: '毛笔', icon: '🖌️' }
+export const STROKE_TYPES: { key: StrokeType; name: string; icon: string; iconActive: string }[] = [
+  { key: 'pen', name: '钢笔', icon: penIcon, iconActive: penIconActive },
+  { key: 'pencil', name: '铅笔', icon: pencilIcon, iconActive: pencilIconActive },
+  { key: 'marker', name: '马克笔', icon: markerIcon, iconActive: markerIconActive },
+  { key: 'brush', name: '毛笔', icon: brushIcon, iconActive: brushIconActive }
 ];
 
 // 绘图模式

@@ -39,7 +39,7 @@ function getDrawingUrl(drawingId) {
 function getAssetUrl(path) {
   // 确保路径以 / 开头，然后拼接
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${BASE_URL}${normalizedPath}`;
+  return `${BASE_URL}/${normalizedPath}`;
 }
 
 module.exports = {

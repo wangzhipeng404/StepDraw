@@ -36,6 +36,18 @@
         <view class="step-tip-overlay">
           <text class="tip-text">{{drawing && drawing.steps[currentStep] ? drawing.steps[currentStep].tip : ''}}</text>
         </view>
+        <!-- 右上角最边缘：复位按钮，点击将缩放/平移恢复为原始大小与位置 -->
+        <view class="view-reset-btn" bindtap="onViewReset">
+          <image class="view-reset-icon" src="/images/reset.png" mode="aspectFit" />
+        </view>
+        <!-- 复位按钮左侧：模式快捷切换（绘制模式 <-> 缩放/移动模式） -->
+        <view class="mode-toggle-btn" bindtap="onToggleDrawMode">
+          <image
+            class="mode-toggle-icon"
+            src="{{drawingMode ? '/images/scale_move.png' : '/images/draw.png'}}"
+            mode="aspectFit"
+          />
+        </view>
       </view>
     </view>
 
@@ -122,28 +134,35 @@
         />
       </view>
 
-      <!-- 画笔类型选择器 -->
+      <!-- 画笔类型选择器：点击选中画笔进入绘制模式，再点同一支退出 -->
       <view class="stroke-type-bar">
-        <view class="stroke-type-item {{strokeType === item.key ? 'active' : ''}}"
+        <view class="stroke-type-item {{drawingMode && strokeType === item.key ? 'active' : ''}}"
             wx:for="{{strokeTypes}}"
             wx:key="key"
             data-type="{{item.key}}"
             bindtap="onStrokeTypeSelect">
-          <text class="stroke-type-icon">{{item.icon}}</text>
+          <image
+            class="stroke-type-icon"
+            src="{{drawingMode && strokeType === item.key ? item.iconActive : item.icon}}"
+            mode="aspectFit"
+          />
         </view>
       </view>
 
       <!-- 绘图工具栏 -->
       <view class="draw-tools-bar">
         <view class="draw-tool-btn" bindtap="onUndo">
-          <text>撤销</text>
+          <image class="tool-btn-icon" src="/images/undo.png" mode="aspectFit" />
         </view>
         <view class="draw-tool-btn" bindtap="onClearUserDrawings">
-          <text>清除</text>
+          <image class="tool-btn-icon" src="/images/clear.png" mode="aspectFit" />
         </view>
         <view class="draw-tool-btn save-btn" bindtap="onExportDrawing">
-          <text>保存</text>
+          <image class="tool-btn-icon" src="/images/save.png" mode="aspectFit" />
         </view>
+        <button class="draw-tool-btn share-btn" open-type="share" bindtap="onShareButtonTap">
+          <image class="tool-btn-icon" src="/images/share.png" mode="aspectFit" />
+        </button>
       </view>
     </view>
   </view>

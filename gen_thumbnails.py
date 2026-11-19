@@ -23,7 +23,7 @@ import sys
 from PIL import Image, ImageDraw
 
 # ==================== 配置 ====================
-DATA_DIR = "./linedrawer_json_out"
+DATA_DIR = r"C:\Users\epro\Downloads\hiroshima\omniglot\out\strokes_evaluation"
 SIZE = 256                          # 封面边长(px)，可改 512
 PADDING = 8                         # 边距(px)，基于 SIZE
 BG_COLOR = (255, 255, 255, 255)     # 白底；透明改 (0,0,0,0)
@@ -191,32 +191,39 @@ def process_flat_directory(data_dir):
         png_path = os.path.join(data_dir, f"{cid}.png")
         thumb_rel = f"{cat_name}/{cid}.png"
 
+        try:
+            with open(case_path, "r", encoding="utf-8") as f:
+                case = json.load(f)
+        except Exception as e:
+            print(f"  [失败] {cid}: {e}")
+            fail += 1
+            continue
+
         if os.path.isfile(png_path) and not OVERWRITE:
             skip += 1
         else:
             try:
-                with open(case_path, "r", encoding="utf-8") as f:
-                    case = json.load(f)
                 img = draw_case(case, SIZE, PADDING)
                 img.save(png_path, "PNG", optimize=True)
                 done += 1
             except Exception as e:
                 print(f"  [失败] {cid}: {e}")
                 fail += 1
+                continue
+
+        # 写回单个案例 JSON 的 thumbnail
+        case["thumbnail"] = thumb_rel
+        with open(case_path, "w", encoding="utf-8") as f:
+            json.dump(case, f, ensure_ascii=False, separators=(",", ":"))
 
         # 收集 item 信息用于 index.json
-        try:
-            with open(case_path, "r", encoding="utf-8") as f:
-                case = json.load(f)
-            items.append({
-                "id": case.get("id", cid),
-                "name": case.get("name", ""),
-                "difficulty": case.get("difficulty", 1),
-                "stepCount": len(case.get("steps", [])),
-                "thumbnail": thumb_rel,
-            })
-        except Exception:
-            continue
+        items.append({
+            "id": case.get("id", cid),
+            "name": case.get("name", ""),
+            "difficulty": case.get("difficulty", 1),
+            "stepCount": len(case.get("steps", [])),
+            "thumbnail": thumb_rel,
+        })
 
     # 写回 index.json
     index_path = os.path.join(data_dir, "index.json")

@@ -1,0 +1,27 @@
+<!-- 一笔一笔 StepDraw - 子分类列表页 -->
+<view class="group-page">
+  <block wx:if="{{loading && categories.length === 0}}">
+    <view class="loading-state">
+      <text>加载中...</text>
+    </view>
+  </block>
+  <block wx:elif="{{categories.length === 0}}">
+    <view class="empty-state">暂无子分类</view>
+  </block>
+  <view wx:else class="category-grid">
+    <block wx:for="{{categories}}" wx:key="id">
+      <view
+        class="category-card"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
+        bindtap="onCategoryTap"
+      >
+        <view class="category-icon" style="background: {{item.iconBg}}; color: {{item.iconColor}}">
+          <text class="icon-char">{{item.emoji || item.icon}}</text>
+        </view>
+        <text class="category-name">{{item.name}}</text>
+        <text class="category-count">{{item.count}} 个图案</text>
+      </view>
+    </block>
+  </view>
+</view>

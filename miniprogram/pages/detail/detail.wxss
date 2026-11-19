@@ -81,6 +81,51 @@
   font-weight: 500;
 }
 
+/* 右上角最边缘：视图复位按钮（正方形，贴合卡片右上角） */
+.view-reset-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border-top-right-radius: 16rpx;
+  border-bottom-left-radius: 12rpx;
+  z-index: 10;
+}
+
+.view-reset-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+/* 复位按钮左侧：模式快捷切换按钮（绘制 <-> 缩放/移动） */
+.mode-toggle-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  z-index: 10;
+  border-top-left-radius: 16rpx;
+}
+
+.mode-toggle-btn:active {
+  background: #f0f0f0;
+}
+
+.mode-toggle-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
 /* 工具栏区域 - 用于横屏布局 */
 .toolbar-wrapper {
   width: auto;
@@ -245,6 +290,10 @@
   background: #f5f5f5;
 }
 
+.playing {
+  background: #1890ff;
+}
+
 .control-options {
   display: flex;
   justify-content: center;
@@ -364,8 +413,8 @@
 }
 
 .stroke-type-icon {
-  font-size: 36rpx;
-  line-height: 1;
+  width: 48rpx;
+  height: 48rpx;
 }
 
 .stroke-type-name {
@@ -386,23 +435,56 @@
 }
 
 .draw-tool-btn {
-  flex: 1;
-  max-width: 160rpx;
+  width: 72rpx;
   height: 72rpx;
-  border-radius: 36rpx;
-  border: 1rpx solid #ddd;
+  border-radius: 50%;
+  border: 2rpx solid #1e88e5;
   background: #f5f5f5;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26rpx;
-  color: #333;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  line-height: 1;
 }
 
-.draw-tool-btn.save-btn {
-  background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+.draw-tool-btn:active {
+  background: #e0e0e0;
+}
+
+.tool-btn-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+/* 分享按钮是 <button> 元素，需额外重置小程序按钮默认样式
+   （默认块级撑满宽度、自带边距/内边距/字号/::after 边框与按压底色） */
+button.draw-tool-btn.share-btn {
+  position: relative;
+  width: 72rpx;
+  height: 72rpx;
+  padding: 0;
+  margin: 0;
+  font-size: 0;
+  line-height: 1;
+  color: transparent;
+  border: 2rpx solid #1e88e5;
+  border-radius: 50%;
+  background: #f5f5f5;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button.draw-tool-btn.share-btn::after {
   border: none;
-  color: #fff;
+}
+
+button.draw-tool-btn.share-btn:active {
+  background: #e0e0e0;
 }
 
 /* 响应式样式 - 竖屏/移动端布局 */
