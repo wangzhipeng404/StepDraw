@@ -33,12 +33,18 @@ import sys
 DATA_DIR = "web/public/data"
 
 # ==================== 一级分组配置（顺序即展示顺序） ====================
+# 首页每个卡片对应这里的一个分组：
+#   - 单一类别（目录本身即类别，如 featured）：点卡片直达图案列表
+#   - 多类别（目录下有子分类，如 quickdraw）：点卡片进子分类页
 GROUPS = [
-    {"id": "linedrawer",    "name": "精选", "emoji": "✨"},
-    {"id": "quickdraw",     "name": "动物", "emoji": "🐾"},
-    {"id": "tuberlin",      "name": "万物", "emoji": "🌍"},
-    {"id": "aiposegallery", "name": "人物", "emoji": "🧍"},
-    {"id": "cocomaterial",  "name": "综合", "emoji": "📦"},
+    {"id": "featured",      "name": "综合",   "emoji": "📦"},
+    {"id": "linedrawer",    "name": "漫画",   "emoji": "📖"},
+    {"id": "animals",       "name": "动物",   "emoji": "🐾"},
+    {"id": "plants",        "name": "植物",   "emoji": "🌿"},
+    {"id": "quickdraw",     "name": "动物线稿", "emoji": "✏️"},
+    {"id": "tuberlin",      "name": "万物",   "emoji": "🌍"},
+    {"id": "aiposegallery", "name": "人物",   "emoji": "🧍"},
+    {"id": "cocomaterial",  "name": "生活",   "emoji": "🏡"},
 ]
 # =======================================================================
 

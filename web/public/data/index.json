@@ -7,14 +7,29 @@
   ],
   "groups": [
     {
+      "id": "featured",
+      "name": "综合",
+      "emoji": "📦"
+    },
+    {
       "id": "linedrawer",
-      "name": "精选",
-      "emoji": "✨"
+      "name": "漫画",
+      "emoji": "📖"
+    },
+    {
+      "id": "animals",
+      "name": "动物",
+      "emoji": "🐾"
+    },
+    {
+      "id": "plants",
+      "name": "植物",
+      "emoji": "🌿"
     },
     {
       "id": "quickdraw",
-      "name": "动物",
-      "emoji": "🐾"
+      "name": "动物线稿",
+      "emoji": "✏️"
     },
     {
       "id": "tuberlin",
@@ -28,8 +43,8 @@
     },
     {
       "id": "cocomaterial",
-      "name": "综合",
-      "emoji": "📦"
+      "name": "生活",
+      "emoji": "🏡"
     }
   ],
   "categories": [
@@ -55,6 +70,13 @@
       "dir": "aiposegallery/pose"
     },
     {
+      "id": "animals",
+      "name": "动物",
+      "emoji": "🐾",
+      "count": 241,
+      "dir": "animals"
+    },
+    {
       "id": "cocomaterial/Buildings",
       "name": "建筑",
       "emoji": "🏛️",
@@ -69,13 +91,6 @@
       "dir": "cocomaterial/Read"
     },
     {
-      "id": "cocomaterial/animals",
-      "name": "动物",
-      "emoji": "🐾",
-      "count": 241,
-      "dir": "cocomaterial/animals"
-    },
-    {
       "id": "cocomaterial/family",
       "name": "家庭",
       "emoji": "👨‍👩‍👧‍👦",
@@ -83,25 +98,25 @@
       "dir": "cocomaterial/family"
     },
     {
-      "id": "cocomaterial/others",
-      "name": "精选",
-      "emoji": "✨",
+      "id": "featured",
+      "name": "综合",
+      "emoji": "📦",
       "count": 45,
-      "dir": "cocomaterial/others"
-    },
-    {
-      "id": "cocomaterial/plants",
-      "name": "植物",
-      "emoji": "🌿",
-      "count": 94,
-      "dir": "cocomaterial/plants"
+      "dir": "featured"
     },
     {
       "id": "linedrawer",
-      "name": "精选",
-      "emoji": "✨",
+      "name": "漫画",
+      "emoji": "📖",
       "count": 182,
       "dir": "linedrawer"
+    },
+    {
+      "id": "plants",
+      "name": "植物",
+      "emoji": "🌿",
+      "count": 94,
+      "dir": "plants"
     },
     {
       "id": "quickdraw/bear",

@@ -270,8 +270,13 @@ def main():
         print(f"[错误] 数据目录不存在：{os.path.abspath(DATA_DIR)}")
         return
 
+    # 可选：只处理指定目录（相对 DATA_DIR），用于增量修正
+    only = set(sys.argv[1:]) if len(sys.argv) > 1 else None
+
     total = 0
     for group in sorted(os.listdir(DATA_DIR)):
+        if only and group not in only:
+            continue
         group_dir = os.path.join(DATA_DIR, group)
         if not os.path.isdir(group_dir):
             continue
