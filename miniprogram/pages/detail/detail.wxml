@@ -2,20 +2,36 @@
 <view class="detail">
   <!-- 主内容区域 -->
   <view class="main-content">
-    <!-- 画布区 -->
+    <!-- 画布区：三层 Canvas 叠加
+         底层 outlineCanvas —— JSON 图案数据（轮廓/已完成步骤/动画笔画）
+         中层 historyCanvas —— 用户已完成的笔画（增量绘制）
+         顶层 brushCanvas   —— 当前正在绘制的笔画（触摸事件挂在这层）
+         三层只在导出时合并 -->
     <view class="canvas-wrapper">
       <view class="canvas-container">
-        <canvas
-          type="2d"
-          id="drawingCanvas"
-          class="drawing-canvas"
-          style="width: {{canvasSize}}px; height: {{canvasSize}}px;"
-          bindtouchstart="onTouchStart"
-          bindtouchmove="onTouchMove"
-          bindtouchend="onTouchEnd"
-          bindtouchcancel="onTouchEnd"
-          disable-scroll="{{true}}"
-        ></canvas>
+        <!-- 三层画布叠放容器：尺寸固定，内部三层绝对定位完全重合 -->
+        <view class="canvas-stack" style="width: {{canvasSize}}px; height: {{canvasSize}}px;">
+          <canvas
+            type="2d"
+            id="outlineCanvas"
+            class="drawing-canvas"
+          ></canvas>
+          <canvas
+            type="2d"
+            id="historyCanvas"
+            class="drawing-canvas"
+          ></canvas>
+          <canvas
+            type="2d"
+            id="brushCanvas"
+            class="drawing-canvas"
+            bindtouchstart="onTouchStart"
+            bindtouchmove="onTouchMove"
+            bindtouchend="onTouchEnd"
+            bindtouchcancel="onTouchEnd"
+            disable-scroll="{{true}}"
+          ></canvas>
+        </view>
         <!-- 步骤提示固定在右下角 -->
         <view class="step-tip-overlay">
           <text class="tip-text">{{drawing && drawing.steps[currentStep] ? drawing.steps[currentStep].tip : ''}}</text>

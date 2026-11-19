@@ -1,36 +1,37 @@
 import { useRef, useCallback } from 'react';
-import type { Drawing, UserStroke } from '../types';
-import { renderDrawing } from '../utils/canvas';
+import { renderLayers, exportLayersToDataURL } from '../utils/canvas';
+import type { LayerState, RenderLayersArgs } from '../utils/canvas';
 
-interface UseDrawingCanvasProps {
-  drawing: Drawing;
-  currentStep: number;
-  stepProgress: number;
-  showOutline: boolean;
-  userStrokes?: UserStroke[];
-  currentStroke?: UserStroke;
-}
-
+/**
+ * 三层画布 hook（与小程序端同构）：
+ * - outlineRef（底层）：JSON 图案数据
+ * - historyRef（中层）：用户已完成的笔画（增量绘制）
+ * - brushRef（顶层）：当前正在绘制的一笔（触摸事件挂这层）
+ * 三层只在导出时合并（exportToDataURL）。
+ */
 export function useDrawingCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const outlineRef = useRef<HTMLCanvasElement>(null);
+  const historyRef = useRef<HTMLCanvasElement>(null);
+  const brushRef = useRef<HTMLCanvasElement>(null);
 
-  const render = useCallback((props: UseDrawingCanvasProps) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // 三层渲染的可变状态（离屏缓存、历史笔画计数等）
+  const layerStateRef = useRef<LayerState | null>(null);
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    renderDrawing(
-      ctx,
-      props.drawing,
-      props.currentStep,
-      props.stepProgress,
-      props.showOutline,
-      props.userStrokes,
-      props.currentStroke
+  const render = useCallback((args: RenderLayersArgs) => {
+    const next = renderLayers(
+      outlineRef.current,
+      historyRef.current,
+      brushRef.current,
+      layerStateRef.current,
+      args
     );
+    if (next) layerStateRef.current = next;
   }, []);
 
-  return { canvasRef, render };
+  // 导出：合并三层为单张图片
+  const exportToDataURL = useCallback(() => {
+    return exportLayersToDataURL(outlineRef.current, historyRef.current, brushRef.current);
+  }, []);
+
+  return { outlineRef, historyRef, brushRef, render, exportToDataURL };
 }

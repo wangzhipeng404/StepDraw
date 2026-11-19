@@ -39,8 +39,6 @@ Page({
     globalProgress: 0,
     canvasSize: 0,
     // 绘图模式相关
-    userStrokes: [],
-    currentStroke: null,
     strokeColor: '#000000',
     strokeWidth: 4,
     strokeType: 'pen', // pen, pencil, marker, brush
@@ -61,9 +59,27 @@ Page({
     maxWidth: 40
   },
 
-  canvasContext: null,
-  canvas: null,
+  // ========== 三层画布 ==========
+  // 底层 outlineCanvas：JSON 图案数据（轮廓底图 + 已完成步骤 + 当前动画步骤）
+  // 中层 historyCanvas：用户已完成的笔画（增量绘制，仅撤销/清除时重建）
+  // 顶层 brushCanvas：当前正在绘制的笔画（每帧重画，但只有一笔）
+  // 只有导出时才会把三层合并
+  outlineCanvas: null,
+  outlineCtx: null,
+  historyCanvas: null,
+  historyCtx: null,
+  brushCanvas: null,
+  brushCtx: null,
+  canvasesReady: false,
   canvasRect: null, // 存储 Canvas 位置信息
+
+  // 离屏缓存：轮廓底图（灰色全图案）、已完成步骤
+  outlineCache: null,
+  doneCache: null,
+
+  // 用户笔画放在实例上，避免每次触摸都走 setData 序列化
+  userStrokes: [],
+  currentStroke: null,
 
   onLoad(options) {
     const drawingId = options.id;
@@ -84,50 +100,69 @@ Page({
   },
 
   onReady() {
-    // 初始化 Canvas 2D 接口
+    // 初始化三层 Canvas 2D 接口（底层 JSON 图案 / 中层用户历史 / 顶层当前画笔）
     const query = wx.createSelectorQuery().in(this);
-    query.select('#drawingCanvas')
-      .fields({ node: true, size: true })
-      .exec((res) => {
-        if (res[0]) {
-          const canvas = res[0].node;
-          const ctx = canvas.getContext('2d');
+    query.select('#outlineCanvas').fields({ node: true, size: true });
+    query.select('#historyCanvas').fields({ node: true });
+    query.select('#brushCanvas').fields({ node: true, size: true });
+    query.exec((res) => {
+      if (!res[0]) return;
 
-          const canvasWidth = res[0].width;
-          const canvasHeight = res[0].height;
+      const initLayer = (canvas, sizeRes) => {
+        const width = sizeRes ? sizeRes.width : res[0].width;
+        const height = sizeRes ? sizeRes.height : res[0].height;
+        // 小程序 Canvas 2D 直接使用 CSS 像素，不需要乘以 devicePixelRatio
+        canvas.width = width;
+        canvas.height = height;
+        return { canvas, ctx: canvas.getContext('2d') };
+      };
 
-          // 小程序 Canvas 2D 直接使用 CSS 像素，不需要乘以 devicePixelRatio
-          canvas.width = canvasWidth;
-          canvas.height = canvasHeight;
+      const outline = initLayer(res[0].node, res[0]);
+      const history = res[1] ? initLayer(res[1].node, res[0]) : null;
+      const brush = res[2] ? initLayer(res[2].node, res[0]) : null;
 
-          this.canvasContext = ctx;
-          this.canvas = canvas;
-          this.canvasWidth = canvasWidth;
-          this.canvasHeight = canvasHeight;
+      this.outlineCanvas = outline.canvas;
+      this.outlineCtx = outline.ctx;
+      if (history) {
+        this.historyCanvas = history.canvas;
+        this.historyCtx = history.ctx;
+      }
+      if (brush) {
+        this.brushCanvas = brush.canvas;
+        this.brushCtx = brush.ctx;
+      }
+      this.canvasWidth = res[0].width;
+      this.canvasHeight = res[0].height;
+      // 兼容旧导出逻辑
+      this.canvasContext = this.outlineCtx;
+      this.canvas = this.outlineCanvas;
 
-          // 使用 setTimeout 确保 DOM 已完全渲染
-          setTimeout(() => {
-            const rectQuery = wx.createSelectorQuery().in(this);
-            rectQuery.select('#drawingCanvas').boundingClientRect().exec((rectRes) => {
-              if (rectRes[0]) {
-                this.canvasRect = {
-                  left: rectRes[0].left,
-                  top: rectRes[0].top
-                };
-                console.log('Canvas rect:', this.canvasRect);
-              }
-            });
-          }, 100);
-
-          // 加载完成后绘制
-          if (this.data.drawing) {
-            this.draw();
+      // 使用 setTimeout 确保 DOM 已完全渲染
+      setTimeout(() => {
+        const rectQuery = wx.createSelectorQuery().in(this);
+        rectQuery.select('#outlineCanvas').boundingClientRect().exec((rectRes) => {
+          if (rectRes[0]) {
+            this.canvasRect = {
+              left: rectRes[0].left,
+              top: rectRes[0].top
+            };
+            console.log('Canvas rect:', this.canvasRect);
           }
-        }
-      });
+        });
+      }, 100);
+
+      this.canvasesReady = true;
+      this._historyCount = 0;
+
+      // 加载完成后绘制
+      if (this.data.drawing) {
+        this.drawOutlineLayer();
+      }
+    });
   },
 
   loadDrawing(id) {
+    wx.showLoading()
     try {
       const [categoryId, drawingId] = id.split('/');
 
@@ -135,15 +170,15 @@ Page({
         url: config.getDrawingUrl(id),
         success: (res) => {
           const drawing = res.data;
-
+          wx.hideLoading()
           this.setData({
             drawing,
             totalSteps: drawing.steps.length,
             globalProgress: 0
           }, () => {
             // 如果 Canvas 已初始化，立即绘制
-            if (this.canvasContext) {
-              this.draw();
+            if (this.canvasesReady) {
+              this.drawOutlineLayer();
             }
           });
 
@@ -153,6 +188,7 @@ Page({
           });
         },
         fail: (err) => {
+          wx.hideLoading()
           console.error('加载图案失败:', err);
           wx.showToast({
             title: '加载失败',
@@ -161,6 +197,7 @@ Page({
         }
       });
     } catch (err) {
+      wx.hideLoading()
       console.error('加载图案失败:', err);
       wx.showToast({
         title: '加载失败',
@@ -169,94 +206,167 @@ Page({
     }
   },
 
-  draw() {
-    if (!this.canvasContext || !this.data.drawing) return;
-
-    const { drawing, currentStep, progress, showOutline } = this.data;
-    const ctx = this.canvasContext;
-    const { viewBox } = drawing;
-
-    // 使用查询到的 Canvas CSS 尺寸
+  // 获取画布变换矩阵（viewBox -> 画布 CSS 像素）
+  getTransform() {
     const width = this.canvasWidth;
     const height = this.canvasHeight;
+    const { viewBox } = this.data.drawing;
 
-    // 清空画布（使用 CSS 尺寸）
-    ctx.clearRect(0, 0, width, height);
-
-    // 计算缩放比例（填满画布）
     const patternWidth = viewBox[2] - viewBox[0];
     const patternHeight = viewBox[3] - viewBox[1];
-    const scale = Math.min(
-      width / patternWidth,
-      height / patternHeight
-    );
-
+    const scale = Math.min(width / patternWidth, height / patternHeight);
     const offsetX = (width - patternWidth * scale) / 2 - viewBox[0] * scale;
     const offsetY = (height - patternHeight * scale) / 2 - viewBox[1] * scale;
+    return { scale, offsetX, offsetY };
+  },
 
+  // 创建离屏画布
+  createLayer() {
+    return wx.createOffscreenCanvas({
+      type: '2d',
+      width: this.canvasWidth,
+      height: this.canvasHeight
+    });
+  },
+
+  // 重建已完成步骤的离屏缓存（只在步骤切换时调用）
+  rebuildDoneCache() {
+    if (!this.outlineCtx) return;
+    const { drawing, currentStep } = this.data;
+    const { scale, offsetX, offsetY } = this.getTransform();
+
+    const cache = this.createLayer();
+    const ctx = cache.getContext('2d');
     ctx.save();
     ctx.translate(offsetX, offsetY);
     ctx.scale(scale, scale);
-
-    // 如果显示轮廓底图，先绘制完整图案
-    if (showOutline) {
-      ctx.globalAlpha = 0.15;
-      for (const step of drawing.steps) {
-        for (const stroke of step.strokes) {
-          this.drawStroke(ctx, stroke, 1, '#333', false, scale);
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
-
-    // 绘制已完成步骤
     for (let i = 0; i < currentStep; i++) {
       for (const stroke of drawing.steps[i].strokes) {
         this.drawStroke(ctx, stroke, 1, '#000', false, scale);
       }
     }
+    ctx.restore();
+    this.doneCache = cache;
+  },
 
-    // 绘制当前步骤
+  // 重建轮廓底图的离屏缓存（切换轮廓显隐时调用）
+  rebuildOutlineCache() {
+    if (!this.outlineCtx) return;
+    const { drawing, showOutline } = this.data;
+    if (!showOutline) {
+      this.outlineCache = null;
+      return;
+    }
+    const { scale, offsetX, offsetY } = this.getTransform();
+
+    const cache = this.createLayer();
+    const ctx = cache.getContext('2d');
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+    ctx.globalAlpha = 0.15;
+    for (const step of drawing.steps) {
+      for (const stroke of step.strokes) {
+        this.drawStroke(ctx, stroke, 1, '#333', false, scale);
+      }
+    }
+    ctx.restore();
+    this.outlineCache = cache;
+  },
+
+  // 底层：绘制 JSON 图案数据（轮廓底图 + 已完成步骤 + 当前动画笔画）
+  // 性能要点：静态内容走离屏缓存，每帧只在缓存间 drawImage 一次全图 + 一笔动画笔画
+  drawOutlineLayer() {
+    if (!this.outlineCtx || !this.data.drawing) return;
+
+    const { drawing, currentStep, progress } = this.data;
+    const ctx = this.outlineCtx;
+    const width = this.canvasWidth;
+    const height = this.canvasHeight;
+
+    // 失效检查：步骤或轮廓设置变化后重建静态缓存
+    if (this.doneCache === null || this._doneStep !== currentStep) {
+      this.rebuildDoneCache();
+      this._doneStep = currentStep;
+    }
+    if (this._outlineKey !== this.data.showOutline) {
+      this.rebuildOutlineCache();
+      this._outlineKey = this.data.showOutline;
+    }
+
+    ctx.clearRect(0, 0, width, height);
+    if (this.outlineCache) ctx.drawImage(this.outlineCache, 0, 0);
+    if (this.doneCache) ctx.drawImage(this.doneCache, 0, 0);
+
+    // 当前步骤的动画部分
+    const { scale, offsetX, offsetY } = this.getTransform();
     const currentStepData = drawing.steps[currentStep];
-    if (currentStepData && currentStepData.strokes.length > 0) {
-      const strokes = currentStepData.strokes;
-      const totalStrokes = strokes.length;
+    if (!currentStepData || currentStepData.strokes.length === 0) return;
 
-      if (progress >= 1) {
-        for (const stroke of strokes) {
-          this.drawStroke(ctx, stroke, 1, '#000', false, scale);
-        }
-      } else {
-        const strokesProgress = progress * totalStrokes;
-        const completedStrokes = Math.floor(strokesProgress);
-        const currentStrokeProgress = strokesProgress - completedStrokes;
+    const strokes = currentStepData.strokes;
+    const totalStrokes = strokes.length;
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
 
-        // 绘制已完成的笔画
-        for (let i = 0; i < completedStrokes; i++) {
-          this.drawStroke(ctx, strokes[i], 1, '#000', false, scale);
-        }
+    if (progress >= 1) {
+      for (const stroke of strokes) {
+        this.drawStroke(ctx, stroke, 1, '#000', false, scale);
+      }
+    } else {
+      const strokesProgress = progress * totalStrokes;
+      const completedStrokes = Math.floor(strokesProgress);
+      const currentStrokeProgress = strokesProgress - completedStrokes;
 
-        // 绘制当前正在绘制的笔画
-        if (completedStrokes < totalStrokes) {
-          const currentStroke = strokes[completedStrokes];
-          if (currentStroke) {
-            this.drawStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true, scale);
-          }
+      // 绘制当前步骤内已完成的笔画
+      for (let i = 0; i < completedStrokes; i++) {
+        this.drawStroke(ctx, strokes[i], 1, '#000', false, scale);
+      }
+
+      // 绘制当前正在动画的笔画
+      if (completedStrokes < totalStrokes) {
+        const currentStroke = strokes[completedStrokes];
+        if (currentStroke) {
+          this.drawStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true, scale);
         }
       }
     }
-
-    // 用户笔画需要在变换后单独绘制（坐标已经是 CSS 像素，不需要再缩放）
-    // 先恢复坐标系，再绘制用户笔画
     ctx.restore();
+  },
 
-    // 绘制用户笔画（不使用 scale 变换，直接使用 CSS 像素坐标）
-    for (const stroke of this.data.userStrokes) {
-      this.drawUserStroke(ctx, stroke);
+  // 中层：用户已完成的笔画
+  // 增量绘制：新笔画只追加；撤销/清除时才整体重建
+  drawHistoryLayer() {
+    if (!this.historyCtx) return;
+    const width = this.canvasWidth;
+    const height = this.canvasHeight;
+    const strokes = this.userStrokes;
+
+    if (strokes.length > this._historyCount) {
+      // 增量：只画新增的笔画
+      for (let i = this._historyCount; i < strokes.length; i++) {
+        this.drawUserStroke(this.historyCtx, strokes[i]);
+      }
+    } else {
+      // 笔画数减少（撤销/清除）：整体重建
+      this.historyCtx.clearRect(0, 0, width, height);
+      for (const stroke of strokes) {
+        this.drawUserStroke(this.historyCtx, stroke);
+      }
     }
-    // 绘制当前正在绘制的笔画
-    if (this.data.currentStroke && this.data.currentStroke.points.length >= 2) {
-      this.drawUserStroke(ctx, this.data.currentStroke);
+    this._historyCount = strokes.length;
+  },
+
+  // 顶层：当前正在绘制的笔画（每帧重画，但只有一笔，开销很小）
+  drawBrushLayer() {
+    if (!this.brushCtx) return;
+    const width = this.canvasWidth;
+    const height = this.canvasHeight;
+    this.brushCtx.clearRect(0, 0, width, height);
+
+    const stroke = this.currentStroke;
+    if (stroke && stroke.points.length >= 1) {
+      this.drawUserStroke(this.brushCtx, stroke);
     }
   },
 
@@ -447,27 +557,27 @@ Page({
         globalProgress: (currentStep - 1) / this.data.totalSteps
       });
     }
-    this.draw();
+    this.drawOutlineLayer();
   },
 
   onNextStep() {
     const { currentStep, progress, totalSteps } = this.data;
     if (progress < 1) {
       this.setData({ progress: 1 });
-      this.draw();
+      this.drawOutlineLayer();
     } else if (currentStep < totalSteps - 1) {
       this.setData({
         currentStep: currentStep + 1,
         progress: 0,
         globalProgress: (currentStep + 1) / totalSteps
       });
-      this.draw();
+      this.drawOutlineLayer();
     }
   },
 
   onReset() {
     this.setData({ currentStep: 0, progress: 0, playing: false, globalProgress: 0 });
-    this.draw();
+    this.drawOutlineLayer();
   },
 
   onTogglePlay() {
@@ -481,7 +591,7 @@ Page({
         globalProgress: 0,
         playing: true
       });
-      this.draw();
+      this.drawOutlineLayer();
       this.startPlay();
       return;
     }
@@ -542,14 +652,14 @@ Page({
           const globalProgress = (currentStep + newProgress) / totalSteps;
           this.setData({ progress: newProgress, globalProgress });
         }
-        this.draw();
+        this.drawOutlineLayer();
       } else if (currentStep < totalSteps - 1) {
         this.setData({
           currentStep: currentStep + 1,
           progress: 0,
           globalProgress: (currentStep + 1) / totalSteps
         });
-        this.draw();
+        this.drawOutlineLayer();
       } else {
         // 播放结束
         this.setData({ playing: false });
@@ -570,7 +680,7 @@ Page({
 
   onToggleOutline() {
     this.setData({ showOutline: !this.data.showOutline });
-    this.draw();
+    this.drawOutlineLayer();
   },
 
   onProgressChange(e) {
@@ -584,7 +694,7 @@ Page({
       progress: stepProgress * totalSteps,
       globalProgress
     });
-    this.draw();
+    this.drawOutlineLayer();
   },
 
   onStepTap(e) {
@@ -595,7 +705,7 @@ Page({
       playing: false,
       globalProgress: step / this.data.totalSteps
     });
-    this.draw();
+    this.drawOutlineLayer();
 
     if (this.playTimer) {
       clearInterval(this.playTimer);
@@ -649,45 +759,43 @@ Page({
       const x = touches.clientX - this.canvasRect.left;
       const y = touches.clientY - this.canvasRect.top;
 
-      this.setData({
-        currentStroke: {
-          points: [[x, y]],
-          width: strokeWidth,
-          color: strokeColor,
-          type: strokeType
-        }
-      });
+      // 当前笔画放实例上（不进 data），避免每帧 setData 序列化
+      this.currentStroke = {
+        points: [[x, y]],
+        width: strokeWidth,
+        color: strokeColor,
+        type: strokeType
+      };
+      this.drawBrushLayer();
     }
   },
 
   // 触摸移动
   onTouchMove(e) {
-    if (!this.data.currentStroke || !this.canvasRect) return;
+    if (!this.currentStroke || !this.canvasRect) return;
 
     const touches = e.touches[0];
     if (touches) {
       const x = touches.clientX - this.canvasRect.left;
       const y = touches.clientY - this.canvasRect.top;
 
-      const currentStroke = this.data.currentStroke;
-      currentStroke.points.push([x, y]);
-      this.setData({ currentStroke });
-      this.draw();
+      // 追加坐标点，只重画顶层（当前一笔），不动底层/中层
+      this.currentStroke.points.push([x, y]);
+      this.drawBrushLayer();
     }
   },
 
   // 触摸结束
   onTouchEnd(e) {
-    if (!this.data.currentStroke) return;
+    if (!this.currentStroke) return;
 
-    const currentStroke = this.data.currentStroke;
-    // 保存完成的笔画（即使只有一个点也保存）
-    const userStrokes = [...this.data.userStrokes, currentStroke];
-    this.setData({
-      userStrokes,
-      currentStroke: null
-    });
-    this.draw();
+    const stroke = this.currentStroke;
+    this.currentStroke = null;
+
+    // 完成的笔画加入历史（实例上），增量绘制到中层，清空顶层
+    this.userStrokes.push(stroke);
+    this.drawHistoryLayer();
+    this.drawBrushLayer();
   },
 
   // 切换画笔类型
@@ -761,11 +869,11 @@ Page({
       content: '确定要清除所有绘制内容吗？',
       success: (res) => {
         if (res.confirm) {
-          this.setData({
-            userStrokes: [],
-            currentStroke: null
-          });
-          this.draw();
+          this.userStrokes = [];
+          this.currentStroke = null;
+          this._historyCount = 0;
+          this.drawHistoryLayer();
+          this.drawBrushLayer();
           wx.showToast({
             title: '已清除',
             icon: 'success'
@@ -795,13 +903,11 @@ Page({
 
     wx.showLoading({ title: '导出中...' });
 
-    // 先重新绘制一次确保所有内容都在
-    this.draw();
-
+    // 合并三层画布导出
     // 等待一小段时间确保绘制完成
     setTimeout(() => {
       try {
-        // 创建离屏 2D canvas 实例（尺寸与原 Canvas 相同）
+        // 创建离屏 2D canvas 实例（尺寸与画布相同），用于合并
         const offscreenCanvas = wx.createOffscreenCanvas({
           type: '2d',
           width: this.canvasWidth,
@@ -813,8 +919,13 @@ Page({
         offscreenCtx.fillStyle = '#FFFFFF';
         offscreenCtx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
 
+        // 按层序合成：底层 JSON 图案 -> 中层用户历史 -> 顶层当前笔画
+        if (this.outlineCanvas) offscreenCtx.drawImage(this.outlineCanvas, 0, 0);
+        if (this.historyCanvas) offscreenCtx.drawImage(this.historyCanvas, 0, 0);
+        if (this.brushCanvas) offscreenCtx.drawImage(this.brushCanvas, 0, 0);
+
         // 使用 wx.getImageInfo 加载 Logo 图片
-        const logoPath = `${config.BASE_URL}/../logo.png`;
+        const logoPath = `${config.BASE_URL}/../stepdraw.png`;
 
         wx.getImageInfo({
           src: logoPath,
@@ -823,9 +934,6 @@ Page({
             logoImage.src = info.path;
 
             logoImage.onload = () => {
-              // 绘制原 Canvas 内容
-              offscreenCtx.drawImage(this.canvas, 0, 0, this.canvasWidth, this.canvasHeight);
-
               // 绘制小 Logo（右下角）
               const logoSize = this.canvasWidth * 0.1;
               const margin = this.canvasWidth * 0;
@@ -853,7 +961,7 @@ Page({
         });
         wx.hideLoading();
       }
-    }, 300);
+    }, 100);
   },
 
   // 导出 Canvas 为图片的辅助方法
@@ -902,8 +1010,9 @@ Page({
 
   // 撤销上一笔
   onUndo() {
-    const userStrokes = this.data.userStrokes.slice(0, -1);
-    this.setData({ userStrokes });
-    this.draw();
+    if (this.userStrokes.length === 0) return;
+    this.userStrokes.pop();
+    // 笔画数减少，drawHistoryLayer 会自动重建中层
+    this.drawHistoryLayer();
   }
 })

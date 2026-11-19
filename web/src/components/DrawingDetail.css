@@ -38,12 +38,29 @@
   height: 100%;
 }
 
-.drawing-canvas {
+/* 三层画布叠放容器：相对定位撑开尺寸，内部三层绝对定位完全重合 */
+.canvas-stack {
+  position: relative;
   background: #fff;
   width: 100%;
   height: 100%;
   max-height: calc(100vh - 320px);
   aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.canvas-stack .drawing-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 底层白色背景，覆盖层（用户绘制）透明以透出下层 */
+.canvas-stack .drawing-canvas + .drawing-canvas {
+  background: transparent;
 }
 
 /* 步骤提示固定在右下角 */
@@ -509,7 +526,7 @@
     border-top: 1px solid #eee;
   }
 
-  .drawing-canvas {
+  .canvas-stack {
     max-height: calc(100vh - 320px);
   }
 
@@ -716,7 +733,7 @@
     padding: 10px;
   }
 
-  .drawing-canvas {
+  .canvas-stack {
     max-height: calc(100vh - 100px);
   }
 }

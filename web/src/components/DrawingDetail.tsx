@@ -33,7 +33,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     mode: 'continuous'
   });
 
-  const { canvasRef, render } = useDrawingCanvas();
+  const { outlineRef, historyRef, brushRef, render, exportToDataURL } = useDrawingCanvas();
   const renderRef = useRef(render);
   renderRef.current = render;
 
@@ -48,9 +48,10 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
   const canvasRectRef = useRef<{ left: number; top: number } | null>(null);
 
   // 获取 Canvas 位置（在组件挂载后获取，并在窗口大小变化时更新）
+  // 触摸事件挂在顶层 brushCanvas，测量它即可代表三层公共位置
   useEffect(() => {
     const updateCanvasRect = () => {
-      const canvas = canvasRef.current;
+      const canvas = brushRef.current;
       if (canvas) {
         const rect = canvas.getBoundingClientRect();
         canvasRectRef.current = { left: rect.left, top: rect.top };
@@ -62,7 +63,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     // 监听窗口大小变化
     window.addEventListener('resize', updateCanvasRect);
     return () => window.removeEventListener('resize', updateCanvasRect);
-  }, [canvasRef]);
+  }, [brushRef]);
 
   // 持续重绘循环
   useEffect(() => {
@@ -75,7 +76,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
         stepProgress: state.progress,
         showOutline: state.showOutline,
         userStrokes: userStrokes,
-        currentStroke: currentStrokeRef.current ? currentStrokeRef.current : undefined
+        currentStroke: currentStrokeRef.current
       });
       animationId = requestAnimationFrame(draw);
     };
@@ -161,13 +162,11 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     }
   }, []);
 
-  // 导出为图片
+  // 导出为图片（合并三层画布）
   const handleExport = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
     try {
-      const dataUrl = canvas.toDataURL('image/png');
+      const dataUrl = exportToDataURL();
+      if (!dataUrl) return;
       const link = document.createElement('a');
       link.download = `${drawing.name || 'drawing'}-${Date.now()}.png`;
       link.href = dataUrl;
@@ -176,7 +175,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       console.error('导出失败:', err);
       alert('导出失败，请重试');
     }
-  }, [canvasRef, drawing.name]);
+  }, [exportToDataURL, drawing.name]);
 
   const currentStepData = drawing.steps[state.currentStep];
   const globalProgress = getGlobalProgress();
@@ -188,18 +187,32 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
 
       {/* 主内容区域 */}
       <div className="main-content">
-        {/* 画布区 */}
+        {/* 画布区：三层 Canvas 叠加
+            底层 outlineCanvas —— JSON 图案数据（轮廓/已完成步骤/动画笔画）
+            中层 historyCanvas —— 用户已完成的笔画（增量绘制）
+            顶层 brushCanvas   —— 当前正在绘制的笔画（指针事件挂在这层）
+            三层只在导出时合并 */}
         <div className="canvas-wrapper">
-          <canvas
-            ref={canvasRef}
-            className="drawing-canvas"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            style={{ touchAction: 'none' }}
-          />
+          <div className="canvas-stack">
+            <canvas
+              ref={outlineRef}
+              className="drawing-canvas"
+            />
+            <canvas
+              ref={historyRef}
+              className="drawing-canvas"
+            />
+            <canvas
+              ref={brushRef}
+              className="drawing-canvas"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              style={{ touchAction: 'none' }}
+            />
+          </div>
           {/* 步骤提示固定在右下角 */}
           <div className="step-tip-overlay">
             <span className="tip-text">{currentStepData?.tip || ''}</span>
