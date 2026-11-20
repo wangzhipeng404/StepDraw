@@ -213,9 +213,10 @@ struct CanvasContainer: UIViewRepresentable {
             super.init(frame: .zero)
             backgroundColor = .clear
 
-            for (i, layer) in [outlineLayer, historyLayer, brushLayer, pencilLayer].enumerated() {
-                layer.backgroundColor = UIColor.white.cgColor
-                layerStack.insertSublayer(layer, at: i)
+            // 四层依次加入自身 backing layer：outline→history→brush→pencil（笔尖在最上）
+            for newLayer in [outlineLayer, historyLayer, brushLayer, pencilLayer] {
+                newLayer.backgroundColor = UIColor.white.cgColor
+                self.layer.addSublayer(newLayer)
             }
             gestureView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             addSubview(gestureView)

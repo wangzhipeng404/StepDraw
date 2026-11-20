@@ -1,13 +1,30 @@
 import UIKit
 import CoreGraphics
 
+// MARK: - hex 颜色（定义在渲染侧，Models 保持平台无关）
+
+extension UIColor {
+    convenience init(hex: String) {
+        var s = hex
+        if s.hasPrefix("#") { s.removeFirst() }
+        var v: UInt64 = 0
+        Scanner(string: s).scanHexInt64(&v)
+        self.init(
+            red: CGFloat((v & 0xFF0000) >> 16) / 255,
+            green: CGFloat((v & 0x00FF00) >> 8) / 255,
+            blue: CGFloat(v & 0x0000FF) / 255,
+            alpha: 1
+        )
+    }
+}
+
 // MARK: - 画笔渲染（与 web 端 renderUserStroke 同构，内容坐标系）
 
 /// 画一条用户笔画（上下文需已应用「适配+视图」变换）
 func renderUserStroke(_ ctx: CGContext, stroke: UserStroke) {
     let pts = stroke.points
     guard !pts.isEmpty else { return }
-    let color = stroke.color
+    let color = UIColor(hex: stroke.color)
     let width = stroke.width
     let kind = stroke.kind
 
@@ -393,7 +410,7 @@ final class DrawingEngine {
         cache.contextAccess.saveGState()
         applyContentTransform(cache.contextAccess, size: size, fit: fit, view: .identity)
         for stroke in userStrokes {
-            renderUserStroke(cache.contextAccess, stroke)
+            renderUserStroke(cache.contextAccess, stroke: stroke)
         }
         cache.contextAccess.restoreGState()
         cache.finalizeImage()
@@ -449,7 +466,7 @@ final class DrawingEngine {
         if let live = liveStroke {
             ctx.saveGState()
             applyContentTransform(ctx, size: layerSize, fit: fit, view: view)
-            renderUserStroke(ctx, live)
+            renderUserStroke(ctx, stroke: live)
             ctx.restoreGState()
         }
         layer.contents = ctx.makeImage()
@@ -594,7 +611,7 @@ final class DrawingEngine {
                 cache.contextAccess.saveGState()
                 applyContentTransform(cache.contextAccess, size: size, fit: fit, view: .identity)
                 for stroke in userStrokes {
-                    renderUserStroke(cache.contextAccess, stroke)
+                    renderUserStroke(cache.contextAccess, stroke: stroke)
                 }
                 cache.contextAccess.restoreGState()
                 cache.blit(into: ctx, view: .identity, size: size)

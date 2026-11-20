@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Drawing, UserStroke, StrokeType } from '../types';
+import type { Drawing, UserAction, UserStroke, StrokeType, UserFill } from '../types';
 import { STROKE_TYPES } from '../types';
 import { loadDrawing } from '../data/drawings';
 import { useDrawingPlayer } from '../hooks/useDrawingPlayer';
 import { useDrawingCanvas } from '../hooks/useDrawingCanvas';
-import { toImagePoint, zoomAnchored, IDENTITY_VIEW } from '../utils/canvas';
+import { toImagePoint, zoomAnchored, IDENTITY_VIEW, buildUnderlay, floodFill } from '../utils/canvas';
 import type { ViewTransform } from '../utils/canvas';
 import { Navbar } from './Navbar';
 import preIcon from '../assets/pre.png';
@@ -56,12 +56,24 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
   renderRef.current = render;
 
   // 绘图模式相关状态
-  const [userStrokes, setUserStrokes] = useState<UserStroke[]>([]);
+  // 用户操作栈：笔画与填充按时间序混排，撤销/清除按序弹出
+  const [userActions, setUserActions] = useState<UserAction[]>([]);
   const [strokeColor, setStrokeColor] = useState('#000000');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [strokeType, setStrokeType] = useState<StrokeType>('pen');
   // 绘制模式：选中画笔进入，再点同一支退出；非绘制模式下画布可缩放/平移
   const [drawingMode, setDrawingMode] = useState(false);
+  // 填充失败提示（不封闭等），画布上轻量显示，几秒后自动消失
+  const [fillHint, setFillHint] = useState<string | null>(null);
+  const fillHintTimerRef = useRef<number | null>(null);
+  const showFillHint = useCallback((msg: string) => {
+    setFillHint(msg);
+    if (fillHintTimerRef.current) window.clearTimeout(fillHintTimerRef.current);
+    fillHintTimerRef.current = window.setTimeout(() => setFillHint(null), 2600);
+  }, []);
+  useEffect(() => () => {
+    if (fillHintTimerRef.current) window.clearTimeout(fillHintTimerRef.current);
+  }, []);
 
   // 存储 Canvas 位置/尺寸信息（事件挂在顶层 brushCanvas，测量它即可代表三层公共位置）
   const canvasRectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
@@ -101,7 +113,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
         currentStep: state.currentStep,
         stepProgress: state.progress,
         showOutline: state.showOutline,
-        userStrokes: userStrokes,
+        userActions,
         currentStroke: currentStrokeRef.current,
         view: viewRef.current
       });
@@ -113,7 +125,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [drawing, state.currentStep, state.progress, state.showOutline, userStrokes]);
+  }, [drawing, state.currentStep, state.progress, state.showOutline, userActions]);
 
   // 使用 ref 存储当前笔画（完全参考小程序逻辑）
   const currentStrokeRef = useRef<UserStroke | null>(null);
@@ -125,20 +137,54 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     return toImagePoint(clientX, clientY, rect.left, rect.top, rect.width, rect.height, viewRef.current);
   }, []);
 
-  // 收尾当前笔画：保存到 userStrokes（即使只有一个点也保存）
+  // 收尾当前笔画：按时间序入操作栈（即使只有一个点也保存）
   const commitStroke = useCallback(() => {
     const currentStroke = currentStrokeRef.current;
     if (!currentStroke) return;
-    const newStroke = {
+    const newStroke: UserStroke = {
       points: [...currentStroke.points],
       width: currentStroke.width,
       color: currentStroke.color,
       type: currentStroke.type
     };
-    setUserStrokes(prev => [...prev, newStroke]);
+    setUserActions(prev => [...prev, { kind: 'stroke', stroke: newStroke }]);
     currentStrokeRef.current = null;
     drawPointerIdRef.current = null;
   }, []);
+
+  // 油漆桶：点击落点处漫水填充当前颜色。
+  // 底图 = 整幅引导线（画浓作墙）+ 用户内容（设备像素）；填充结果作为独立操作入栈。
+  const applyFill = useCallback((clientX: number, clientY: number) => {
+    const rect = canvasRectRef.current;
+    if (!rect) return;
+    const dpr = window.devicePixelRatio || 1;
+    const p = toImagePoint(clientX, clientY, rect.left, rect.top, rect.width, rect.height, viewRef.current);
+    if (!p) return;
+    const under = buildUnderlay(
+      { cssW: rect.width, cssH: rect.height, dpr },
+      drawing,
+      state.currentStep,
+      state.progress,
+      userActions
+    );
+    if (!under) return;
+    const res = floodFill(under, p[0] * dpr, p[1] * dpr, strokeColor);
+    if (!res.ok) {
+      if (res.reason === 'border') {
+        showFillHint('这个区域不封闭（线条有缺口），颜色会流出去');
+      } else if (res.reason === 'online') {
+        showFillHint('点这里的是线条，请点在线条围出的空白处');
+      }
+      return;
+    }
+    const fill: UserFill = {
+      key: `fill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      seed: p,
+      color: strokeColor,
+      image: res.canvas
+    };
+    setUserActions(prev => [...prev, { kind: 'fill', fill }]);
+  }, [drawing, state.currentStep, state.progress, userActions, strokeColor, showFillHint]);
 
   // 开始（指针按下）
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -174,22 +220,28 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
 
     // 单指
     if (drawingMode) {
-      // 绘制模式：开始一笔
-      const p = toImage(e.clientX, e.clientY);
-      if (!p) return;
-      currentStrokeRef.current = {
-        points: [p],
-        width: strokeWidth,
-        color: strokeColor,
-        type: strokeType
-      };
-      drawPointerIdRef.current = e.pointerId;
-      gestureModeRef.current = 'draw';
+      if (strokeType === 'fill') {
+        // 填充：单击落点即填充当前颜色，不拖拽
+        applyFill(e.clientX, e.clientY);
+        gestureModeRef.current = 'none';
+      } else {
+        // 绘制模式：开始一笔
+        const p = toImage(e.clientX, e.clientY);
+        if (!p) return;
+        currentStrokeRef.current = {
+          points: [p],
+          width: strokeWidth,
+          color: strokeColor,
+          type: strokeType
+        };
+        drawPointerIdRef.current = e.pointerId;
+        gestureModeRef.current = 'draw';
+      }
     } else {
       // 非绘制模式：单指/鼠标拖动平移
       gestureModeRef.current = 'pan';
     }
-  }, [drawingMode, strokeWidth, strokeColor, strokeType, toImage]);
+  }, [drawingMode, strokeWidth, strokeColor, strokeType, toImage, applyFill]);
 
   // 指针移动：按手势模式分派（绘制 / 平移 / 捏合缩放）
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -266,17 +318,17 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     }
   }, [commitStroke]);
 
-  // 撤销上一笔
+  // 撤销上一笔（笔画/填充共用时间序栈，撤销哪个都行）
   const handleUndo = useCallback(() => {
-    if (userStrokes.length > 0) {
-      setUserStrokes(userStrokes.slice(0, -1));
+    if (userActions.length > 0) {
+      setUserActions(userActions.slice(0, -1));
     }
-  }, [userStrokes]);
+  }, [userActions]);
 
-  // 清除所有用户绘制
+  // 清除所有用户绘制（笔画 + 填充）
   const handleClear = useCallback(() => {
     if (window.confirm('确定要清除所有绘制内容吗？')) {
-      setUserStrokes([]);
+      setUserActions([]);
       currentStrokeRef.current = null;
     }
   }, []);
@@ -297,10 +349,12 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
   }, [exportToDataURL, drawing, state.currentStep, state.progress]);
 
   // 导出用户绘制路径为 JSON（输出本项目标准案例格式：steps[].strokes，
-  // 与数据目录里的图案 JSON 一致，可直接被 gen_thumbnails.py 渲染）
+  // 与数据目录里的图案 JSON 一致，可直接被 gen_thumbnails.py 渲染）。
+  // 填充是位图结果，不进入这套路径格式，只导出笔画部分。
   const handleExportJson = useCallback(() => {
-    if (userStrokes.length === 0) {
-      alert('还没有绘制内容，先画几笔再导出吧～');
+    const strokesInStack = userActions.filter((a): a is Extract<UserAction, { kind: 'stroke' }> => a.kind === 'stroke');
+    if (strokesInStack.length === 0) {
+      alert('还没有可导出的笔画（填充不导出 JSON），先画几笔再导出吧～');
       return;
     }
     try {
@@ -317,6 +371,8 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       const offsetX = (w - vw * scale) / 2 - vx0 * scale;
       const offsetY = (h - vh * scale) / 2 - vy0 * scale;
 
+      // 只导出笔画（填充是位图，不进入路径格式）
+      const userStrokes = strokesInStack.map(a => a.stroke);
       // 换算后的 strokes（viewBox 坐标），保留用户选择的颜色与画笔类型
       // （gen_thumbnails.py 只读 points/width，多余字段会被忽略）
       const strokes = userStrokes.map(s => ({
@@ -372,7 +428,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       console.error('导出 JSON 失败:', err);
       alert('导出失败，请重试');
     }
-  }, [userStrokes, drawing.name, drawing.viewBox]);
+  }, [userActions, drawing.name, drawing.viewBox]);
 
   // 分享：优先调用系统分享面板，不支持时复制链接
   const handleShare = useCallback(() => {
@@ -482,6 +538,12 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
           <div className="step-tip-overlay">
             <span className="tip-text">{currentStepData?.tip || ''}</span>
           </div>
+          {/* 填充失败提示：画布顶部居中，轻量、自动消失 */}
+          {fillHint && (
+            <div className="fill-hint-overlay">
+              <span className="fill-hint-text">{fillHint}</span>
+            </div>
+          )}
           {/* 右上角最边缘：视图复位按钮，点击恢复原始大小与位置 */}
           <button className="view-reset-btn" onClick={handleViewReset} title="复位视图">
             <img className="view-reset-icon" src={resetIcon} alt="复位视图" />

@@ -10,9 +10,9 @@ struct MainView: View {
             // 用 safeAreaInsets 算出真正可用的画布区域，避免被顶栏/底栏遮住。
             let inset = geo.safeAreaInsets
             let avail = CGRect(
-                x: inset.left,
+                x: inset.leading,
                 y: inset.top,
-                width: max(1, geo.size.width - inset.left - inset.right),
+                width: max(1, geo.size.width - inset.leading - inset.trailing),
                 height: max(1, geo.size.height - inset.top - inset.bottom)
             )
             let canvasRect = canvasRect(in: avail)
@@ -26,7 +26,7 @@ struct MainView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color(.systemSeparator), lineWidth: 1)
+                            .stroke(Color.black.opacity(0.12), lineWidth: 1)
                     )
 
                 // 加载态
@@ -62,7 +62,7 @@ struct MainView: View {
 
                 // 缩放指示（视图偏离 1x 时短暂显示，画布右上角）
                 if vm.showScaleIndicator {
-                    Text("\(vm.view.scale.formatted(.number.precision(.fractionLength(1))))×")
+                    Text(String(format: "%.1f×", vm.view.scale))
                         .font(.headline.monospacedDigit())
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
@@ -136,8 +136,4 @@ struct MainView: View {
             height: side
         )
     }
-}
-
-#Preview {
-    MainView()
 }

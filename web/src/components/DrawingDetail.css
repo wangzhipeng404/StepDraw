@@ -80,6 +80,31 @@
   font-weight: 500;
 }
 
+/* 填充失败提示：画布顶部居中，轻量、自动消失 */
+.fill-hint-overlay {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 999px;
+  z-index: 12;
+  pointer-events: none;
+  animation: fill-hint-in 0.18s ease-out;
+}
+
+.fill-hint-text {
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+@keyframes fill-hint-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* 右上角最边缘：视图复位按钮（正方形，贴合卡片右上角） */
 .view-reset-btn {
   position: absolute;
@@ -591,6 +616,15 @@
 
   .tip-text {
     font-size: 14px;
+  }
+
+  .fill-hint-overlay {
+    top: 10px;
+    padding: 6px 12px;
+  }
+
+  .fill-hint-text {
+    font-size: 12px;
   }
 
   .view-reset-btn {

@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import UniformTypeIdentifiers
 
 /// 主界面状态：播放 + 绘制 + 视图 + 数据，全部集中在这里。
 /// DisplayLink 每帧调 tick()：推进动画 → 引擎渲染。
@@ -112,11 +111,8 @@ final class DrawingViewModel: ObservableObject {
         engine.showGuide = showGuide
 
         // 播放相关状态变化 → outline 层置脏
-        let snap = (drawing.id, currentStep, stepProgress, showGuide)
-        if lastSyncedPlayingState?.id != snap.id
-            || lastSyncedPlayingState?.step != snap.step
-            || lastSyncedPlayingState?.progress != snap.progress
-            || lastSyncedPlayingState?.guide != snap.guide {
+        let snap = (id: drawing.id, step: currentStep, progress: stepProgress, guide: showGuide)
+        if let last = lastSyncedPlayingState, last != snap {
             engine.markPlayingStateDirty()
             lastSyncedPlayingState = snap
         }
@@ -312,10 +308,19 @@ final class DrawingViewModel: ObservableObject {
         engine.liveStroke = UserStroke(
             points: livePoints,
             width: CGFloat(brushWidth),
-            color: UIColor(brushColor),
+            color: brushColorHex,
             kind: brushKind
         )
         engine.markContentDirty()
+    }
+
+    /// 当前画笔色的 hex（UserStroke 平台无关地存 hex 字符串）
+    private var brushColorHex: String {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        if UIColor(brushColor).getRed(&r, green: &g, blue: &b, alpha: &a) {
+            return String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
+        }
+        return "#000000"
     }
 
     func extendStroke(layerPoint: CGPoint) {

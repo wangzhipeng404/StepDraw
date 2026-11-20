@@ -1,6 +1,6 @@
 // 一笔一笔 StepDraw - Canvas 渲染工具
 
-import type { Drawing, Stroke, UserStroke } from '../types';
+import type { Drawing, Stroke, UserAction, UserStroke } from '../types';
 
 /**
  * 将采样点转换为平滑的二次贝塞尔曲线路径
@@ -338,16 +338,18 @@ type CanvasLike = HTMLCanvasElement;
  */
 export interface LayerState {
   size: { cssW: number; cssH: number; dpr: number };
-  /** 轮廓底图离屏缓存 */
+  /** 引导底图离屏缓存（淡色全图案） */
   outlineCache: CanvasLike | null;
+  /** 用户填充离屏缓存（设备像素，画在图案线条之下，涂色本效果） */
+  fillCache: CanvasLike | null;
   /** 已完成步骤离屏缓存 */
   doneCache: CanvasLike | null;
-  /** 用户笔画离屏缓存（仅笔画增删时重建，缩放/平移时直接 drawImage） */
-  userCache: CanvasLike | null;
+  /** 用户手绘笔画离屏缓存（设备像素，画在图案之上） */
+  strokeCache: CanvasLike | null;
   outlineKey: string;
   doneKey: string;
-  /** 历史层已绘制的笔画数（用于增量/重建判断） */
-  historyCount: number;
+  fillKey: string;
+  strokeKey: string;
 }
 
 export interface RenderLayersArgs {
@@ -355,7 +357,7 @@ export interface RenderLayersArgs {
   currentStep: number;
   stepProgress: number;
   showOutline: boolean;
-  userStrokes: UserStroke[];
+  userActions: UserAction[];
   currentStroke: UserStroke | null;
   /** 视图变换（缩放/平移），默认无变换 */
   view?: ViewTransform;
@@ -438,20 +440,214 @@ function rebuildOutlineCache(
   state.outlineCache = cache;
 }
 
-// 重建"用户笔画"离屏缓存（新增/撤销/清除时调用，缩放/平移时复用）
-function rebuildUserCache(state: LayerState, userStrokes: UserStroke[]): void {
+// ============================================================
+// 漫水填充（油漆桶）
+//
+// 图案的封闭区域由抗锯齿、变宽、平滑过的采样点线条围成。手画的圆几乎必然
+// 有 ≤4px 的起收笔缺口，严格逐像素 flood fill 会从缺口漏出去、撞到画布边缘
+// 而误报"不封闭"。
+// 所以这里：
+//  1) 用 alpha 通道判定"墙"（墨线），不靠颜色容差对比；
+//  2) 对墙做 1 像素二值膨胀，把 ≤2px 的缺口自动弥合；
+//  3) 墙内做 flood fill，碰到画布边缘 = 真的不封闭。
+// 结果是一张与画布同尺寸（设备像素）、区域外全透明的位图，存进 UserFill.image。
+// ============================================================
+
+// 墙的 alpha 阈值：≥ 该值算墨线（抗锯齿半透明边缘落在墙和背景之间，
+// 膨胀一步后能被两侧任一邻域收编，不会成为泄漏通道）。
+const WALL_ALPHA = 100;
+// 墙膨胀半径（设备像素）：手画线条缺口通常 ≤4px（2 设备像素），膨胀 1px
+// 即可把两侧墙接上；太大反而会把细区域填死。
+const WALL_DILATE = 1;
+
+/** 对二值墙图做 box 膨胀（每个 3x3 邻域有墙即成墙），r 次 */
+function dilateWall(src: ImageData, r: number): Uint8Array {
+  const w = src.width, h = src.height;
+  let prev = new Uint8Array(w * h);
+  const sd = src.data;
+  for (let i = 0; i < w * h; i++) prev[i] = sd[i * 4 + 3] >= WALL_ALPHA ? 1 : 0;
+  const cur = new Uint8Array(w * h);
+  for (let k = 0; k < r; k++) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (prev[i]) { cur[i] = 1; continue; }
+        let hit = 0;
+        for (let dy = -1; dy <= 1 && !hit; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            if (prev[yy * w + xx]) { hit = 1; break; }
+          }
+        }
+        cur[i] = hit ? 1 : 0;
+      }
+    }
+    // swap
+    const tmp = prev; prev = cur;
+  }
+  return prev;
+}
+
+/** floodFill 结果：成功带位图，失败带原因（'border'=不封闭, 'online'=点在墨线上, 'oob'=落点越界） */
+export type FillResult =
+  | { ok: true; canvas: HTMLCanvasElement }
+  | { ok: false; reason: 'border' | 'online' | 'oob' };
+
+/**
+ * 在 underlay（当前墨线合成图，设备像素、透明底）上做漫水填充。
+ */
+export function floodFill(
+  underlay: HTMLCanvasElement,
+  seedX: number,
+  seedY: number,
+  color: string
+): FillResult {
+  const w = underlay.width;
+  const h = underlay.height;
+  const src = underlay.getContext('2d');
+  if (!src || w === 0 || h === 0) return { ok: false, reason: 'oob' };
+
+  const sx = Math.floor(seedX);
+  const sy = Math.floor(seedY);
+  if (sx < 0 || sy < 0 || sx >= w || sy >= h) return { ok: false, reason: 'oob' };
+
+  const wall = dilateWall(src.getImageData(0, 0, w, h), WALL_DILATE);
+  const fr = parseInt(color.slice(1, 3), 16);
+  const fg = parseInt(color.slice(3, 5), 16);
+  const fb = parseInt(color.slice(5, 7), 16);
+
+  // 种子本身就在墙上（点在了线条上）：无处可填
+  if (wall[sy * w + sx]) return { ok: false, reason: 'online' };
+
+  // 只遍历"非墙"像素做连通域，墙即天然边界
+  const visited = new Uint8Array(w * h);
+  const stack: number[] = [sy * w + sx];
+  let touchesBorder = false;
+
+  while (stack.length > 0) {
+    const p = stack.pop()!;
+    if (visited[p] || wall[p]) continue;
+    visited[p] = 1;
+    const x = p % w;
+    const y = (p - x) / w;
+    // 连通域碰到画布边缘 = 填的是"图案外的无限背景"，说明该处不封闭。
+    // 图案居中且四周留 10% 边距，正常封闭区域绝不会碰到边缘，可提前终止。
+    if (x === 0 || x === w - 1 || y === 0 || y === h - 1) {
+      touchesBorder = true;
+      break;
+    }
+    if (x > 0) stack.push(p - 1);
+    if (x < w - 1) stack.push(p + 1);
+    if (y > 0) stack.push(p - w);
+    if (y < h - 1) stack.push(p + w);
+  }
+
+  if (touchesBorder) return { ok: false, reason: 'border' };
+
+  // 只输出被填充的像素（区域外全透明），一次 putImageData
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h;
+  const outCtx = out.getContext('2d');
+  if (!outCtx) return { ok: false, reason: 'oob' };
+  const outData = outCtx.createImageData(w, h);
+  const od = outData.data;
+  for (let p = 0; p < visited.length; p++) {
+    if (!visited[p]) continue;
+    const i = p * 4;
+    od[i] = fr; od[i + 1] = fg; od[i + 2] = fb; od[i + 3] = 255;
+  }
+  outCtx.putImageData(outData, 0, 0);
+  return { ok: true, canvas: out };
+}
+
+/**
+ * 合成"填充用底图"（设备像素、透明底）。
+ * 墙 = 整幅引导线（画浓一点）+ 已完成步骤 + 当前步已画完的笔 + 用户内容，
+ * 全部不透明。
+ * 为什么不复用 outlineCache/doneCache：
+ *  - 引导层是 15% 半透明，alpha < WALL_ALPHA 不算墙，会把"点还没播放到的步骤"
+ *    的区域判成不封闭；这里把引导线画浓，作为墙用（只用于找墙，不上屏）。
+ *  - doneCache 只缓存 < currentStep 的步，缺当前步。
+ */
+export function buildUnderlay(
+  size: { cssW: number; cssH: number; dpr: number },
+  drawing: Drawing,
+  currentStep: number,
+  stepProgress: number,
+  userActions: UserAction[]
+): HTMLCanvasElement | null {
+  if (size.cssW === 0 || size.cssH === 0) return null;
+  const dpr = size.dpr;
+  const w = Math.max(1, Math.round(size.cssW * dpr));
+  const h = Math.max(1, Math.round(size.cssH * dpr));
+  const under = document.createElement('canvas');
+  under.width = w;
+  under.height = h;
+  const ctx = under.getContext('2d');
+  if (!ctx) return null;
+
+  const { scale, offsetX, offsetY } = getTransform(size, drawing);
+
+  // 整幅引导线画浓（作为墙），让"点未播放步骤的区域"也能封闭
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+  for (const step of drawing.steps) {
+    for (const stroke of step.strokes) {
+      renderStroke(ctx, stroke, 1, '#000', false);
+    }
+  }
+
+  // 用户内容（填充位图 + 笔画）也作为墙，设备像素空间
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  for (const a of userActions) {
+    if (a.kind === 'fill') {
+      ctx.drawImage(a.fill.image, 0, 0);
+    } else {
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      renderUserStroke(ctx, a.stroke);
+      ctx.restore();
+    }
+  }
+  return under;
+}
+
+// 重建"用户内容"离屏缓存（填充/笔画增删、重算填充位图时调用，缩放/平移时复用）。
+// 设备像素空间（无 dpr 变换），渲染时整块 blit。
+// 重建"用户填充"离屏缓存（设备像素空间，渲染在图案线条之下，涂色本效果）。
+// 填充位图与画布同尺寸，直接平铺。
+function rebuildFillCache(state: LayerState, userActions: UserAction[]): void {
   const cache = createCacheCanvas(state.size);
   const ctx = cache.getContext('2d');
   if (!ctx) {
-    state.userCache = null;
+    state.fillCache = null;
+    return;
+  }
+  for (const a of userActions) {
+    if (a.kind === 'fill') ctx.drawImage(a.fill.image, 0, 0);
+  }
+  state.fillCache = cache;
+}
+
+// 重建"用户手绘笔画"离屏缓存（设备像素空间，渲染在图案线条之上）
+function rebuildStrokeCache(state: LayerState, userActions: UserAction[]): void {
+  const cache = createCacheCanvas(state.size);
+  const ctx = cache.getContext('2d');
+  if (!ctx) {
+    state.strokeCache = null;
     return;
   }
   const dpr = state.size.dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  for (const stroke of userStrokes) {
-    renderUserStroke(ctx, stroke);
+  for (const a of userActions) {
+    if (a.kind === 'stroke') renderUserStroke(ctx, a.stroke);
   }
-  state.userCache = cache;
+  state.strokeCache = cache;
 }
 
 // 绘制当前步骤的动画部分（viewBox 变换 + 进度映射）。
@@ -543,7 +739,7 @@ export function renderLayers(
   state: LayerState | null,
   args: RenderLayersArgs
 ): LayerState | null {
-  const { drawing, currentStep, stepProgress, showOutline, userStrokes, currentStroke } = args;
+  const { drawing, currentStep, stepProgress, showOutline, userActions, currentStroke } = args;
   if (!outlineCanvas || !historyCanvas || !brushCanvas || drawing.steps.length === 0) return state;
 
   const dpr = window.devicePixelRatio || 1;
@@ -556,11 +752,13 @@ export function renderLayers(
     state = {
       size: { cssW: displayWidth, cssH: displayHeight, dpr },
       outlineCache: null,
+      fillCache: null,
       doneCache: null,
-      userCache: null,
+      strokeCache: null,
       outlineKey: '',
       doneKey: '',
-      historyCount: 0
+      fillKey: '',
+      strokeKey: ''
     };
   }
 
@@ -596,6 +794,18 @@ export function renderLayers(
     state.doneKey = doneKey;
   }
 
+  // ---- 用户内容：填充（图案下）与笔画（图案上）分开缓存，各自按 key 重建 ----
+  // 增/撤销/清除都改变数组长度，按操作数做 key 即可
+  const userCount = String(userActions.length);
+  if (state.fillKey !== userCount) {
+    rebuildFillCache(state, userActions);
+    state.fillKey = userCount;
+  }
+  if (state.strokeKey !== userCount) {
+    rebuildStrokeCache(state, userActions);
+    state.strokeKey = userCount;
+  }
+
   const view = args.view || IDENTITY_VIEW;
   const cssW = state.size.cssW;
   const cssH = state.size.cssH;
@@ -605,6 +815,10 @@ export function renderLayers(
   if (state.outlineCache) {
     ctx.drawImage(state.outlineCache, 0, 0, cssW, cssH);
   }
+  // 填充在图案线条之下：颜色垫底，黑色轮廓压在上面（涂色本效果）
+  if (state.fillCache) {
+    ctx.drawImage(state.fillCache, 0, 0, cssW, cssH);
+  }
   if (state.doneCache) {
     ctx.drawImage(state.doneCache, 0, 0, cssW, cssH);
   }
@@ -612,17 +826,12 @@ export function renderLayers(
   // 当前步骤的动画部分（在视图变换之上再叠加 viewBox 变换）
   renderCurrentStep(ctx, state.size, drawing, currentStep, stepProgress);
 
-  // ---- history 层：用户笔画走离屏缓存，叠加视图变换 ----
-  // 笔画数变化（新增/撤销/清除）时重建缓存，缩放/平移时仅 drawImage 一次
-  if (userStrokes.length !== state.historyCount) {
-    rebuildUserCache(state, userStrokes);
-    state.historyCount = userStrokes.length;
-  }
+  // ---- history 层：用户手绘笔画走离屏缓存，叠加视图变换 ----
   historyCtx.setTransform(1, 0, 0, 1, 0, 0);
   historyCtx.clearRect(0, 0, targetWidth, targetHeight);
   applyViewTransform(historyCtx, dpr, cssW, cssH, view);
-  if (state.userCache) {
-    historyCtx.drawImage(state.userCache, 0, 0, cssW, cssH);
+  if (state.strokeCache) {
+    historyCtx.drawImage(state.strokeCache, 0, 0, cssW, cssH);
   }
 
   // ---- brush 层（仅当前一笔），叠加视图变换 ----
@@ -663,8 +872,11 @@ export function exportLayersToDataURL(
   ctx.fillRect(0, 0, out.width, out.height);
 
   if (state.outlineCache) ctx.drawImage(state.outlineCache, 0, 0, out.width, out.height);
+  // 填充在图案线条之下（设备像素空间，与 out 尺寸一致，直接平铺）
+  if (state.fillCache) ctx.drawImage(state.fillCache, 0, 0);
   if (state.doneCache) ctx.drawImage(state.doneCache, 0, 0, out.width, out.height);
-  if (state.userCache) ctx.drawImage(state.userCache, 0, 0, out.width, out.height);
+  // 用户手绘笔画在图案之上
+  if (state.strokeCache) ctx.drawImage(state.strokeCache, 0, 0);
 
   // 当前步骤动画部分（viewBox 变换，dpr 缩放）
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

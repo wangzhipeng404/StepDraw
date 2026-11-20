@@ -3,10 +3,12 @@
   <!-- 导航栏 -->
   <view class="navbar">
     <view class="navbar-brand">
-      <view class="navbar-icon"></view>
+      <view class="navbar-icon">
+        <image src="/images/logo.png" style="width: 72rpx;height: 72rpx;border-radius: 4px;" />
+      </view>
       <view class="navbar-text">
-        <text class="navbar-title">StepDraw</text>
-        <text class="navbar-subtitle">一笔一笔学画画</text>
+        <text class="navbar-title">Step Draw</text>
+        <text class="navbar-subtitle">一笔一划学画画</text>
       </view>
     </view>
   </view>

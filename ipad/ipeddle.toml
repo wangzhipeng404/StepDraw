@@ -1,0 +1,12 @@
+# ipeddle 应用配置（ipeddle 在 Linux 上交叉编译 iOS，产出未签名 IPA）。
+# 路径相对本目录（ipad/，即 Package.swift 所在处）解析。
+# 详见：https://github.com/Neguiolidas/ipeddle
+[app]
+product = "StepDraw"
+bundle-id = "com.stepdraw.ipad"
+display-name = "一笔一笔"
+version = "1.0"
+build = "1"
+icon = "Icon.png"
+info-plist = "StepDraw/Info.plist"
+device-family = ["ipad"]

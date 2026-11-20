@@ -1,5 +1,5 @@
 import SwiftUI
-import UIKit
+import Foundation
 
 // MARK: - 图案数据（结构与 web/public/data 一致）
 
@@ -112,30 +112,16 @@ enum BrushKind: String, CaseIterable, Identifiable {
     }
 }
 
-/// 用户的一笔（以内容坐标存储，缩放/平移只是显示层变换，不影响数据）
+/// 用户的一笔（以内容坐标存储，缩放/平移只是显示层变换，不影响数据）。
+/// color 存 hex 字符串（平台无关，ipeddle 在 Linux 上构建时没有 UIKit）。
 struct UserStroke: Equatable {
     var points: [CGPoint]
     var width: Double
-    var color: UIColor
+    var color: String
     var kind: BrushKind
 }
 
 // MARK: - 颜色工具
-
-extension UIColor {
-    convenience init(hex: String) {
-        var s = hex
-        if s.hasPrefix("#") { s.removeFirst() }
-        var v: UInt64 = 0
-        Scanner(string: s).scanHexInt64(&v)
-        self.init(
-            red: CGFloat((v & 0xFF0000) >> 16) / 255,
-            green: CGFloat((v & 0x00FF00) >> 8) / 255,
-            blue: CGFloat(v & 0x0000FF) / 255,
-            alpha: 1
-        )
-    }
-}
 
 extension Color {
     init(hex: String) {

@@ -25,7 +25,7 @@ struct TopBar: View {
                             .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
-                    if let tip = d.steps[vm.currentStep]?.tip, !tip.isEmpty {
+                    if let tip = d.steps[vm.currentStep].tip, !tip.isEmpty {
                         Text(tip)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)

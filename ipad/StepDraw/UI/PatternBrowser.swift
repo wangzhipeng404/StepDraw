@@ -57,7 +57,9 @@ private struct GroupListView: View {
         if model.isLoading {
             ProgressView("加载分类…").frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let msg = model.loadError {
-            ContentUnavailableView(msg, systemImage: "wifi.exclamationmark") {
+            ContentUnavailableView {
+                Label(msg, systemImage: "wifi.exclamationmark")
+            } actions: {
                 Button("重试") { Task { await model.loadIfNeeded(force: true) } }
             }
         } else {
@@ -175,8 +177,10 @@ private struct DrawingGridView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
 
-            if let msg = model.error {
-                ContentUnavailableView(msg, systemImage: "wifi.exclamationmark") {
+            if let msg = model.loadError {
+                ContentUnavailableView {
+                    Label(msg, systemImage: "wifi.exclamationmark")
+                } actions: {
                     Button("重试") { Task { await model.load() } }
                 }
                 .padding(.top, 40)
@@ -251,7 +255,7 @@ struct ThumbnailCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color(.systemSeparator), lineWidth: 0.5)
+                        .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
                 )
 
                 HStack(spacing: 4) {
@@ -319,7 +323,7 @@ final class PatternBrowserModel: ObservableObject {
 @MainActor
 final class DrawingGridModel: ObservableObject {
     @Published var items: [DrawingItem] = []
-    @Published var error: String?
+    @Published var loadError: String?
     private(set) var loadedCount = 24
     private let page = 24
     private let categoryId: String
@@ -329,13 +333,13 @@ final class DrawingGridModel: ObservableObject {
     }
 
     func load() async {
-        error = nil
+        loadError = nil
         loadedCount = 24
         do {
             let cat = try await DataStore.shared.loadCategoryIndex(categoryId: categoryId)
             items = cat.items
         } catch {
-            error = "加载图案列表失败，请检查网络后重试"
+            loadError = "加载图案列表失败，请检查网络后重试"
         }
     }
 

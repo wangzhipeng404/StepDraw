@@ -22,8 +22,8 @@
 }
 
 .navbar-icon {
-  width: 60rpx;
-  height: 60rpx;
+  width: 72rpx;
+  height: 72rpx;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 16rpx;
   display: flex;

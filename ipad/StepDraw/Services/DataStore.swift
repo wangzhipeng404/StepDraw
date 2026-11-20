@@ -61,16 +61,23 @@ final class DataStore: ObservableObject {
     /// 缩略图 URL（直接走远程，由 Image 层缓存）
     func thumbnailURL(categoryId: String, item: DrawingItem) -> URL? {
         // 优先用 item.thumbnail（相对路径，如 "quickdraw/cat/123.png"）
-        var path: String? = item.thumbnail
-        if let path, !path.isEmpty {
+        if let thumb = item.thumbnail, !thumb.isEmpty {
             // 去掉可能存在的开头斜杠
-            while path.hasPrefix("/") { path = String(path.dropFirst()) }
-            return baseURL.appendingPathComponent(path)
+            let cleaned = String(thumb.drop(while: { $0 == "/" }))
+            return baseURL.appendingPathComponent(cleaned)
         }
         return baseURL.appendingPathComponent("\(categoryId)/\(item.id).png")
     }
 
     // MARK: - 下载（磁盘缓存 + 去重）
+
+    /// inFlight / diskCache 的统一加锁入口。
+    /// 放在同步方法里，避免 NSLock 在 async 上下文的并发警告（Swift 6 会升级为错误）。
+    private func withLock<T>(_ body: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
+    }
 
     /// 拉取并缓存一个资源。`force` 时跳过内存/磁盘缓存强制走网络。
     private func fetch(_ path: String, force: Bool = false) async throws -> Data {
@@ -78,37 +85,28 @@ final class DataStore: ObservableObject {
         let url = baseURL.appending(path: path)
 
         // 内存缓存
-        lock.lock()
-        if !force, let cached = diskCache[key] {
-            lock.unlock()
+        if !force, let cached = withLock({ diskCache[key] }) {
             return cached
         }
         // 进行中的同 key 请求去重
-        let existing = inFlight[key]
-        lock.unlock()
-
-        if let existing {
+        if let existing = withLock({ inFlight[key] }) {
             return try await existing.value
         }
 
         let task = Task {
             try await performFetch(path: key, url: url, force: force)
         }
-        lock.lock()
-        inFlight[key] = task
-        lock.unlock()
+        withLock { inFlight[key] = task }
 
         do {
             let data = try await task.value
-            lock.lock()
-            inFlight[key] = nil
-            diskCache[key] = data
-            lock.unlock()
+            withLock {
+                inFlight[key] = nil
+                diskCache[key] = data
+            }
             return data
         } catch {
-            lock.lock()
-            inFlight[key] = nil
-            lock.unlock()
+            withLock { inFlight[key] = nil }
             throw error
         }
     }
@@ -117,7 +115,6 @@ final class DataStore: ObservableObject {
         // 磁盘缓存
         let fileURL = cacheURL.appendingPathComponent(path)
         if !force {
-            let fm = FileManager.default
             if let data = try? Data(contentsOf: fileURL), !data.isEmpty {
                 return data
             }
@@ -151,7 +148,7 @@ final class DataStore: ObservableObject {
 
     var cacheSizeBytes: Int64 {
         let fm = FileManager.default
-        guard let en = try? fm.enumerator(at: cacheURL, includingPropertiesForKeys: [.fileSizeKey]) else {
+        guard let en = fm.enumerator(at: cacheURL, includingPropertiesForKeys: [.fileSizeKey]) else {
             return 0
         }
         var total: Int64 = 0

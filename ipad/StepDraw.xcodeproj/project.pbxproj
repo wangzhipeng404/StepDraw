@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2A00000000000000000000B1 /* StepDrawApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000F1 /* StepDrawApp.swift */; };
+		2A00000000000000000000B1 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000F1 /* main.swift */; };
 		2A00000000000000000000B2 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000F2 /* Models.swift */; };
 		2A00000000000000000000B3 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000F3 /* DataStore.swift */; };
 		2A00000000000000000000B4 /* ViewTransform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000F4 /* ViewTransform.swift */; };
@@ -20,7 +20,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		1A00000000000000000000F1 /* StepDrawApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepDrawApp.swift; sourceTree = "<group>"; };
+		1A00000000000000000000F1 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		1A00000000000000000000F2 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		1A00000000000000000000F3 /* DataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStore.swift; sourceTree = "<group>"; };
 		1A00000000000000000000F4 /* ViewTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewTransform.swift; sourceTree = "<group>"; };
@@ -56,7 +56,7 @@
 		3A00000000000000000000C1 /* StepDraw */ = {
 			isa = PBXGroup;
 			children = (
-				1A00000000000000000000F1 /* StepDrawApp.swift */,
+				1A00000000000000000000F1 /* main.swift */,
 				3A00000000000000000000C3 /* Models */,
 				3A00000000000000000000C4 /* Services */,
 				3A00000000000000000000C5 /* Geometry */,
@@ -196,7 +196,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2A00000000000000000000B1 /* StepDrawApp.swift in Sources */,
+				2A00000000000000000000B1 /* main.swift in Sources */,
 				2A00000000000000000000B2 /* Models.swift in Sources */,
 				2A00000000000000000000B3 /* DataStore.swift in Sources */,
 				2A00000000000000000000B4 /* ViewTransform.swift in Sources */,

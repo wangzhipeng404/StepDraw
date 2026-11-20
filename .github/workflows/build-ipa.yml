@@ -1,10 +1,19 @@
-# 云上构建 iPad 应用 → 未签名 IPA
+# 云上构建 iPad 应用 → 未签名 IPA（ipeddle 版）
 #
-# 用途：在 GitHub Actions 的 macOS runner 上编译 StepDraw，产出一个【未签名】IPA，
+# 用途：在 GitHub Actions 的 Ubuntu runner 上用 ipeddle（Swift for Linux + iOS SDK
+#       交叉编译）构建 StepDraw，产出一个【未签名】IPA，
 #       下载后本地用 Sideloadly / AltStore 自签（免费 Apple ID）安装。
+#
+# 为什么用 ipeddle 而不是 xcodebuild：
+#   之前走 macos-15 runner + xcodebuild，但 macOS runner 是 10 倍计费。
+#   ipeddle 在 Linux 上就能交叉编译 iOS，跑在便宜的 ubuntu-latest（1 倍计费），
+#   首次 setup 约 5-10 分钟（下载 Swift 工具链 + iOS SDK），之后命中缓存很快。
 #
 # 为什么是"未签名"：CI 上没有你的签名私钥/描述文件。把私钥塞进 Secrets 既不安全
 #       又需要付费开发者账号。未签名 IPA + 本地重签是免费、最安全的主流做法。
+#
+# 前提：ipad/ 下是一份纯 SwiftPM 包（Package.swift + ipeddle.toml），
+#       与 Xcode 工程共用同一份源码（ipad/StepDraw/）。
 #
 # 触发：默认手动（Actions 页点 Run workflow）；push 到 main 且只改了 ipad/** 时自动构建。
 
@@ -29,68 +38,63 @@ permissions:
   contents: read
 
 env:
-  XCODE_PROJ: ipad/StepDraw.xcodeproj
-  XCODE_SCHEME: StepDraw
+  IPAPPEDLE_DIR: ipad
+  IPEDDLE_HOME: ${{ github.workspace }}/.ipeddle-home
+  # ipeddle 的 -c 只认小写 release/debug，workflow 输入是 Release/Debug
+  BUILD_CFG: ${{ toLower(inputs.configuration || 'Release') }}
 
 jobs:
   build:
-    # macos-15 自带 Xcode 16.x，满足 iOS 17 部署目标。
-    runs-on: macos-15
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
 
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 显示 Xcode 版本
-        run: |
-          xcodebuild -version
-          xcodebuild -showsdks | grep -A5 'iOS SDKs'
+      - name: 恢复 ipeddle 工具链缓存
+        # 放在 setup 之前：命中缓存时 setup 是幂等的，会跳过下载（~4GB / 5-10 分钟）。
+        # key 用静态值（工具链与本项目代码无关），最大化命中；ipeddle 自身升级时
+        # setup 检测到版本不一致会自动更新。
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.IPEDDLE_HOME }}
+          key: ipeddle-toolchain-${{ runner.os }}-1
+          restore-keys: |
+            ipeddle-toolchain-${{ runner.os }}-
 
-      - name: 清理派生数据
-        run: rm -rf ~/Library/Developer/Xcode/DerivedData/StepDraw-* || true
-
-      - name: Archive（关闭代码签名 → 未签名 app）
+      - name: 安装 Python 依赖
         run: |
-          xcodebuild archive \
-            -project $XCODE_PROJ \
-            -scheme $XCODE_SCHEME \
-            -configuration ${{ inputs.configuration || 'Release' }} \
-            -destination 'generic/platform=iOS' \
-            -archivePath ./build/StepDraw \
-            SKIP_INSTALL=NO \
-            BUILD_LIBRARY_FOR_DISTRIBUTION=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=- \
-            || {
-              echo "::error::xcodebuild archive 失败，见上方日志"
-              exit 1
-            }
+          python3 -m pip install --upgrade pip
+          # [icons] 带上 Pillow，能把 1024 图标缩放到各尺寸（没有也能跑，只是直接复制）
+          python3 -m pip install "ipeddle[icons]"
+          ipeddle --version || python3 -m ipeddle --version
 
-      - name: 检查产物
+      - name: 安装 Swift for Linux + iOS 链接器 + iOS SDK
         run: |
-          APP=./build/StepDraw.xcarchive/Products/Applications/StepDraw.app
-          if [ ! -d "$APP" ]; then
-            echo "::error::未找到 StepDraw.app，xcarchive 内容如下："
-            find ./build/StepDraw.xcarchive -maxdepth 3 -type d
-            exit 1
-          fi
-          echo "找到 app：$(du -sh "$APP" | cut -f1)"
-          # 打印 Info.plist 关键字段，便于核对
-          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist" || true
-          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist" || true
+          # 无缓存时首次约 5-10 分钟（下载约 4GB）；命中缓存则很快
+          ipeddle setup
 
-      - name: 手动打包成未签名 IPA
+      - name: 显示环境自检
         run: |
-          # IPA 结构：Payload/StepDraw.app/...
-          mkdir -p build/Payload
-          cp -R ./build/StepDraw.xcarchive/Products/Applications/StepDraw.app build/Payload/
-          cd build
-          zip -qry ../StepDraw_unsigned.ipa Payload
-          cd ..
+          ipeddle doctor || python3 -m ipeddle doctor || true
+
+      - name: 用 ipeddle 构建未签名 IPA
+        run: |
+          # -o 直接指定输出路径；--inspect 顺便校验产物（架构 / 最低 iOS / 符号完整性）
+          ipeddle build "$IPAPPEDLE_DIR" -c "$BUILD_CFG" -o ./StepDraw_unsigned.ipa --inspect \
+            || python3 -m ipeddle build "$IPAPPEDLE_DIR" -c "$BUILD_CFG" -o ./StepDraw_unsigned.ipa --inspect
+
+      - name: 校验产物
+        run: |
           ls -lh StepDraw_unsigned.ipa
-          echo "已生成 StepDraw_unsigned.ipa（未签名）"
+          # IPA 就是个 zip，解包看一眼结构 + Info.plist 关键字段
+          mkdir -p _ipa_check && (cd _ipa_check && unzip -q ../StepDraw_unsigned.ipa)
+          echo "=== IPA 结构 ==="
+          find _ipa_check -maxdepth 2
+          echo "=== Info.plist ==="
+          cat _ipa_check/Payload/StepDraw.app/Info.plist || true
+          rm -rf _ipa_check
 
       - name: 上传 IPA（下载用）
         uses: actions/upload-artifact@v4
@@ -99,12 +103,3 @@ jobs:
           path: StepDraw_unsigned.ipa
           if-no-files-found: error
           retention-days: 14
-
-      # 同时保留 xcarchive，万一之后想直接签名/分发可复用
-      - name: 上传 xcarchive（可选）
-        uses: actions/upload-artifact@v4
-        with:
-          name: StepDraw_xcarchive
-          path: ./build/StepDraw.xcarchive
-          if-no-files-found: warn
-          retention-days: 7

@@ -9,6 +9,8 @@ import markerIcon from '../assets/markpen.png';
 import markerIconActive from '../assets/mark_pen_active.png';
 import brushIcon from '../assets/ink_brush.png';
 import brushIconActive from '../assets/ink_brush_active.png';
+import bucketIcon from '../assets/bucket.png';
+import bucketIconActive from '../assets/bucket_active.png';
 
 // 笔画：一组点构成的线条
 export interface Stroke {
@@ -62,15 +64,31 @@ export interface UserStroke {
 }
 
 // 画笔类型
-export type StrokeType = 'pen' | 'pencil' | 'marker' | 'brush';
+export type StrokeType = 'pen' | 'pencil' | 'marker' | 'brush' | 'fill';
 
 // 画笔类型定义
 export const STROKE_TYPES: { key: StrokeType; name: string; icon: string; iconActive: string }[] = [
   { key: 'pen', name: '钢笔', icon: penIcon, iconActive: penIconActive },
   { key: 'pencil', name: '铅笔', icon: pencilIcon, iconActive: pencilIconActive },
   { key: 'marker', name: '马克笔', icon: markerIcon, iconActive: markerIconActive },
-  { key: 'brush', name: '毛笔', icon: brushIcon, iconActive: brushIconActive }
+  { key: 'brush', name: '毛笔', icon: brushIcon, iconActive: brushIconActive },
+  { key: 'fill', name: '填充', icon: bucketIcon, iconActive: bucketIconActive }
 ];
 
 // 绘图模式
 export type DrawMode = 'demo' | 'draw'; // 演示模式 | 绘图模式
+
+// 颜色填充（油漆桶）：点选封闭区域，区域按当前颜色填满。
+// image 是填充区域位图（设备像素、区域外全透明），渲染时一次 drawImage 即可；
+// 撤销/清除与笔画共用 userActions 栈，行为同构。
+export interface UserFill {
+  key: string;
+  seed: [number, number]; // 点击落点（图像坐标，CSS 像素）
+  color: string;
+  image: HTMLCanvasElement;
+}
+
+// 用户操作栈：笔画与填充按时间序统一入栈，撤销/清除按序弹出
+export type UserAction =
+  | { kind: 'stroke'; stroke: UserStroke }
+  | { kind: 'fill'; fill: UserFill };

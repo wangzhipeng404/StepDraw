@@ -28,11 +28,14 @@ miniprogram/project.config.json
 
 # iPad / iOS subproject
 ipad/build/
+ipad/.build/
 *.ipa
 *.xcarchive/
 DerivedData/
 *.xcuserstate
 ipad/**/*.xcuserstate
+# ipeddle 工作目录（在仓库外的 ~/.local/share/ipeddle，这里兜底）
+/.build/
 
 # Data files (large datasets)
 quickdraw_animals/*.jsonl
@@ -74,3 +77,4 @@ cocomaterial_svg/
 quickdraw_animals/
 quickdraw_animals_json/
 linedrawer_json_out/
+*/**/.build/
