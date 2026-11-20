@@ -124,6 +124,8 @@ final class LayerCache {
     let size: CGSize
     let scale: CGFloat
     private let context: CGContext
+    /// 生成一次后缓存的位图，blit 时复用（避免每帧重复 makeImage 大位图拷贝）
+    private(set) var image: CGImage?
 
     init?(size: CGSize, scale: CGFloat) {
         guard size.width > 0, size.height > 0 else { return nil }
@@ -144,8 +146,14 @@ final class LayerCache {
 
     var contextAccess: CGContext { context }
 
+    /// 内容画完后调用，把位图固化成 CGImage 供 blit 复用
+    func finalizeImage() {
+        image = context.makeImage()
+    }
+
     func blit(into ctx: CGContext, view: ViewTransform, size: CGSize) {
-        guard let img = context.makeImage() else { return }
+        if image == nil { finalizeImage() }
+        guard let img = image else { return }
         let c = CGPoint(x: size.width / 2, y: size.height / 2)
         let s = view.scale
         ctx.saveGState()
@@ -339,6 +347,7 @@ final class DrawingEngine {
             }
         }
         cache.contextAccess.restoreGState()
+        cache.finalizeImage()
         guideCache = cache
         return true
     }
@@ -368,6 +377,7 @@ final class DrawingEngine {
             }
         }
         cache.contextAccess.restoreGState()
+        cache.finalizeImage()
         doneCache = cache
         return true
     }
@@ -386,6 +396,7 @@ final class DrawingEngine {
             renderUserStroke(cache.contextAccess, stroke)
         }
         cache.contextAccess.restoreGState()
+        cache.finalizeImage()
         userCache = cache
         return true
     }
@@ -461,17 +472,17 @@ final class DrawingEngine {
     /// 笔尖预览小图（懒生成）
     private var pencilImage: CGImage? = {
         guard let cs = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
-        let w = 48, h = 72
+        let w: CGFloat = 48, h: CGFloat = 72
         guard let ctx = CGContext(
-            data: nil, width: w, height: h,
+            data: nil, width: Int(w), height: Int(h),
             bitsPerComponent: 8, bytesPerRow: 0, space: cs,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return nil }
         // 笔尖三角
         ctx.setFillColor(UIColor(hex: "#2B2B2B").cgColor)
         ctx.move(to: CGPoint(x: 0, y: h * 0.32))
-        ctx.addLine(to: CGPoint(x: CGFloat(w), y: h * 0.32))
-        ctx.addLine(to: CGPoint(x: CGFloat(w) / 2, y: 0))
+        ctx.addLine(to: CGPoint(x: w, y: h * 0.32))
+        ctx.addLine(to: CGPoint(x: w / 2, y: 0))
         ctx.closePath()
         ctx.fillPath()
         // 金属箍

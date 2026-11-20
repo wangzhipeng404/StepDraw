@@ -1,9 +1,8 @@
 import Foundation
-import UIKit
 
 /// 数据加载 + 缓存。
 /// 远程数据来自 GitHub Pages（与 web 端同源），磁盘缓存在 Caches 目录。
-/// 缓存 key 与 URL 一致；index.json 加时间戳绕过 NSURLCache，保证拿到最新索引。
+/// 缓存 key 与 URL 一致；index.json 强制刷新，保证拿到最新索引。
 final class DataStore: ObservableObject {
     static let shared = DataStore()
 
@@ -36,10 +35,12 @@ final class DataStore: ObservableObject {
     @Published var mainIndex: MainIndex?
 
     func loadMainIndex(force: Bool = false) async throws -> MainIndex {
-        if let cached = mainIndex, !force { return cached }
+        if !force, let cached = mainIndex { return cached }
         let data = try await fetch("index.json", force: force)
         let index = try JSONDecoder().decode(MainIndex.self, from: data)
-        await MainActor.run { self.mainIndex = index }
+        await MainActor.run {
+            self.mainIndex = index
+        }
         return index
     }
 

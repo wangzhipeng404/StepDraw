@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <defs>
+    <clipPath id="bg-clip">
+      <rect x="36" y="36" width="528" height="528" rx="100" ry="100"/>
+    </clipPath>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3a2060;stop-opacity:1"/>
+      <stop offset="50%" style="stop-color:#5a3a80;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#7a50a0;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#7BB3F0;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9B59B6;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#C39BD3;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-green" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5DAE6E;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#82D490;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-red" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E74C6F;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#F4888E;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3BAEA9;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#7DD4CF;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B35;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#FFA07A;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-yellow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="100%" style="stop-color:#FFE066;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E91E8C;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#F472B6;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="grad-cat" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1"/>
+      <stop offset="50%" style="stop-color:#7BB3F0;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#3BAEA9;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 圆角方形背景 -->
+  <rect x="0" y="0" width="600" height="600" fill="url(#bg-grad)"/>
+
+  <g clip-path="url(#bg-clip)">
+
+<!-- ====== 猫的轮廓 ====== -->
+    <g transform="translate(242.7082, 472.3192) scale(0.020511, -0.020511)" fill="none" stroke="url(#grad-cat)" stroke-width="180" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M5429 12789 c-8 -5 -28 -9 -46 -9 -112 0 -355 -95 -526 -206 -37 -24
+-73 -42 -78 -38 -5 3 -8 0 -7 -6 2 -6 -14 -17 -35 -24 -70 -25 -205 -146 -350
+-316 -50 -58 -95 -105 -101 -105 -33 0 -196 28 -226 38 -70 24 -1037 3 -1267
+-27 -24 -3 -43 -2 -43 2 0 13 94 60 135 66 61 10 71 19 57 50 -11 24 -16 26
+-77 26 -65 0 -145 -13 -175 -29 -19 -10 -59 -18 -130 -27 -30 -3 -57 -7 -60
+-9 -7 -5 -214 -28 -350 -40 -133 -12 -175 -22 -610 -152 -63 -19 -120 -36
+-127 -38 -7 -2 -38 33 -69 78 -112 161 -272 289 -438 351 -120 45 -411 106
+-508 106 l-49 0 -23 -50 c-13 -27 -28 -56 -35 -64 -6 -7 -11 -18 -9 -22 4 -15
+-25 -109 -36 -116 -17 -11 -9 -453 10 -545 18 -90 53 -187 88 -246 l25 -41
+-67 -66 c-126 -122 -220 -306 -282 -554 -42 -163 -16 -317 83 -511 112 -216
+335 -377 756 -545 194 -77 462 -136 881 -195 186 -26 240 -37 235 -46 -3 -4 4
+-35 15 -69 19 -55 20 -88 23 -398 2 -385 -4 -453 -79 -862 -25 -135 -48 -261
+-51 -280 -3 -19 -19 -82 -35 -140 -17 -58 -34 -143 -38 -190 -4 -47 -15 -103
+-25 -125 -19 -43 -104 -282 -165 -460 -20 -60 -67 -180 -104 -265 -70 -160
+-148 -377 -217 -605 -22 -71 -54 -170 -70 -220 -64 -187 -96 -342 -123 -585
+-23 -208 -39 -597 -32 -780 10 -259 14 -305 36 -474 48 -370 121 -638 226
+-832 20 -38 47 -87 59 -110 25 -47 38 -66 114 -167 78 -104 189 -222 278 -297
+42 -36 92 -80 111 -99 28 -29 42 -34 100 -41 88 -9 247 3 296 24 37 16 38 17
+32 54 -18 98 -18 112 -2 137 36 55 113 68 162 27 36 -30 45 -59 43 -133 -2
+-52 2 -73 12 -80 21 -14 950 -3 959 11 4 7 10 38 13 70 9 84 33 136 73 161 87
+54 131 -41 78 -169 -16 -40 -5 -47 57 -39 53 7 133 61 210 141 l62 64 56 -27
+c53 -24 66 -26 238 -29 213 -4 236 0 507 88 125 41 202 72 242 98 87 57 303
+294 304 334 0 9 5 20 10 23 28 17 98 197 136 347 13 53 33 173 44 267 22 192
+42 284 99 453 90 268 219 439 438 582 89 58 158 126 178 173 19 44 19 97 1
+112 -23 19 -101 24 -190 11 -233 -33 -435 -214 -550 -493 -45 -108 -136 -398
+-231 -732 -81 -285 -125 -396 -193 -481 -101 -128 -371 -284 -672 -389 -92
+-32 -190 -54 -190 -41 0 3 22 47 49 98 140 262 227 550 280 923 65 457 45
+1088 -49 1562 -69 351 -75 374 -195 783 -103 348 -143 501 -228 875 -76 328
+-143 690 -166 890 -21 183 -32 501 -21 613 32 325 129 772 168 772 8 0 16 8
+19 18 3 15 31 24 141 46 407 82 602 157 947 364 348 209 477 321 579 505 74
+132 102 253 93 394 -6 93 -47 256 -68 269 -5 3 -9 21 -9 40 0 27 -4 34 -19 34
+-20 0 -39 25 -61 80 -43 108 -123 213 -208 272 l-43 29 29 37 c86 108 196 398
+228 602 24 145 24 323 0 430 -10 47 -24 90 -30 96 -14 14 -208 25 -227 13z
+m-12 -561 c4 -7 8 -40 8 -73 1 -33 4 -65 8 -71 11 -18 -26 -141 -106 -361 -13
+-36 -38 -43 -72 -20 -11 7 -36 19 -55 26 -19 7 -71 28 -115 46 -93 38 -242 85
+-272 85 -15 0 -22 8 -27 30 -5 27 0 37 42 78 48 48 194 142 221 142 7 0 19 6
+25 13 14 18 99 53 211 87 104 32 121 35 132 18z m-4718 -154 c131 -63 275
+-172 310 -235 13 -22 21 -42 20 -43 -30 -24 -309 -156 -321 -152 -12 3 -18 -2
+-18 -14 0 -11 -29 -37 -77 -68 l-78 -52 -22 51 c-20 44 -23 68 -23 173 1 161
+12 241 45 315 25 55 31 61 58 61 16 0 64 -16 106 -36z m2878 -772 c88 -63 107
+-237 36 -331 -28 -36 -93 -70 -133 -71 -143 -1 -242 151 -185 286 17 42 77
+114 108 131 36 19 138 11 174 -15z m-1451 -46 c41 8 92 -29 123 -90 50 -97 27
+-242 -46 -294 -53 -37 -95 -46 -149 -33 -66 16 -90 34 -125 89 -24 37 -29 57
+-29 104 0 64 14 99 64 162 35 43 104 80 122 65 6 -5 24 -6 40 -3z m805 -412
+c91 -27 181 -111 195 -184 5 -21 -1 -45 -20 -84 -42 -86 -123 -141 -223 -152
+-91 -10 -93 -13 -93 -99 0 -162 71 -265 183 -265 49 0 68 16 131 113 56 87 69
+71 20 -26 -33 -65 -70 -116 -92 -128 -13 -7 -48 -13 -78 -12 -69 2 -113 28
+-156 95 -29 44 -34 48 -43 32 -26 -46 -90 -104 -132 -120 -43 -17 -47 -17
+-112 4 -76 25 -98 51 -81 97 12 32 30 32 30 1 0 -30 14 -41 76 -56 126 -32
+184 43 199 257 l6 91 -76 17 c-52 12 -89 27 -117 49 -68 52 -83 78 -83 151 0
+80 17 105 110 162 109 68 245 90 356 57z m944 -53 c-7 -13 21 -27 70 -36 47
+-9 145 -56 164 -79 17 -21 8 -20 -37 3 -99 50 -256 71 -380 52 -76 -12 -170
+-53 -229 -100 -38 -30 -87 -103 -97 -143 -3 -15 -17 -40 -31 -55 l-24 -28 -1
+25 c0 41 54 141 109 202 87 95 172 132 324 142 48 3 95 10 105 15 22 13 35 14
+27 2z m-1920 -273 c80 -26 134 -59 178 -107 35 -39 49 -81 26 -81 -6 0 -31 21
+-57 48 -59 60 -133 99 -219 117 -86 19 -213 19 -283 1 -30 -7 -73 -17 -95 -21
+-56 -9 -172 -67 -222 -110 -24 -20 -43 -32 -43 -27 0 12 70 70 140 114 53 34
+198 81 280 91 70 9 235 -5 295 -25z m1953 -44 c70 -14 81 -20 125 -64 50 -50
+67 -93 20 -48 -38 35 -58 44 -137 62 -128 30 -279 15 -398 -41 -40 -18 -58
+-32 -58 -45 0 -31 -82 -54 -88 -25 -6 31 70 91 161 127 127 52 240 62 375 34z
+m-1990 -138 c72 -7 169 -50 220 -99 59 -57 31 -65 -50 -14 -84 53 -143 72
+-224 71 -181 -3 -357 -91 -450 -224 -23 -33 -24 -34 -24 -9 0 17 20 45 65 91
+71 72 176 134 278 163 31 9 57 20 57 25 0 5 15 7 33 5 17 -2 60 -7 95 -9z
+m1872 -147 c160 -76 231 -164 234 -287 1 -70 -9 -122 -23 -122 -4 0 -10 40
+-13 88 -3 51 -12 100 -21 119 -21 40 -102 112 -158 140 -112 56 -267 68 -352
+27 -29 -14 -40 -15 -49 -6 -10 10 -8 17 7 32 37 37 93 50 200 47 91 -2 106 -5
+175 -38z m-1714 -105 c19 -9 48 -32 64 -51 25 -28 29 -38 19 -49 -10 -13 -17
+-10 -43 15 -36 35 -93 61 -134 61 -16 0 -58 -14 -93 -32 -114 -56 -232 -199
+-274 -331 l-13 -42 -1 37 c-2 74 54 175 157 283 105 110 228 152 318 109z"/>
+      <path d="M3438 11231 c-18 -9 -46 -37 -61 -63 -36 -58 -31 -105 14 -151 27
+-26 35 -29 79 -25 61 6 97 29 117 76 20 47 6 96 -39 138 -42 40 -69 46 -110
+25z"/>
+      <path d="M2070 11168 c-35 -13 -59 -37 -82 -82 -24 -47 -18 -93 17 -133 20
+-25 30 -28 79 -27 68 0 105 24 124 79 16 49 3 90 -41 132 -37 35 -63 44 -97
+31z"/>
+      <path d="M2735 10810 c-22 -5 -52 -13 -66 -19 -15 -5 -36 -7 -47 -4 -45 11
+-123 -144 -91 -183 6 -7 9 -19 6 -26 -2 -7 0 -21 5 -31 31 -60 310 -97 400
+-53 90 44 148 141 111 187 -68 83 -95 98 -181 99 -25 0 -35 5 -39 20 -6 22
+-28 24 -98 10z m178 -82 c20 -23 14 -57 -12 -73 -53 -33 -108 -21 -126 29 -8
+25 -6 31 19 53 24 20 36 23 65 18 20 -3 44 -15 54 -27z"/>
+    </g>
+    
+    <!-- ====== 猫的轮廓 ====== -->
+    <g transform="translate(242.7082, 472.3192) scale(0.020511, -0.020511)" fill="none" stroke="url(#grad-cat)" stroke-width="180" stroke-linejoin="round" stroke-linecap="round">
+-73 -42 -78 -38 -5 3 -8 0 -7 -6 2 -6 -14 -17 -35 -24 -70 -25 -205 -146 -350
+-316 -50 -58 -95 -105 -101 -105 -33 0 -196 28 -226 38 -70 24 -1037 3 -1267
+-27 -24 -3 -43 -2 -43 2 0 13 94 60 135 66 61 10 71 19 57 50 -11 24 -16 26
+-77 26 -65 0 -145 -13 -175 -29 -19 -10 -59 -18 -130 -27 -30 -3 -57 -7 -60
+-9 -7 -5 -214 -28 -350 -40 -133 -12 -175 -22 -610 -152 -63 -19 -120 -36
+-127 -38 -7 -2 -38 33 -69 78 -112 161 -272 289 -438 351 -120 45 -411 106
+-508 106 l-49 0 -23 -50 c-13 -27 -28 -56 -35 -64 -6 -7 -11 -18 -9 -22 4 -15
+-25 -109 -36 -116 -17 -11 -9 -453 10 -545 18 -90 53 -187 88 -246 l25 -41
+-67 -66 c-126 -122 -220 -306 -282 -554 -42 -163 -16 -317 83 -511 112 -216
+335 -377 756 -545 194 -77 462 -136 881 -195 186 -26 240 -37 235 -46 -3 -4 4
+-35 15 -69 19 -55 20 -88 23 -398 2 -385 -4 -453 -79 -862 -25 -135 -48 -261
+-51 -280 -3 -19 -19 -82 -35 -140 -17 -58 -34 -143 -38 -190 -4 -47 -15 -103
+-25 -125 -19 -43 -104 -282 -165 -460 -20 -60 -67 -180 -104 -265 -70 -160
+-148 -377 -217 -605 -22 -71 -54 -170 -70 -220 -64 -187 -96 -342 -123 -585
+-23 -208 -39 -597 -32 -780 10 -259 14 -305 36 -474 48 -370 121 -638 226
+-832 20 -38 47 -87 59 -110 25 -47 38 -66 114 -167 78 -104 189 -222 278 -297
+42 -36 92 -80 111 -99 28 -29 42 -34 100 -41 88 -9 247 3 296 24 37 16 38 17
+32 54 -18 98 -18 112 -2 137 36 55 113 68 162 27 36 -30 45 -59 43 -133 -2
+-52 2 -73 12 -80 21 -14 950 -3 959 11 4 7 10 38 13 70 9 84 33 136 73 161 87
+54 131 -41 78 -169 -16 -40 -5 -47 57 -39 53 7 133 61 210 141 l62 64 56 -27
+c53 -24 66 -26 238 -29 213 -4 236 0 507 88 125 41 202 72 242 98 87 57 303
+294 304 334 0 9 5 20 10 23 28 17 98 197 136 347 13 53 33 173 44 267 22 192
+42 284 99 453 90 268 219 439 438 582 89 58 158 126 178 173 19 44 19 97 1
+112 -23 19 -101 24 -190 11 -233 -33 -435 -214 -550 -493 -45 -108 -136 -398
+-231 -732 -81 -285 -125 -396 -193 -481 -101 -128 -371 -284 -672 -389 -92
+-32 -190 -54 -190 -41 0 3 22 47 49 98 140 262 227 550 280 923 65 457 45
+1088 -49 1562 -69 351 -75 374 -195 783 -103 348 -143 501 -228 875 -76 328
+-143 690 -166 890 -21 183 -32 501 -21 613 32 325 129 772 168 772 8 0 16 8
+19 18 3 15 31 24 141 46 407 82 602 157 947 364 348 209 477 321 579 505 74
+132 102 253 93 394 -6 93 -47 256 -68 269 -5 3 -9 21 -9 40 0 27 -4 34 -19 34
+-20 0 -39 25 -61 80 -43 108 -123 213 -208 272 l-43 29 29 37 c86 108 196 398
+228 602 24 145 24 323 0 430 -10 47 -24 90 -30 96 -14 14 -208 25 -227 13z
+m-12 -561 c4 -7 8 -40 8 -73 1 -33 4 -65 8 -71 11 -18 -26 -141 -106 -361 -13
+-36 -38 -43 -72 -20 -11 7 -36 19 -55 26 -19 7 -71 28 -115 46 -93 38 -242 85
+-272 85 -15 0 -22 8 -27 30 -5 27 0 37 42 78 48 48 194 142 221 142 7 0 19 6
+25 13 14 18 99 53 211 87 104 32 121 35 132 18z m-4718 -154 c131 -63 275
+-172 310 -235 13 -22 21 -42 20 -43 -30 -24 -309 -156 -321 -152 -12 3 -18 -2
+-18 -14 0 -11 -29 -37 -77 -68 l-78 -52 -22 51 c-20 44 -23 68 -23 173 1 161
+12 241 45 315 25 55 31 61 58 61 16 0 64 -16 106 -36z m2878 -772 c88 -63 107
+-237 36 -331 -28 -36 -93 -70 -133 -71 -143 -1 -242 151 -185 286 17 42 77
+114 108 131 36 19 138 11 174 -15z m-1451 -46 c41 8 92 -29 123 -90 50 -97 27
+-242 -46 -294 -53 -37 -95 -46 -149 -33 -66 16 -90 34 -125 89 -24 37 -29 57
+-29 104 0 64 14 99 64 162 35 43 104 80 122 65 6 -5 24 -6 40 -3z m805 -412
+c91 -27 181 -111 195 -184 5 -21 -1 -45 -20 -84 -42 -86 -123 -141 -223 -152
+-91 -10 -93 -13 -93 -99 0 -162 71 -265 183 -265 49 0 68 16 131 113 56 87 69
+71 20 -26 -33 -65 -70 -116 -92 -128 -13 -7 -48 -13 -78 -12 -69 2 -113 28
+-156 95 -29 44 -34 48 -43 32 -26 -46 -90 -104 -132 -120 -43 -17 -47 -17
+-112 4 -76 25 -98 51 -81 97 12 32 30 32 30 1 0 -30 14 -41 76 -56 126 -32
+184 43 199 257 l6 91 -76 17 c-52 12 -89 27 -117 49 -68 52 -83 78 -83 151 0
+80 17 105 110 162 109 68 245 90 356 57z m944 -53 c-7 -13 21 -27 70 -36 47
+-9 145 -56 164 -79 17 -21 8 -20 -37 3 -99 50 -256 71 -380 52 -76 -12 -170
+-53 -229 -100 -38 -30 -87 -103 -97 -143 -3 -15 -17 -40 -31 -55 l-24 -28 -1
+25 c0 41 54 141 109 202 87 95 172 132 324 142 48 3 95 10 105 15 22 13 35 14
+27 2z m-1920 -273 c80 -26 134 -59 178 -107 35 -39 49 -81 26 -81 -6 0 -31 21
+-57 48 -59 60 -133 99 -219 117 -86 19 -213 19 -283 1 -30 -7 -73 -17 -95 -21
+-56 -9 -172 -67 -222 -110 -24 -20 -43 -32 -43 -27 0 12 70 70 140 114 53 34
+198 81 280 91 70 9 235 -5 295 -25z m1953 -44 c70 -14 81 -20 125 -64 50 -50
+67 -93 20 -48 -38 35 -58 44 -137 62 -128 30 -279 15 -398 -41 -40 -18 -58
+-32 -58 -45 0 -31 -82 -54 -88 -25 -6 31 70 91 161 127 127 52 240 62 375 34z
+m-1990 -138 c72 -7 169 -50 220 -99 59 -57 31 -65 -50 -14 -84 53 -143 72
+-224 71 -181 -3 -357 -91 -450 -224 -23 -33 -24 -34 -24 -9 0 17 20 45 65 91
+71 72 176 134 278 163 31 9 57 20 57 25 0 5 15 7 33 5 17 -2 60 -7 95 -9z
+m1872 -147 c160 -76 231 -164 234 -287 1 -70 -9 -122 -23 -122 -4 0 -10 40
+-13 88 -3 51 -12 100 -21 119 -21 40 -102 112 -158 140 -112 56 -267 68 -352
+27 -29 -14 -40 -15 -49 -6 -10 10 -8 17 7 32 37 37 93 50 200 47 91 -2 106 -5
+175 -38z m-1714 -105 c19 -9 48 -32 64 -51 25 -28 29 -38 19 -49 -10 -13 -17
+-10 -43 15 -36 35 -93 61 -134 61 -16 0 -58 -14 -93 -32 -114 -56 -232 -199
+-274 -331 l-13 -42 -1 37 c-2 74 54 175 157 283 105 110 228 152 318 109z"/>
+-26 35 -29 79 -25 61 6 97 29 117 76 20 47 6 96 -39 138 -42 40 -69 46 -110
+25z"/>
+-25 30 -28 79 -27 68 0 105 24 124 79 16 49 3 90 -41 132 -37 35 -63 44 -97
+31z"/>
+-123 -144 -91 -183 6 -7 9 -19 6 -26 -2 -7 0 -21 5 -31 31 -60 310 -97 400
+-53 90 44 148 141 111 187 -68 83 -95 98 -181 99 -25 0 -35 5 -39 20 -6 22
+-28 24 -98 10z m178 -82 c20 -23 14 -57 -12 -73 -53 -33 -108 -21 -126 29 -8
+25 -6 31 19 53 24 20 36 23 65 18 20 -3 44 -15 54 -27z"/>
+    </g>
+
+    <!-- ====== 左爪挥舞轨迹（不变） ====== -->
+    <g fill="none" stroke-linecap="round">
+      <path d="M118,322 Q100,306 84,317" opacity="0.75" stroke="url(#grad-orange)" stroke-width="3.5"/>
+      <path d="M108,346 Q90,355 78,343" opacity="0.6" stroke="url(#grad-yellow)" stroke-width="3"/>
+    </g>
+
+    <!-- ====== 右爪挥舞轨迹（不变） ====== -->
+    <g fill="none" stroke-linecap="round">
+      <path d="M432,332 Q447,314 462,322" opacity="0.75" stroke="url(#grad-red)" stroke-width="3.5"/>
+      <path d="M436,349 Q454,340 468,345" opacity="0.6" stroke="url(#grad-purple)" stroke-width="3"/>
+    </g>
+
+    <!-- ====== 猫前方少量乱线（不变） ====== -->
+    <g fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M430,295 C459,281 482,290 476,263 C472,240 453,250 463,271 C473,288 489,272 485,256" opacity="0.65" stroke="url(#grad-blue)"/>
+      <path d="M432,328 C460,342 479,319 487,303 C492,287 470,266 454,283 C441,297 457,315 480,309" opacity="0.55" stroke="url(#grad-pink)"/>
+    </g>
+
+    <!-- ====== 左上区域：蓝色系（右移100px） ====== -->
+    <g fill="none" stroke="url(#grad-blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="270,150 292,108 314,151" opacity="0.75"/>
+      <circle cx="322" cy="128" r="16" opacity="0.7"/>
+      <rect x="282" y="153" width="22" height="22" rx="3" opacity="0.65"/>
+      <polygon points="304,137 315,125 327,137 315,149" opacity="0.6"/>
+      <path d="M329,151 L340,151 M335,145 L335,157" opacity="0.55"/>
+      <polygon points="242,142 250,130 258,142 250,154" opacity="0.5"/>
+      <circle cx="348" cy="113" r="9" opacity="0.5"/>
+      <rect x="350" y="153" width="14" height="14" rx="2" opacity="0.45"/>
+      <path d="M338,177 L348,168 L353,178" opacity="0.45"/>
+      <circle cx="360" cy="106" r="5" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 右上区域：紫色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-purple)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="467,163 477,154 490,167 487,179 472,182" opacity="0.75"/>
+      <path d="M503,173 C508,166 514,172 512,181 C510,187 503,186 499,180 C498,176 500,172 503,174" opacity="0.7"/>
+      <path d="M476,191 A13,13 0 0,1 499,191" opacity="0.65"/>
+      <polygon points="504,204 506,211 513,210 508,215 511,223 506,218 501,224 502,216 495,211 503,211" opacity="0.6"/>
+      <polygon points="449,153 457,141 464,153 455,163" opacity="0.55"/>
+      <circle cx="521" cy="163" r="8" opacity="0.5"/>
+      <rect x="522" y="183" width="13" height="13" rx="2" opacity="0.45"/>
+      <path d="M517,198 L527,189 L531,199" opacity="0.45"/>
+      <circle cx="535" cy="153" r="5" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 左下区域：绿色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M74,308 C74,291 88,286 96,296 C104,286 118,292 118,311 C118,329 96,343 96,343 C96,343 74,328 74,310Z" opacity="0.75"/>
+      <path d="M100,320 L126,307 M124,304 L129,310 L127,317" opacity="0.7"/>
+      <path d="M118,348 A16,16 0 1,1 145,359 A20,20 0 1,0 118,350Z" opacity="0.65"/>
+      <polygon points="61,355 80,347 92,360 68,367" opacity="0.6"/>
+      <polygon points="48,322 56,301 64,322" opacity="0.55"/>
+      <circle cx="140" cy="343" r="7" opacity="0.5"/>
+      <rect x="46" y="376" width="16" height="16" rx="2" opacity="0.5"/>
+      <path d="M134,372 L144,363 L149,373" opacity="0.45"/>
+      <circle cx="148" cy="390" r="5" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 右下区域：红色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-red)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="516" cy="368" r="6" opacity="0.75"/>
+      <circle cx="508" cy="376" r="6" opacity="0.7"/>
+      <circle cx="524" cy="378" r="6" opacity="0.65"/>
+      <circle cx="512" cy="386" r="6" opacity="0.6"/>
+      <circle cx="529" cy="388" r="6" opacity="0.55"/>
+      <circle cx="520" cy="379" r="5" fill="url(#grad-yellow)" opacity="0.75"/>
+      <path d="M519,393 L517,414" opacity="0.7"/>
+      <path d="M513,403 L521,399" opacity="0.65"/>
+      <polygon points="421,393 429,388 439,392 440,404 433,406 423,402" opacity="0.6"/>
+      <path d="M547,365 L549,384 M551,392 L552,395" opacity="0.55"/>
+      <polygon points="411,369 419,357 426,369" opacity="0.5"/>
+      <circle cx="550" cy="397" r="7" opacity="0.5"/>
+      <rect x="410" y="410" width="14" height="14" rx="2" opacity="0.45"/>
+      <path d="M405,388 L411,382 L416,390" opacity="0.45"/>
+    </g>
+
+    <!-- ====== 左侧补充：青色系（右移100px） ====== -->
+    <g fill="none" stroke="url(#grad-cyan)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="168,212 184,182 200,212" opacity="0.75"/>
+      <rect x="181" y="212" width="6" height="14" opacity="0.7"/>
+      <path d="M219,247 Q234,233 224,225 Q214,243 229,253" opacity="0.65"/>
+      <polygon points="161,277 178,258 194,279" opacity="0.6"/>
+      <line x1="178" y1="258" x2="178" y2="288" opacity="0.55"/>
+      <polygon points="206,300 209,307 216,307 210,311 212,318 206,314 200,318 202,311 196,307 203,307" opacity="0.55"/>
+      <path d="M161,343 L198,338 M196,335 L201,341 L199,347" opacity="0.6"/>
+      <polygon points="171,369 L171,349 L151,359 Z" opacity="0.65"/>
+      <rect x="171" y="353" width="18" height="16" opacity="0.55"/>
+      <rect x="178" y="359" width="6" height="10" opacity="0.5"/>
+      <path d="M156,395 Q171,382 188,396 Q204,410 221,399" opacity="0.6"/>
+      <circle cx="178" cy="435" r="5" opacity="0.65"/>
+      <circle cx="172" cy="442" r="5" opacity="0.6"/>
+      <circle cx="184" cy="442" r="5" opacity="0.55"/>
+      <circle cx="178" cy="438" r="3" fill="url(#grad-yellow)" opacity="0.65"/>
+      <path d="M178,440 L178,459" opacity="0.55"/>
+      <circle cx="236" cy="393" r="6" opacity="0.6"/>
+      <path d="M242,396 L242,375 L254,378 L254,386" opacity="0.55"/>
+      <path d="M224,417 Q232,433 239,422 Q242,415 231,411Z" opacity="0.6"/>
+      <path d="M236,299 L228,319 L238,321 L230,341" opacity="0.55"/>
+      <path d="M161,479 L161,502 L181,497 L161,499" opacity="0.55"/>
+      <polygon points="148,453 156,443 164,453" opacity="0.5"/>
+      <circle cx="240" cy="429" r="5" opacity="0.5"/>
+      <rect x="146" y="413" width="12" height="12" rx="2" opacity="0.5"/>
+      <path d="M230,450 L238,443 L242,452" opacity="0.45"/>
+      <circle cx="244" cy="293" r="4" opacity="0.45"/>
+      <path d="M148,533 Q156,540 164,536" opacity="0.45"/>
+      <polygon points="200,478 206,470 212,478" opacity="0.45"/>
+    </g>
+
+    <!-- ====== 左侧移到右侧的图案：橙色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="393" cy="257" r="7" opacity="0.75"/>
+      <path d="M399,261 L396,233 L409,236 L410,250" opacity="0.7"/>
+      <path d="M419,291 C429,309 436,314 442,308 C447,301 435,283 419,297Z" opacity="0.65"/>
+      <path d="M440,247 L432,271 L443,274 L434,299" opacity="0.6"/>
+      <path d="M376,301 L374,284 L392,286 L376,288" opacity="0.55"/>
+    </g>
+
+    <!-- ====== 猫右侧空白：橙色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M428,247 C431,236 446,240 449,250 C452,258 444,265 438,267 C435,271 433,280 435,286" opacity="0.75"/>
+      <circle cx="438" cy="295" r="3" fill="url(#grad-orange)" opacity="0.75"/>
+      <ellipse cx="509" cy="337" rx="9" ry="5" opacity="0.7"/>
+      <circle cx="511" cy="338" r="2.5" fill="url(#grad-orange)" opacity="0.7"/>
+      <path d="M512,396 L501,409 L526,410 Z" opacity="0.65"/>
+      <rect x="509" y="398" width="15" height="13" opacity="0.6"/>
+      <circle cx="547" cy="392" r="7" opacity="0.55"/>
+      <path d="M548,399 L546,417" opacity="0.55"/>
+      <polygon points="584,277 593,265 600,277" opacity="0.5"/>
+      <polygon points="591,448 598,440 605,448" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 猫上方空白：黄色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-yellow)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="423" cy="170" r="13" opacity="0.75"/>
+      <path d="M422,151 L422,144 M435,157 L440,152 M437,170 L445,170 M431,179 L436,184 M424,183 L427,191 M411,178 L408,184 M404,170 L399,170 M410,158 L405,153" opacity="0.7"/>
+      <path d="M431,194 A28,28 0 0,0 488,194" opacity="0.65"/>
+      <path d="M438,194 A22,22 0 0,0 478,194" opacity="0.6"/>
+      <ellipse cx="353" cy="167" rx="9" ry="12" opacity="0.55"/>
+      <path d="M355,178 L356,191" opacity="0.55"/>
+      <path d="M285,188 L296,164 L301,188 Z" opacity="0.55"/>
+      <rect x="290" y="188" width="5" height="7" opacity="0.55"/>
+      <polygon points="201,158 210,146 218,158" opacity="0.5"/>
+      <polygon points="680,212 686,204 693,212" opacity="0.35"/>
+    </g>
+
+    <!-- ====== 下方补充：粉色系（上移100px） ====== -->
+    <g fill="none" stroke="url(#grad-pink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M61,410 Q91,397 121,412 Q151,427 181,414" opacity="0.75"/>
+      <circle cx="206" cy="420" r="5" opacity="0.7"/>
+      <circle cx="200" cy="429" r="5" opacity="0.65"/>
+      <circle cx="212" cy="431" r="5" opacity="0.6"/>
+      <circle cx="206" cy="425" r="3" fill="url(#grad-yellow)" opacity="0.7"/>
+      <path d="M206,427 L206,446" opacity="0.6"/>
+      <path d="M246,434 C246,424 256,418 264,426 C272,434 262,442 254,439Z" opacity="0.65"/>
+      <polygon points="283,408 L298,398 L313,409 L298,418 Z" opacity="0.6"/>
+      <circle cx="298" cy="412" r="3" fill="url(#grad-yellow)" opacity="0.6"/>
+      <polygon points="336,443 339,451 347,452 341,456 343,464 337,460 331,465 333,457 327,453 335,452" opacity="0.55"/>
+      <path d="M378,418 A14,14 0 1,1 403,437 A17,17 0 1,0 380,420Z" opacity="0.6"/>
+      <path d="M418,433 Q426,448 433,436 Q436,428 425,425Z" opacity="0.55"/>
+      <circle cx="458" cy="455" r="12" opacity="0.6"/>
+      <path d="M463,450 Q469,446 476,451" opacity="0.55"/>
+      <path d="M466,457 Q471,461 475,458" opacity="0.55"/>
+      <polygon points="496,473 L511,488 L484,490 Z" opacity="0.55"/>
+      <path d="M249,468 L249,486 L264,481 L249,483" opacity="0.55"/>
+      <path d="M387,472 Q401,458 391,450 Q381,467 396,478" opacity="0.55"/>
+      <polygon points="721,506 729,520 713,522" opacity="0.5"/>
+      <polygon points="715,688 722,680 730,689" opacity="0.35"/>
+      <path d="M160,458 Q170,448 180,458 Q190,468 200,458" opacity="0.5"/>
+      <circle cx="320" cy="448" r="5" opacity="0.5"/>
+      <circle cx="314" cy="456" r="5" opacity="0.45"/>
+      <circle cx="326" cy="458" r="5" opacity="0.4"/>
+      <circle cx="320" cy="453" r="3" fill="url(#grad-yellow)" opacity="0.5"/>
+      <path d="M320,455 L320,474" opacity="0.45"/>
+      <polygon points="350,478 358,468 366,478" opacity="0.45"/>
+      <path d="M440,480 Q450,470 460,480" opacity="0.45"/>
+    </g>
+
+    <!-- ====== 下方移到上方的图案：粉色系（不变） ====== -->
+    <g fill="none" stroke="url(#grad-pink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    </g>
+
+    <!-- ====== 左上角新增装饰（蓝紫色系） ====== -->
+    <g fill="none" stroke="url(#grad-blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="115,108 125,92 137,109 126,124" opacity="0.7"/>
+      <circle cx="110" cy="102" r="10" opacity="0.6"/>
+      <path d="M128,116 L138,104 M136,103 L139,107 L137,111" opacity="0.5"/>
+      <polygon points="97,131 103,122 110,133 104,141" opacity="0.5"/>
+      <circle cx="114" cy="135" r="7" opacity="0.4"/>
+      <path d="M119,127 Q126,121 129,129" opacity="0.4"/>
+      <rect x="123" y="117" width="8" height="8" rx="2" opacity="0.4"/>
+      <path d="M101,99 Q108,94 113,101" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 左上角更多装饰（蓝紫色系） ====== -->
+    <g fill="none" stroke="url(#grad-purple)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="78" cy="72" r="7" opacity="0.6"/>
+      <polygon points="65,86 72,74 79,87 73,98" opacity="0.5"/>
+      <path d="M82,68 Q90,62 95,70" opacity="0.5"/>
+      <rect x="56" y="105" width="12" height="12" rx="3" opacity="0.5"/>
+      <polygon points="132,80 139,68 146,81 140,91" opacity="0.45"/>
+      <path d="M136,85 L144,93 M142,96 L148,89" opacity="0.5"/>
+      <circle cx="88" cy="156" r="9" opacity="0.5"/>
+      <path d="M76,158 L66,170 M63,166 L68,173 L64,180" opacity="0.5"/>
+      <polygon points="58,134 64,124 71,135 67,143" opacity="0.5"/>
+      <rect x="122" y="153" width="10" height="10" rx="2" opacity="0.5"/>
+      <path d="M125,147 L133,155 M131,157 L137,151" opacity="0.5"/>
+      <polygon points="84,174 90,164 97,175 92,184" opacity="0.45"/>
+      <circle cx="138" cy="168" r="6" opacity="0.45"/>
+      <path d="M60,172 Q69,179 75,175" opacity="0.4"/>
+      <polygon points="102,190 107,182 112,191 109,199" opacity="0.35"/>
+      <rect x="115" y="185" width="8" height="8" rx="2" opacity="0.35"/>
+      <path d="M130,192 L137,200 M134,202 L141,196" opacity="0.35"/>
+    </g>
+
+    <!-- ====== 左上角顶部散落小元素 ====== -->
+    <g fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M52,62 Q57,57 61,61 T67,63" stroke="url(#grad-blue)" opacity="0.45"/>
+      <path d="M120,59 Q126,54 130,59 T137,61" stroke="url(#grad-purple)" opacity="0.4"/>
+      <path d="M110,53 Q115,49 119,53 T125,55" stroke="url(#grad-blue)" opacity="0.4"/>
+      <circle cx="103" cy="176" r="3" stroke="url(#grad-purple)" opacity="0.35"/>
+      <circle cx="129" cy="178" r="3" stroke="url(#grad-blue)" opacity="0.35"/>
+      <path d="M50,155 Q56,149 61,154 T68,152" stroke="url(#grad-blue)" opacity="0.35"/>
+    </g>
+
+    <!-- ====== 左下角新增装饰（绿色系） ====== -->
+    <g fill="none" stroke="url(#grad-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="88,520 98,505 108,521 98,535" opacity="0.7"/>
+      <circle cx="82" cy="516" r="9" opacity="0.6"/>
+      <path d="M100,527 L110,516 M108,515 L112,519 L110,523" opacity="0.5"/>
+      <polygon points="74,539 81,530 87,540 82,548" opacity="0.5"/>
+      <circle cx="94" cy="543" r="6" opacity="0.4"/>
+      <path d="M84,533 Q91,528 95,536" opacity="0.4"/>
+      <rect x="108" y="525" width="8" height="8" rx="2" opacity="0.4"/>
+      <path d="M75,508 Q83,502 87,510" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 右下角新增装饰（红色系） ====== -->
+    <g fill="none" stroke="url(#grad-red)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="500,522 509,507 518,522 509,537" opacity="0.7"/>
+      <circle cx="494" cy="517" r="9" opacity="0.6"/>
+      <path d="M511,529 L521,518 M519,517 L523,521 L521,526" opacity="0.5"/>
+      <polygon points="486,541 493,532 499,542 494,550" opacity="0.5"/>
+      <circle cx="506" cy="545" r="6" opacity="0.4"/>
+      <path d="M496,538 Q503,531 507,539" opacity="0.4"/>
+      <rect x="520" y="527" width="8" height="8" rx="2" opacity="0.4"/>
+      <path d="M487,512 Q495,506 498,514" opacity="0.4"/>
+    </g>
+
+    <!-- ====== 右上角新增装饰：云朵、太阳、星星 ====== -->
+    <g fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <!-- 太阳 -->
+      <circle cx="490" cy="100" r="15" stroke="url(#grad-yellow)" opacity="0.75"/>
+      <path d="M490,79 L490,73 M490,121 L490,127 M469,100 L463,100 M511,100 L517,100 M476,86 L472,82 M504,114 L508,118 M477,114 L473,118 M505,86 L509,82" stroke="url(#grad-yellow)" opacity="0.6"/>
+      <!-- 云朵1 -->
+      <path d="M455,78 A12,12 0 0,1 471,72 A14,14 0 0,1 487,76 A10,10 0 0,1 497,83 A9,9 0 0,1 505,89 L455,89 Z" stroke="url(#grad-purple)" opacity="0.55"/>
+      <circle cx="465" cy="75" r="8" stroke="url(#grad-purple)" opacity="0.55"/>
+      <circle cx="479" cy="73" r="9" stroke="url(#grad-purple)" opacity="0.55"/>
+      <!-- 云朵2 -->
+      <path d="M513,68 A8,8 0 0,1 525,63 A10,10 0 0,1 535,67 A7,7 0 0,1 544,73 L513,73 Z" stroke="url(#grad-blue)" opacity="0.45"/>
+      <circle cx="520" cy="66" r="6" stroke="url(#grad-blue)" opacity="0.45"/>
+      <circle cx="530" cy="64" r="7" stroke="url(#grad-blue)" opacity="0.45"/>
+      <!-- 星星1 -->
+      <path d="M448,108 L450,113 L455,113 L451,116 L453,121 L448,118 L443,121 L445,116 L441,113 L446,113 Z" stroke="url(#grad-yellow)" opacity="0.6"/>
+      <!-- 星星2 -->
+      <path d="M520,118 L522,121 L526,121 L523,124 L524,128 L520,125 L516,128 L517,124 L514,121 L518,121 Z" stroke="url(#grad-red)" opacity="0.5"/>
+      <!-- 星星3 -->
+      <path d="M468,126 L469,129 L472,129 L470,131 L471,134 L468,132 L465,134 L466,131 L464,129 L467,129 Z" stroke="url(#grad-orange)" opacity="0.45"/>
+    </g>
+
+    <!-- 散落的小圆点装饰 -->
+
+    <!-- ====== 底部文字贴图 ====== -->
+    <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAAA8CAYAAABPXaeUAAAgcElEQVR4nO19eZwU1fX9Oa+6mwEEHBhAUCGAmoSg0YAxJCJigEAExWUgiyKggLsSJBqjmSjfLMZgQjQiCOIWv3wHo6gQFEiUSCIxkLiMmKCooKOCA7IOQ0/3O78/umvrZaaHIYL59ZnPQFf1q/vue1X33XvuraoBiiiiiCKKKKKIIooooogiiiiiiCKKKKKITwQ82AoU8d+Bit6VsWh0a0ezL1F347+u2nqw9SkijKKhF9FsVHxhzgiD5HwDlFECrf2ntfa8m9df/fbB1q2IFMzBVqCITzcqes/qTaO5JMvcfTQ8yTHm9oOpVxFhFA29iOaB5psUOkv+LgkQkt2nHFXR/uApVkQQRUMvonkgDwcJEnCZIAkQplOHlke0PKi6FeGhaOhFNBuSkPLoSm8DAJxIdJ9z8LQqIoiioRfRbNDz6O52Mct7qCFysBUAgPKKqlhttG1HAGhVv/Ojhbf0iR9snYpoApTy4q5xu3y9aOyHDg66Rx/+0w9G7Im2r5Yi70mR93Y77avPvKV6wMHWq4gmgCmvHuboRRxKOKiGPmz65l609k4AZYIgCZDKrHDn0IpNxYztpwD1Nh5NcXQhyNHV8GFFfMI4qIbuROyXQHRL+QKmvEJqo6eB0/tg6lZEYYiYaKLI0Q99HFRDl2wEoEn7Ac8VyBb9wacFBAUv655C0aMfejjoHJ2AX4NlyqvTFP3Bpwo56+hFHEpoUta9vKIqFj+iQ1cleBLFdhbaZ61ZY2B3PnVN5y0gm7yQu+VXIe0GPI/+6b5U+o6oblXSsq5Mjjo5SvaBTe031lZFo3i/NPnq5oULRycPrpYHBkq7cIbr6HnPYCUqneru1W2mbJyy/RNRMLP/3hUxHdG2I/c5DtK39CTgJCKlnTeP/i85J5lo1JrKK6ti9Vs7nQfh+xKOJ+C4UTYAL06zUpzivwTNjyT0yOPTumzJlDVsZk3byN74ryReACCWMmwhWx7TyR34xi/BCnspPU7rXPv0z7p+1JSBlldUxbZua/01Gl4Iy0GSuhKIud1Yq7gB34fss0jyoQ+37/nLuoWFlvnEUy9861hafAfQKEDHQWzp6g0AlLxfAwE2mTTA67SaRyQfWf74iVnzdTAwtf/vO9lk/XeMteMoHWegloSru91La98wxJ+QxH3/8+r4qoo+9043xA8pGxofpa0OMfj76658yZU985iZbROov9dI5xnJAeyHRpx41dvXLwZSC0DNse8MAnEZiQEkO5LpiI/YSeJliL9t91q3R0ejcIOsLK90ku9XDxDNRFBDDE3HdADp3wPgVQ6wkwavGajSynnkvOWXF3xenh7z26NlndmGHJqyLC5RkuOHPTpxW6EyCoEgrr7i/jEQ7wRQBqBG0g39Z427j8jtbBs09FGzar4s2EcI9nIt0UuuZhkoPIOUkKQ0t06Yunxalz3pBhzx8w/mCpzgHV+gvPA2AGuXto3tHFVIvX3I1A9aKxm/RsA0CofnlAcANkMfq92CfhXd2+q25Q+7Y8jGgHFvHI0k50H6OkGTV55vAK7ReNuwShJaFDP8/pLHTnirsTH9J3Btv0d7WpO8y0hDDeHQWrgGbtL6hrcFSq9D9iMHOA2B8aTHt8vY5DdvWH/tKrePGcfOmEdpQmjBS9oaGJ5poD4wvNUYHukmZYMG6BplOln7ZyR4zsR1Uxs1oAf6zzwpQj0A4vhMOQwYu98fvf0ALamlcdti7JhlDRvrMxc82NrW1T5FclB44dDv2rfF+H5zJtc36wQF8MIV80+H5ZMg2rj7JMUhjf/qPRMeyXVMXo5+7j1bxtDYFYbs5U5AKjeeyandvf7gDOmAnFxCTHflnTnj3a4iB/ui8sljlrzwNgCy7454ac/GJmTI1HeHy8ZfI/kTAodny3P1z6GP4WGkubm+Zd1rp014u39O+Rd80NrIPGDIIaQxueUxcOdYgMMG6s7G0DHEeUmbfGn42f+4BNAnxlvKyyudq/s/ek3SUZUxHE5Dx1UypTu8RIr74w6SxOcNeVquOnrqo88MZxw740gAgxGaD4CGZST+CGPuNeSRKcH+HHo6AN5+Q57GiCY0NK7K3hWxh/v/+hcG9u8gj88lx9PZ28/QfhoYkmeWOPHJjc1jcs/u40F+KTx3BMhhW3fzC40dXygEkeKVQSNPdckYybPzHZfT0M+aVdPbgjMFtnHr2/6v63wD2+6P2wZuO35t8M+3tctQNP1dPnkKyEOGPNfDyxFV0sB08Ovfe+cqyS4C0D0lATnkBXVwe0XoO0jdDe2S08e/NTCzlzhrT5JVv/AcZfQTmKdQndkfeKAvtJE0e/jItbd+EsZe3rsy1vFd524r3EGgZVgvf56QZzypr/yxh8cHAAmvr/qk40h0EJwPn8sfBsiE5KUFeTp4216U99V843rwhNtb1x12+EOSpqWoZi454Ws1c386cZQK7oCTG51MORFIJlMOgQ6EBjd6fIFYPfn+7lY6xYtMPdUbTo9lG7pEE9H1NOgcrG/7YY4bPQX2h7b9VThYW10y9ej3Ka2gu2Iz9/G+83a9Sfpb7ysCNC8eHt2+Lt+ghkzdNJY0vyQZy/LUOeW548qIJDzlTCmo+aeNe/PY8OypDwzbhOUFjs+MRNyv3b5czwh/mzSG5I1n/seNXex0ePRmEpeQNJl6pF2q+1+Gxw7WzZmxjfBcZMGLC8IT5p8Nf96Cbb1tb++OXNIre1fEVBKZS2I0PbnZcvz+MuUzoInXMmdfQTgRVhPYnUuOgRm8ZtLsaGMyCgJ5AsjOJDN2EyLz2kRW1v38e7Z2TTo43V1tPUfkbks1AJ63wj4DtJDVySC6AjChJFqq8fIVN7RPTxIVj26aFo1HOgMYDqUWGb+1Qv14nQfkSbKAnqGNXJSPnw+durGviF9SikH0cwFBecJeCS8R2ChZt6/ukE4Ewkk0TxGyBx3dAOgSpBMeVjiKfotQ8/A8IMe94IKXpYa77W0ZQVeMGPH3FYsXY2WucTYXl37t8bESv0/AIKRHWs+0jkJ6tApdBIEBp71/xvjyG7obNwXbhHrOaJvaH5pnqdZQD2VLBh9s1e5mAqP9OWWWHEkfAlgK4K8UEnDUGTB9JR0PoDvIlqlzQ0hYH3HMT/MOJ419ddocbYH1JLqE+xMknFSzC70A/KsxOY3BUkMMmLVoSKgzwAv5jssy9EQs2cMknVIxdTLdlVcgYPVM7V57np9gS2HYzJq2MSTPEzUGwvEQ6wA7t2T31hnBdsumdtsGYMSon77XIWHYGkkzEtBdICD53k3SbiteFIXWuK6ijkCJYc3iW46szTeY8oqq2I5aTidQptR5Sp1aP2zeaGmu7fDB0U8tXMisrG15uZytZe+MhPBrkN2D158kUGbowIve6b7yAbwDAMaYwEVPz0IkWIArKTyZBFbRckskbnY60XjrpLGlshxGYCLA4wD5Hj6tdHq7FELFkCEvjVy+/MS8ycD9wSUDnuhBq5tJxYLz4wU8AkDWwGI+bKLSIvp+K1O7vT7RolS0xwAcI6DcAGVehAalAxAFvHuu6q07vsBiQc+QkxLWinoMxOqI0dtW7ANyAIBzAfWisIvGXDf+leuezSTpD/X7ZX8QV4AwqbEwU/5GSFd+a9U1S/JlpwHgsa/f2SHBZOsYnES8tPPmcwoouZ21eHLt0vNnPwNgYJjrAzToFBFORzMNfc2k2e3qiS/n/JJ4l9Ar+Y7NPhMJQLCefwl5WqEy08gB4OlrynYCmJ/+bRSLbjxqK4Ct3/xp9baU102vgS41shKBLYtvOXJTIfJcbN/d7lTRDkyvo+EIQXoiYuNjn77zuJ35jk8b/6LTJr/5mpF5BkCP1LEeHy2Tg+OAlKFbazO8tNuf9gjmR6sW9FqFMLYDqAZQBWjGGeeuOxvSvQLKkM5Eu/wOAox0Skmk7hQAf2rKPDSGiMXFgHop7aldo0upbuOSneHsS/7kl6+MzTzXtWn9V1b0rrzWRnbcQOiHRoqlnILP0ZHB0X14+Qjf1CSIWmOIMZe/8YPMqsMmAH8A8IPgzoszGs3uOztqtecHJEr9NUfewmWJF6KJ5Igxq6du+zaubXB+zv3jVVsBNPkFl1Za7oDTIJWm17x0/wTAUWsmzZ7XnOx7MlpyrGSP9SO/QAQkvPLlWeM2A+NzHpvF0UknAUObizuLmHj+zPc77q+iuRBiUS5n38874+joQpKtgKDeBIAXjDETGjLyIP48+5g3SFaGuSJgyBIj28FtZ2AyOL/fvgBt9afHvrCIwvmAPva5cYDfGbaiMRcWOPyCMHHA77sAGO3nLdJnIBWNxK21l/7679+9cUa2kYdwy7rR8emvTLyVwu05OXreKXDzOAhy9HeSdL6Vw8gLRgl2nUJiYDbXJyBssMZ8d8zqxstxzUGkZavXQVRlcf3Uh5N2pcL3/YasTidYCleuDwvZxxqKUrI8eiSafKe+3myh0A4Ic3QSX4k7zntn37nlRUH3Kak/PHXtEZubpXzwU5rL7s+dcQO/V10GJfplrHKQbK0Rblr26+4Fn+QhF3zQOqHaE/11UKH/XFhYMJQvazjzmQsrFp2wcuiol34o4S4yxZeDHFZUvxEj1pQtXtyvpsnCc2DP3h2ntS3p8Bnfg/u5AghP1Gn3w02RJ+K1XDmI/Jecm9UOnCnpn9e8ef2Gpo0kQ6o4DEQbj1un+wIQJ3Dd2Odzv5H2wSG3ty5JtigHOJREb5Jv0WAPgb/B0bJzll75RkMGFMQ3Hh67Z+n5s5eSGhDk6EjR0k5Jh6djP8P3NZNmR+PQYOa0C9Uown80dHyWoS8c12nzuXNrXhBwbBZHF2CIGIhTYXkqHeKsmR9+CJmFJoG7Fk3t+AaaeBusJz/A0WEAN0dWKGJGRwHskpKXTgqmvGyVYom1ADD4mrc/D5jpkvpLqKPwMoQdgv4GoQ6WEUmnJFE3BDDdU+Onx9FB1VkYL6QLcnQFuGojlY4sJCJ6MlLPqQB6ZXFYsROYuvupaVJz47AW7b8EMBrODQCAagncM2dt00JLA2TlQprM0YH1+zMWF7P7zm4l7DnVwI8UAhz5b8k99cszjxHEhQPvGqMEZtHgcCAVSRL4Yvq4Cwhi0bC7Nz7Bu688a+llDfJ6Ty7xPIBdBNv4OQI3YOKZ+xu+1zN2JJivHs/XW8T3NUhzs8trpJLWzpb0cZqXBmrE2XVvgEeAuioZsa+P/PWHL4+c8f4wNKEslLOOvl9PryU7CWgdrpULktatuK3XjsFXbOxqwUWSzgPQFUJPAecIGgdxloT5ou4FcYmA7uExe/XW6mii/jW3Ryv7XkZfoXp5odjRPrkF1Jte/TpUZ1bLCOrLGhFROMhj3dApWDeXVXVc+csz+WCBguroPrLr6JbK1bBgtEjsLoXUw7sTwl0jJVjYJ8e+Mi2LhlQOmDnWQg8AOryhOjqI7oIWPTn87goVcF1HgVcBvJ6rHi+g7449TqM3euUEeQKAzu5msKoj4Zl+cybnTVIDeW6YeWJy579CZgqAeBPq6IY0x4NmycgZm5cMK5DL58oF7A9HF9mBZAm8RTQtD6YaAOCgJ8Eu+1VH9xgXF/zpwc9We5Mn7MiWlxbQBKyd068eMLVZHD1MZJuNSYOXtwN4ZErFAEdPjfXjNhZ7cx8pXv/Fh07/wUn3z7/xi/Nvr+j7QLfgt82to5tmPkSpiNqALPHr5t6/1oHZmNn+/wb96rMy5mckYgXV0UlHxLQnR84a1JguQxZO3gFweaac9KfOMDhtvwZJDSHgldUCdfRdJJ9v7PC8M7xococHJYyXtCtUQvU+BryCt52WSQx36vnE0BmNvyUmUx48jr4/UPhzYJO0uwXFXVeiYOtAVOFv+1w5HW/8eR8jd+TrMiSvWbp7fsn16LTWHLjHiYOeAPC8jogPb1tbniNZKX7/Sw/fCmP/CGAciOsSieRLN/eZNzAoM3z7RIMKIDizANBElpYFm6patAye1XT+YQ8sPshqnzAjAXSB3zKgW0gC3KuFRCtJ5xSiD41d5EbEGVeFAfSNQiKDINZMmt0OyF1Wk7Qxmog0yvvzX0Cknri04yNG9kQCCwXE/Uwt4LpB3xO6njG1lhmyfwyx2xsL47Plcb88Oh2TkGDD8gACRwLA8pmfedmIswRYBsbh//qreXAbQFLg7Ni+Vt9cPa9bVkIvV4TTVPSdtCYKpKoFCMpJjUPG2ObaQljhwEfvvm7hiOv7Lmyb2fz6Ly7oTmgcmWKw6XGWwmAc4HJ0+nPudkEgP0cPz1NzV7EIgucrkOshKKMc4nmye878xgDIJwlzPMHpAOJhrk8YoFshRqpIq9cBVAUrGgE5pzx30f3dg+2fu/i+ISsnzFvz/CX3bV818b5/Pz/xvouC/SQjsR5C7ow9gef6zfluo/mbRuf4scuPeOvxyzqOjkbrugD2ckmvWKt42KNn8FQ3IWU1/Kzbqo9rcFJwYDi6lPwAxJ5sebbHiEnVrQBqxW+6/ciAAwU7Vxb/ksXOzHvdk5KVVGNln4Fw+T7Hdl05t8el+Z5gOxAcvezDaE9JJ+Th6HsTsAckETdnxeCdVon0470Bjg5BskfuceqyI7BI/CiB7YL3uqe5bDsgyNEBzws2laM306dbMZG6asKcGMBhVvhMZnvCvuGPxo9GJLvgvOWXV320NTJdwrNBrp/29slCEnLfeHjsHgBLszh6amI6C8m+btuV4+69iNJiEn0BtBNwHIl5f5k0f4rbJil8hUSHcC+CgHqIWYnGXCj4xROPTuy2DcAsALPKK6pi9e07H2+ZvBhgOYGy0MooABQEdE7SOQHAv/PJDTEYpg82bHLW3Tp8O1KPj4XUUz30l9ET6lolegNYkzJ2rAKQeSPL/oMEhFSxQekbdZrEq0U5VRcZ2S6eSAGE3Cl5p6SuRVb4uZ/KynBRetFIlX6Y1h80XeKJ+AgAd4aPiYCwXruUXsygRW4Zyd1uUIdUJOHW49R8jm7ovG9hdxNs5/fiXQODADwYbG/pvGhg6wFEgxydMGdVllf8Hh+jJYhST457h1vqZqGCQKPlAKcBLPUvB4JElMBZgh57fvx9p1ngV4aMBVqAhAPppr9eNm9t/1kT/vwCH8jxUAxBaJPEtYXos18zvPCWPvFF13Rc++TVR1y+N24/I+kxAFncNhWEq8GXPObk/Pvh0XfUbNkiInwLYMrLlAKYWl5RFct1XLOhvBsFYfDZr5wh2EuDzDmUHRD+snBFvx3N0jEImtV+T763ImFaRtqMHdxzUrecxwVyG1kkXOFdQW+dQxC8p9PSaDZHT2gnoQ8zGXZ6e/hDp84MXYNOPL5KwjpPeV+3b5ntZS85rP8FhRM9Oakoqx7Ac4XqlArfVRXOFaW1suq/cty9pyal+QBKQxULN8IgSyHOWz35/oGQTsnZh/hS/9kXvV+IPjmfXht1b81Fo+ZseX3U7I82jJr10W9GzN6W++QDWD6tyx4ZPAogxNED2w0+tZOHo0cBtAq2K6+oig394aZhQ2+svnLYje9+JZP7r53Tr56W9wOoD9UvSQgY/fGOw35cXq4D/ieCwtn7wjl6eXmlc8b5VZPhmMdJU8rQqu/J+ZgOcr5IYH9hk2Y10rd3Bjl6apv9+pSd8YvPtTm5Q9aBXg6DYZ5vzVZAdY09jx4QdMA5+viXp2wH+Kqvn++JCXY2VhUPDrm9tdt+zOqp24zBNQA+zuDoIPh5Gk4CGQtza6yLxaPPFqrTNx4euwfCkzk4OkAeLTkPkeyRsd/16Gl9TC8ZPESyc1YHgiX5TKE382TN8blza74NaQ7EzwHoCeoqJ5l46+y7N68ceeeHQzI947CZNW1pcU4ujp7i6Xwtsw9PV+vWvcMcHUAJoBuGVmw6ZugP3zt62M3vXrsz2W4zaZaS9k4r/GXIje9elynPOvEVAl7M5M0kjBWu39Z149JB17z12UImZtDEjb0GTnzrutMv2fC/p1/y1p2njt+Ys/5ZOEcXz/jWhs4DR6/rc/p566Z/ZHtvoMU9SD2D7tWzgxxd0vLqauflQvQtFGZf9WuSXsiso8Pvvnz456Ys+O4XbjkZqDBAwh9fIBfjwUnWWqC+WXX0Zvt0ANY+Ltj6zDp6upPRzp7Is4/0n3mSm+Qa89w1KyFcLWtrG6qj+3LQNh6LD6ksryzYWchyhaStQTnpWKYEUPcsPYO24/d7FIBo1vPnUI01ttGymovwkisRc7eOIRHzQw6CBo6E0xyHy+KdOtqz79qyDVbxFGVLdiAZC1FTl6MLW5Pk6/k6p8Eeeucitey5J4rkIAfOG4oAkM8BldLH0OL8wddvmLPitl5eWLvitl47Bk/b9EMAjzPNjVy7M4QBMITWrPv6VRv/LdjfK4kXnIitAgDsU4ukcU6VNILCIMCWGqVvpRThmOTQr07YOOiv93UPh0ohju5eu0G3Lp46+o3LgDduS1gdRhnQCLQG6ec/05zc9yzpx0LflpI3rV375QP2CiIAmLN2cv2lAx6/CxZnUGjl12PTepCGMIOPaHXs4Ov6AZIFKS99giCvz5iGEEfP+D4SSdRS/BjikSn/deA4OgCYpP4ox6wCOAgIcPSURiB5Mg3+sWDAb7CAv3EbIP0ovt8OgQgtKIfoAWBBi7qamqdGzrqHVneMWHL5xw3ptG+v1rc8jFUABobkBy6PsJ4I9J+xPyNUJPDPWDxe8G3D4RkmZWGTgeJ4emVB4MTRACgD0ZWpWmTM59hhjg7hlXraN/J1boGtEuqCHD1MmbI6D/SDVvX1JVm0YMXt3VZCmiIpHjze/UjAgPo8wJtouMQmnY024WxMGmc9gPsInguwNLOODqhLVIlsrx6cJ39niWTbA8CAb20YBOJ2AId538rTKHCs35ekvZB+vGRJ/7xz1xzc8/yoZRDmZni98BjSRu0FKMHzkKNQ3lgdPZFI1EushRcX+DgQtcOxr0zbY8VbIe3yVA7OaajPzIsMgXbB2QjK8ZbwMhA3KYL1fzjn7q80pNNZiyfXClgQ7it8jbvyJcUFO13A28psnwMWXNGUW2lzcHS+kEqzwh1YmnP5a08hdXQAtSJvy/VYqwvHJl8DUZ3F0cMcP3s71fTFlXd0zfko4fIZ3R4EeSmovfnq4/52vv0+J00/bbXbkFlvns1VRycZNWBrABDsANK0yqwzZ3Jad8UWsEsG45csOfnBzL4OHKi4jd9C4OmQHgh4m8w79LI4Ov0MtEfb94+jEzg2R8MmY9zaKSsBzATc+ync6yaT+9I7ZyGO7p3/wPUc2vblECyTTKPvknMc8yyADzLlBOULtCR+MWDuxRWwnEBgV1DvLEhbRa1oytxkGXqE0XkSlnk8weUsGZ7R4xTy10uXa9rUGylvWHJdp2UNdb7kpm7VkJ1tlaqBhjg+XK4X5vzpNn9WTNOQNxFBrZjRbb6V/Zq19tXG5SF/vxCstRbAvGfv65H18EUujp6an9S7CmT5du46s9cwOK4Nlhy89Im+/9f4qWse5q0es80kWoyR1UOSrOto3GfFEZgPZMyHrGoFPu5PAnKMDwhydEZpASUBf54CzuqAvOqagFr2OOrHgn5qpWQu7usqGPoJhDH5OXpG/gmAYNs1ptMZv7t4vZWWunJyyadU2X5nm+kEdeq8cSslO9Om7ufIiCo9vFCSiOfNfeVClqE/OvHwbdHDy0YAuhjARtdTuUt7aP33PLrv0QDUwGDMU9cdcVd+Q/TRun77TBJzAVj/3vkcnjXV6XYQN7aN7hiy7Jbsu9Qy8cc7evyzfXX3kyRdQGhDKDJhcBy5Iwel3sDxKmDOfG5ezx/lHE9IXiAMQipnI5NYIWJ9yIO5HtzfWUPwWlvLLy5bdNKLjY3rQOHOF7+587erz71I1NkANgT4aJZHD3h+S6M7fvLK+GdTUpLrCb6TNT7grWgk6T0kc/2/r99FYhlAG3weXUAtqMUHakyjF45Ojn1xyo8gMwrAxsDVGWS88M9+yGcmIfwV0ATH2p6ABlNaRCDpX/vehWMBk/fVTX5PlBz8D4ANnh5hJ/101Ngr+iwcHXfbH769zXQDpiMTLwxJ/6+PBfPLpj4BlyMuCEDi2bM394HMZZBGQugK0Phuz1vJrcR3aHHH3qS9v6FwPU9HHD69ejTFWyUd4/cBWClJ4XVZ3WXrIg8vn9FU2T7OmLLpSCRUDtgRFPsIKoPSrze2goSdkmoArqWwNJp0nliW47ZXFwPHvvltganyV2g+ACXxnVULjvlfADh1zIbjYBP3kDrNCA6t3UvoAwormbQPto+9/vzB/qst5eWVTtdNHEBrrzSwQyi1Db7HHUomCby6q37rrb+t2vkEcItHrSuOv7snLe+iNNRIMNA/jdWEH/z7qleDfVT0roi13XfYjQa4mlKpkd0Ai6uu3njD0v/EmCrLK534purzYXgFDPoZsqW/yHpr9F4AL5GqdJxozj/Y8Pshd3eKRHQVHF5C4ggCSZJzalt0uHZ02kAbw/IL5xxnLBfQ4KTUixwVJ/Bwy0TJlK/87sKsZwyqyitjO9vvvknkdcawJQBI+FCGE7/224uavDA2bOgZKK+Us29zTWebdCIIPujUEjWLJ+d/l1tTMPjnG9qV7C1pBwB1SCRK13XbnOv9bocCBo5989sgHwkauGvwNmDon0Zc37eyHbC3HQCYSHTfz/727S2FRGiHMioHz26HvXu9cLukrmXNWWsbfrzzQGP5hQ90IFWybW+rjwpZJNZMmt1qb0lJGZP1ife3tN3vPxnVJEMvIoyB494qt0m7gITxbtl16ZdNfmfVgs9+ag29iP8uHPS/pvqpRlIfkNwT5vwIcfQiijgUUDT05sLNnCOzBl1EEYcOmvRnk4vIATeD7GVjg7dbFFHEoYGioTcXUvAPwgRc+yGZPyzi/1MUQ/fmopE6ehFFHAooGnpzEbqxuxiwF3FoomjozUWIo2dk34so4hBBkaM3F0WOXsSnAEWP3gxYOdUgdhfr6EUc6igaejNQ26rmPQBrgaw6+kdA/jfrFFHEJ42ioTcDa+f0q4fB9wCtDzy9Fwf4q1ULer7a2PFFFPFJoZg3OgDoXV4Va9sy2tFRxGlZhx0rFvqvtyqiiCKKKKKITwT/DzCiuc/XDbhOAAAAAElFTkSuQmCC" x="180" y="490" width="240" height="57"/>
+
+  
+    <!-- ====== 新增：云朵（各处散落） ====== -->
+    <g fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <!-- 左上大云朵 -->
+      <path d="M72,98 A10,10 0 0,1 88,92 A12,12 0 0,1 104,96 A8,8 0 0,1 112,102 A7,7 0 0,1 118,108 L72,108 Z" stroke="url(#grad-blue)" opacity="0.55"/>
+      <circle cx="80" cy="95" r="7" stroke="url(#grad-blue)" opacity="0.45"/>
+      <circle cx="94" cy="93" r="8" stroke="url(#grad-blue)" opacity="0.45"/>
+      <!-- 左中云朵 -->
+      <path d="M60,200 A9,9 0 0,1 74,194 A11,11 0 0,1 88,198 A7,7 0 0,1 97,204 L60,205 Z" stroke="url(#grad-purple)" opacity="0.45"/>
+      <circle cx="67" cy="197" r="6" stroke="url(#grad-purple)" opacity="0.35"/>
+      <circle cx="79" cy="195" r="7" stroke="url(#grad-purple)" opacity="0.35"/>
+      <!-- 右下云朵 -->
+      <path d="M480,480 A8,8 0 0,1 494,474 A10,10 0 0,1 508,478 A6,6 0 0,1 516,484 L480,485 Z" stroke="url(#grad-pink)" opacity="0.45"/>
+      <circle cx="487" cy="477" r="5" stroke="url(#grad-pink)" opacity="0.35"/>
+      <circle cx="498" cy="476" r="6" stroke="url(#grad-pink)" opacity="0.35"/>
+      <!-- 中间靠上小云朵 -->
+      <path d="M310,140 A7,7 0 0,1 322,135 A9,9 0 0,1 334,139 A5,5 0 0,1 340,144 L310,145 Z" stroke="url(#grad-cyan)" opacity="0.40"/>
+      <circle cx="316" cy="138" r="5" stroke="url(#grad-cyan)" opacity="0.30"/>
+      <circle cx="326" cy="137" r="6" stroke="url(#grad-cyan)" opacity="0.30"/>
+    </g>
+
+    <!-- ====== 新增：飞机 ====== -->
+    <g fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <!-- 左上飞往右下的飞机 -->
+      <path d="M155,82 L178,72 L176,80 L192,86 L174,92 L168,110 L162,100 L148,96 L160,90 L152,84 Z" stroke="url(#grad-orange)" opacity="0.65"/>
+      <!-- 飞机尾迹 -->
+      <path d="M150,85 Q138,78 128,76 Q118,74 106,68" stroke="url(#grad-orange)" opacity="0.25" stroke-dasharray="3,4"/>
+      <!-- 右上另一架小飞机 -->
+      <path d="M540,130 L555,125 L553,131 L563,136 L552,139 L548,150 L544,143 L535,141 L542,137 L538,132 Z" stroke="url(#grad-red)" opacity="0.50"/>
+      <path d="M536,129 Q528,124 520,122" stroke="url(#grad-red)" opacity="0.20" stroke-dasharray="2,3"/>
+    </g>
+
+    <!-- ====== 新增：花草树木 ====== -->
+    <g fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <!-- 左上小树 -->
+      <rect x="66" y="118" width="4" height="14" stroke="url(#grad-green)" opacity="0.70"/>
+      <polygon points="53,120 73,105 88,121" stroke="url(#grad-green)" opacity="0.75"/>
+      <polygon points="56,113 71,101 84,115" stroke="url(#grad-green)" opacity="0.65"/>
+      <circle cx="69" cy="107" r="8" stroke="url(#grad-green)" opacity="0.20" fill="url(#grad-green)" fill-opacity="0.08"/>
+      
+      <!-- 右上小树 -->
+      <rect x="532" y="200" width="4" height="16" stroke="url(#grad-green)" opacity="0.60"/>
+      <polygon points="518,202 539,186 556,203" stroke="url(#grad-green)" opacity="0.65"/>
+      <polygon points="521,196 537,183 550,199" stroke="url(#grad-green)" opacity="0.55"/>
+      
+      <!-- 左下大树 -->
+      <rect x="48" y="400" width="6" height="28" stroke="url(#grad-green)" opacity="0.70"/>
+      <polygon points="24,402 57,378 80,404" stroke="url(#grad-green)" opacity="0.75"/>
+      <polygon points="32,392 56,372 76,397" stroke="url(#grad-green)" opacity="0.65"/>
+      <polygon points="38,383 55,367 70,389" stroke="url(#grad-green)" opacity="0.55"/>
+      <circle cx="52" cy="384" r="15" stroke="url(#grad-green)" opacity="0.18" fill="url(#grad-green)" fill-opacity="0.06"/>
+
+      <!-- 右下小树 -->
+      <rect x="530" y="440" width="4" height="14" stroke="url(#grad-green)" opacity="0.55"/>
+      <polygon points="517,442 536,428 550,444" stroke="url(#grad-green)" opacity="0.60"/>
+      <polygon points="519,437 534,425 546,440" stroke="url(#grad-green)" opacity="0.50"/>
+      
+      <!-- 左侧花朵 -->
+      <circle cx="54" cy="280" r="4" stroke="url(#grad-pink)" opacity="0.70"/>
+      <circle cx="49" cy="276" r="4" stroke="url(#grad-pink)" opacity="0.65"/>
+      <circle cx="59" cy="277" r="4" stroke="url(#grad-pink)" opacity="0.65"/>
+      <circle cx="52" cy="271" r="4" stroke="url(#grad-pink)" opacity="0.60"/>
+      <circle cx="58" cy="273" r="4" stroke="url(#grad-pink)" opacity="0.60"/>
+      <circle cx="54" cy="278" r="2.5" fill="url(#grad-yellow)" opacity="0.70"/>
+      <path d="M51,282 Q50,294 46,300" stroke="url(#grad-green)" opacity="0.55"/>
+      
+      <!-- 右侧花朵 -->
+      <circle cx="510" cy="460" r="4" stroke="url(#grad-orange)" opacity="0.65"/>
+      <circle cx="505" cy="456" r="4" stroke="url(#grad-orange)" opacity="0.60"/>
+      <circle cx="515" cy="457" r="4" stroke="url(#grad-orange)" opacity="0.60"/>
+      <circle cx="508" cy="451" r="4" stroke="url(#grad-orange)" opacity="0.55"/>
+      <circle cx="514" cy="453" r="4" stroke="url(#grad-orange)" opacity="0.55"/>
+      <circle cx="509" cy="458" r="2.5" fill="url(#grad-yellow)" opacity="0.65"/>
+      <path d="M506,462 Q504,472 500,479" stroke="url(#grad-green)" opacity="0.50"/>
+      
+      <!-- 左下小花 -->
+      <circle cx="126" cy="434" r="3" stroke="url(#grad-pink)" opacity="0.60"/>
+      <circle cx="123" cy="431" r="3" stroke="url(#grad-pink)" opacity="0.55"/>
+      <circle cx="127" cy="429" r="3" stroke="url(#grad-pink)" opacity="0.55"/>
+      <circle cx="130" cy="432" r="3" stroke="url(#grad-pink)" opacity="0.55"/>
+      <circle cx="119" cy="433" r="3" stroke="url(#grad-pink)" opacity="0.50"/>
+      <circle cx="126" cy="431" r="2" fill="url(#grad-yellow)" opacity="0.60"/>
+      <path d="M123,435 Q122,443 119,448" stroke="url(#grad-green)" opacity="0.50"/>
+
+      <!-- 右上小花 -->
+      <circle cx="512" cy="290" r="3.5" stroke="url(#grad-red)" opacity="0.55"/>
+      <circle cx="507" cy="287" r="3.5" stroke="url(#grad-red)" opacity="0.50"/>
+      <circle cx="513" cy="284" r="3.5" stroke="url(#grad-red)" opacity="0.50"/>
+      <circle cx="503" cy="291" r="3.5" stroke="url(#grad-red)" opacity="0.45"/>
+      <circle cx="511" cy="288" r="2" fill="url(#grad-yellow)" opacity="0.55"/>
+      <path d="M509,292 Q508,300 505,305" stroke="url(#grad-green)" opacity="0.45"/>
+
+      <!-- 左中草地草丛 -->
+      <path d="M44,340 Q46,332 42,326" stroke="url(#grad-green)" opacity="0.50"/>
+      <path d="M50,341 Q52,330 47,323" stroke="url(#grad-green)" opacity="0.45"/>
+      <path d="M39,338 Q40,329 37,322" stroke="url(#grad-green)" opacity="0.40"/>
+      
+      <!-- 右中草地草丛 -->
+      <path d="M498,416 Q501,408 497,401" stroke="url(#grad-green)" opacity="0.45"/>
+      <path d="M504,417 Q506,406 502,399" stroke="url(#grad-green)" opacity="0.40"/>
+      <path d="M493,415 Q495,407 492,400" stroke="url(#grad-green)" opacity="0.35"/>
+      
+      <!-- 左上小草 -->
+      <path d="M62,156 Q63,149 59,142" stroke="url(#grad-green)" opacity="0.45"/>
+      <path d="M67,157 Q68,147 64,140" stroke="url(#grad-green)" opacity="0.40"/>
+      <path d="M134,158 Q136,150 133,143" stroke="url(#grad-green)" opacity="0.40"/>
+    </g>
+
+    <!-- ====== 新增：猫旁边的小星星点缀 ====== -->
+    <g fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M328,370 L331,376 L337,377 L333,381 L334,387 L328,384 L322,388 L324,382 L320,377 L327,375 Z" stroke="url(#grad-yellow)" opacity="0.50"/>
+      <path d="M268,394 L270,398 L274,399 L271,402 L272,406 L269,403 L265,405 L267,401 L264,398 L268,397 Z" stroke="url(#grad-yellow)" opacity="0.40"/>
+      <path d="M366,356 L368,360 L373,361 L369,364 L371,368 L366,365 L362,368 L363,363 L359,359 L364,358 Z" stroke="url(#grad-yellow)" opacity="0.35"/>
+      <path d="M246,346 L248,350 L252,351 L249,354 L250,357 L247,355 L244,357 L245,353 L242,349 L246,348 Z" stroke="url(#grad-yellow)" opacity="0.35"/>
+    </g>
+</g>
+</svg>

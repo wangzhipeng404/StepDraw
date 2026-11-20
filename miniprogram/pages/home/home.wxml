@@ -3,7 +3,7 @@
   <!-- 导航栏 -->
   <view class="navbar">
     <view class="navbar-brand">
-      <view class="navbar-icon">✏️</view>
+      <view class="navbar-icon"></view>
       <view class="navbar-text">
         <text class="navbar-title">StepDraw</text>
         <text class="navbar-subtitle">一笔一笔学画画</text>

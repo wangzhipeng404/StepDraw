@@ -1,7 +1,6 @@
 // 一笔一笔 StepDraw - 共享导航栏组件
 
 import './Navbar.css';
-
 interface NavbarProps {
   title?: string;
   subtitle?: string;
@@ -20,7 +19,9 @@ export function Navbar({
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <div className="navbar-icon">✏️</div>
+        <div className="navbar-icon">
+          <img src="/logo2.png" className="navbar-icon-logo" />
+        </div>
         <div>
           <h1 className="navbar-title">{title}</h1>
           <p className="navbar-subtitle">{subtitle}</p>

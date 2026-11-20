@@ -157,7 +157,8 @@ final class DrawingGestureView: UIView {
 
         if gesture == "draw" {
             // 绘图指抬起（或所有指抬起）→ 结束笔画
-            if drawTouch == nil || pointers[drawTouch] == nil {
+            let stillThere = drawTouch.map { pointers[$0] != nil } ?? false
+            if !stillThere {
                 onDrawEnded?()
                 gesture = "none"
                 drawTouch = nil

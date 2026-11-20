@@ -129,14 +129,22 @@ private struct CategoryListView: View {
 
 // MARK: - 第三级：图案网格
 
+/// 分类图案网格（搜索 / 难度筛选 / 分页加载）
 private struct DrawingGridView: View {
     let categoryId: String
     let categoryName: String
     var onSelect: (DrawingItem) -> Void
 
-    @StateObject private var model = DrawingGridModel(categoryId: categoryId)
+    @StateObject private var model: DrawingGridModel
     @State private var searchText = ""
     @State private var difficulty: Int = 0   // 0=全部
+
+    init(categoryId: String, categoryName: String, onSelect: @escaping (DrawingItem) -> Void) {
+        self.categoryId = categoryId
+        self.categoryName = categoryName
+        self.onSelect = onSelect
+        _model = StateObject(wrappedValue: DrawingGridModel(categoryId: categoryId))
+    }
 
     var body: some View {
         ScrollView {
