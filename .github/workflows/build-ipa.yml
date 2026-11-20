@@ -65,6 +65,12 @@ jobs:
           restore-keys: |
             ipeddle-toolchain-${{ runner.os }}-
 
+      - name: 安装系统依赖
+        run: |
+          # ipeddle 校验工具链时要求 PATH 里有 libtool（GitHub 镜像未预装）
+          sudo apt update
+          sudo apt install -y libtool libtool-bin libltdl-dev
+
       - name: 安装 Python 依赖（venv）
         run: |
           # ubuntu-24.04 的系统 Python 是 externally-managed（PEP 668），

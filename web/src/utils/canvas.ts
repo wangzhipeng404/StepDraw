@@ -566,8 +566,7 @@ export function floodFill(
 
 /**
  * 合成"填充用底图"（设备像素、透明底）。
- * 墙 = 整幅引导线（画浓一点）+ 已完成步骤 + 当前步已画完的笔 + 用户内容，
- * 全部不透明。
+ * 墙 = 整幅图案所有步骤的线条（画浓作墙）+ 用户内容（填充位图 + 笔画），全部不透明。
  * 为什么不复用 outlineCache/doneCache：
  *  - 引导层是 15% 半透明，alpha < WALL_ALPHA 不算墙，会把"点还没播放到的步骤"
  *    的区域判成不封闭；这里把引导线画浓，作为墙用（只用于找墙，不上屏）。
@@ -615,8 +614,6 @@ export function buildUnderlay(
   return under;
 }
 
-// 重建"用户内容"离屏缓存（填充/笔画增删、重算填充位图时调用，缩放/平移时复用）。
-// 设备像素空间（无 dpr 变换），渲染时整块 blit。
 // 重建"用户填充"离屏缓存（设备像素空间，渲染在图案线条之下，涂色本效果）。
 // 填充位图与画布同尺寸，直接平铺。
 function rebuildFillCache(state: LayerState, userActions: UserAction[]): void {

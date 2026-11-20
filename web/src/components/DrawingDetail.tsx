@@ -182,7 +182,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       image: res.canvas
     };
     setUserActions(prev => [...prev, { kind: 'fill', fill }]);
-  }, [drawing, state.currentStep, state.progress, userActions, strokeColor, showFillHint]);
+  }, [drawing, userActions, strokeColor, showFillHint]);
 
   // 开始（指针按下）
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
