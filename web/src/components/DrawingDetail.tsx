@@ -163,8 +163,6 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     const under = buildUnderlay(
       { cssW: rect.width, cssH: rect.height, dpr },
       drawing,
-      state.currentStep,
-      state.progress,
       userActions
     );
     if (!under) return;

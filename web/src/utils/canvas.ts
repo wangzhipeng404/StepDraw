@@ -466,7 +466,7 @@ function dilateWall(src: ImageData, r: number): Uint8Array {
   let prev = new Uint8Array(w * h);
   const sd = src.data;
   for (let i = 0; i < w * h; i++) prev[i] = sd[i * 4 + 3] >= WALL_ALPHA ? 1 : 0;
-  const cur = new Uint8Array(w * h);
+  let cur = new Uint8Array(w * h);
   for (let k = 0; k < r; k++) {
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -486,7 +486,7 @@ function dilateWall(src: ImageData, r: number): Uint8Array {
       }
     }
     // swap
-    const tmp = prev; prev = cur;
+    const tmp = prev; prev = cur; cur = tmp;
   }
   return prev;
 }
@@ -576,8 +576,6 @@ export function floodFill(
 export function buildUnderlay(
   size: { cssW: number; cssH: number; dpr: number },
   drawing: Drawing,
-  currentStep: number,
-  stepProgress: number,
   userActions: UserAction[]
 ): HTMLCanvasElement | null {
   if (size.cssW === 0 || size.cssH === 0) return null;

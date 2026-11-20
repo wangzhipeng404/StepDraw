@@ -40,8 +40,10 @@ permissions:
 env:
   IPAPPEDLE_DIR: ipad
   IPEDDLE_HOME: ${{ github.workspace }}/.ipeddle-home
-  # ipeddle 的 -c 只认小写 release/debug，workflow 输入是 Release/Debug
-  BUILD_CFG: ${{ toLower(inputs.configuration || 'Release') }}
+  # 虚拟环境 + 里面的 ipeddle 命令（每步直接调 .venv/bin/ipeddle）
+  VENV: ${{ github.workspace }}/.venv
+  # workflow 输入是 Release/Debug；ipeddle 的 -c 要小写，build 步骤里用 tr 转
+  BUILD_CFG: ${{ inputs.configuration || 'Release' }}
 
 jobs:
   build:
@@ -63,27 +65,31 @@ jobs:
           restore-keys: |
             ipeddle-toolchain-${{ runner.os }}-
 
-      - name: 安装 Python 依赖
+      - name: 安装 Python 依赖（venv）
         run: |
-          python3 -m pip install --upgrade pip
+          # ubuntu-24.04 的系统 Python 是 externally-managed（PEP 668），
+          # 直接 pip install 会被拒，所以走虚拟环境
+          python3 -m venv "$VENV"
+          "$VENV/bin/pip" install --upgrade pip
           # [icons] 带上 Pillow，能把 1024 图标缩放到各尺寸（没有也能跑，只是直接复制）
-          python3 -m pip install "ipeddle[icons]"
-          ipeddle --version || python3 -m ipeddle --version
+          "$VENV/bin/pip" install "ipeddle[icons]"
+          "$VENV/bin/ipeddle" --version
 
       - name: 安装 Swift for Linux + iOS 链接器 + iOS SDK
         run: |
-          # 无缓存时首次约 5-10 分钟（下载约 4GB）；命中缓存则很快
-          ipeddle setup
+          # 无缓存时首次约 5-10 分钟（下载约 4GB）；命中缓存则很快。
+          # IPEDDLE_HOME 指向 workspace 下目录，供上面的 cache 动作复用
+          "$VENV/bin/ipeddle" setup
 
       - name: 显示环境自检
         run: |
-          ipeddle doctor || python3 -m ipeddle doctor || true
+          "$VENV/bin/ipeddle" doctor || true
 
       - name: 用 ipeddle 构建未签名 IPA
         run: |
+          cfg=$(printf '%s' "$BUILD_CFG" | tr '[:upper:]' '[:lower:]')
           # -o 直接指定输出路径；--inspect 顺便校验产物（架构 / 最低 iOS / 符号完整性）
-          ipeddle build "$IPAPPEDLE_DIR" -c "$BUILD_CFG" -o ./StepDraw_unsigned.ipa --inspect \
-            || python3 -m ipeddle build "$IPAPPEDLE_DIR" -c "$BUILD_CFG" -o ./StepDraw_unsigned.ipa --inspect
+          "$VENV/bin/ipeddle" build "$IPAPPEDLE_DIR" -c "$cfg" -o ./StepDraw_unsigned.ipa --inspect
 
       - name: 校验产物
         run: |
