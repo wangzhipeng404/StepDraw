@@ -97,8 +97,10 @@ export function Group() {
           <div className="group-page-icon">
             <span>{groupEmoji}</span>
           </div>
-          <h1>{groupName}</h1>
-          <p>{categories.length} 个子分类</p>
+          <div className="group-page-text">
+            <h1>{groupName}</h1>
+            <p>{categories.length} 个子分类</p>
+          </div>
         </div>
 
         {categories.length === 0 ? (

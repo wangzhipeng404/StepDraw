@@ -5,6 +5,47 @@
   padding: 20rpx 20rpx 100rpx;
 }
 
+/* 主分类头部（左右结构：图标 + 名称） */
+.group-header {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #aa3bff 0%, #7c3aed 100%);
+  border-radius: 24rpx;
+  padding: 36rpx;
+  margin-bottom: 30rpx;
+}
+
+.header-icon {
+  width: 96rpx;
+  height: 96rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-emoji {
+  font-size: 48rpx;
+  line-height: 1;
+}
+
+.header-text {
+  margin-left: 28rpx;
+  min-width: 0;
+}
+
+.header-name {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .loading-state {
   text-align: center;
   padding: 200rpx 0;

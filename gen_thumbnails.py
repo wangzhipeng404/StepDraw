@@ -1,29 +1,40 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-为 data/ 下每个案例 JSON 生成完整封面 PNG。
+为案例 JSON 生成完整封面 PNG。
 
-输入:
-    data/<category>/<id>.json
-输出:
-    data/<category>/<id>.png
-同时更新:
-    data/<category>/index.json  里的 items[].thumbnail
-    data/<category>/<id>.json    里的 thumbnail
+默认模式（不带参数）:
+    扫描 DATA_DIR 下每个类别目录
+    输入: data/<category>/<id>.json
+    输出: data/<category>/<id>.png
+    同时更新:
+        data/<category>/index.json  里的 items[].thumbnail
+        data/<category>/<id>.json    里的 thumbnail
+
+单文件模式（带参数）:
+    python gen_thumbnails.py 路径/to/案例.json [更多.json ...]
+    为每个 JSON 生成同名 PNG（写在 JSON 旁边），不改动 index.json。
+    用于 web 端导出的用户绘制 JSON（顶层 steps[].strokes 格式）。
+
+兼容的 JSON 笔画格式:
+    - 标准: {"steps": [{"strokes": [{"points": [[x,y],...], "width": n}]}]}
+    - 扁平: {"strokes": [{"points": [[x,y],...], "width": n}]}
 
 用法:
     pip install Pillow
     python gen_thumbnails.py
+    python gen_thumbnails.py 00000-用户绘制-xxx.json
 """
 
 import json
+import math
 import os
 import sys
 
 from PIL import Image, ImageDraw
 
 # ==================== 配置 ====================
-DATA_DIR = r"C:\Users\epro\Downloads\hiroshima\omniglot\out\strokes_evaluation"
+DATA_DIR = r"C:\Users\epro\Downloads\hiroshima\slef"
 SIZE = 256                          # 封面边长(px)，可改 512
 PADDING = 8                         # 边距(px)，基于 SIZE
 BG_COLOR = (255, 255, 255, 255)     # 白底；透明改 (0,0,0,0)
@@ -32,6 +43,18 @@ LINE_WIDTH_BASE = 3                 # 与 JSON 中 width 对应
 SMOOTH_SAMPLES = 8                  # 每段贝塞尔插值数；1 = 关闭平滑
 OVERWRITE = True                   # True = 覆盖已存在的 PNG
 # =============================================
+
+
+def iter_strokes(case):
+    """统一取出案例中的所有笔画，兼容两种格式:
+    - 标准: {"steps": [{"strokes": [...] }]}
+    - 扁平: {"strokes": [...]}（web 端早期导出 / 用户手绘）
+    """
+    for step in case.get("steps") or []:
+        for stroke in step.get("strokes") or []:
+            yield stroke
+    for stroke in case.get("strokes") or []:
+        yield stroke
 
 
 def smooth_polyline(points, samples=8):
@@ -58,6 +81,63 @@ def smooth_polyline(points, samples=8):
     return out
 
 
+def _hex_to_rgba(color, alpha=255):
+    """'#RRGGBB' / 'rgb()' / None -> (r,g,b,a)。解析失败返回默认 LINE_COLOR。"""
+    if not color:
+        return LINE_COLOR
+    s = str(color).strip()
+    if s.startswith("#"):
+        h = s[1:]
+        try:
+            if len(h) == 3:
+                h = "".join(c * 2 for c in h)
+            if len(h) == 6:
+                r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+                return (r, g, b, alpha)
+        except ValueError:
+            return LINE_COLOR
+    return LINE_COLOR
+
+
+def _draw_stroke(draw, img, pts, width, color, stroke_type):
+    """按画笔类型绘制单个笔画（points 已映射到图像坐标，width 已换算成像素）。
+    颜色来自 stroke['color']（缺省用 LINE_COLOR），类型来自 stroke['type']。"""
+    fill = _hex_to_rgba(color)
+
+    if stroke_type == "pencil":
+        # 铅笔：低 alpha 短虚线，模拟铅笔颗粒感
+        dash_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        ddraw = ImageDraw.Draw(dash_layer)
+        seg_len = max(2, width)
+        for i in range(0, len(pts) - 1, seg_len * 2):
+            seg = pts[i:min(i + seg_len, len(pts) - 1) + 1]
+            ddraw.line(seg, fill=fill[:3] + (150,), width=width, joint="curve")
+        img.alpha_composite(dash_layer)
+        return
+
+    if stroke_type == "marker":
+        # 马克笔：半透明粗线
+        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        ddraw = ImageDraw.Draw(layer)
+        ddraw.line(pts, fill=fill[:3] + (100,), width=max(1, int(width * 2)), joint="curve")
+        img.alpha_composite(layer)
+        return
+
+    if stroke_type == "brush":
+        # 毛笔：粗线 + 端点柔化（用多个低 alpha 圆叠加模拟）
+        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        ddraw = ImageDraw.Draw(layer)
+        ddraw.line(pts, fill=fill[:3] + (150,), width=max(1, int(width * 1.5)), joint="curve")
+        r = max(1, int(width * 0.75))
+        for (x, y) in (pts[0], pts[-1]):
+            ddraw.ellipse([x - r, y - r, x + r, y + r], fill=fill[:3] + (90,))
+        img.alpha_composite(layer)
+        return
+
+    # pen / 默认：实心线
+    draw.line(pts, fill=fill, width=width, joint="curve")
+
+
 def draw_case(case, size, padding):
     """把一个案例的所有笔画画成一张完整图"""
     img = Image.new("RGBA", (size, size), BG_COLOR)
@@ -73,15 +153,23 @@ def draw_case(case, size, padding):
     offset_x = padding - vb[0] * scale
     offset_y = padding - vb[1] * scale
 
-    for step in case.get("steps", []):
-        for stroke in step.get("strokes", []):
-            pts = stroke.get("points") or []
-            if len(pts) < 2:
-                continue
-            mapped = [(x * scale + offset_x, y * scale + offset_y) for x, y in pts]
-            mapped = smooth_polyline(mapped, SMOOTH_SAMPLES)
-            w = max(1, int(round(stroke.get("width", LINE_WIDTH_BASE) * scale)))
-            draw.line(mapped, fill=LINE_COLOR, width=w, joint="curve")
+    for stroke in iter_strokes(case):
+        pts = stroke.get("points") or []
+        w = max(1, int(round(stroke.get("width", LINE_WIDTH_BASE) * scale)))
+        # 兼容带 color/type 的用户绘制笔画；库内标准 JSON 无这两字段 -> 走默认 #333 钢笔
+        color = stroke.get("color")
+        stroke_type = stroke.get("type") or "pen"
+        if len(pts) == 1:
+            # 单点：画一个圆点（与 web 端渲染一致）
+            x, y = pts[0][0] * scale + offset_x, pts[0][1] * scale + offset_y
+            r = max(1, w / 2)
+            draw.ellipse([x - r, y - r, x + r, y + r], fill=_hex_to_rgba(color))
+            continue
+        if len(pts) < 2:
+            continue
+        mapped = [(x * scale + offset_x, y * scale + offset_y) for x, y in pts]
+        mapped = smooth_polyline(mapped, SMOOTH_SAMPLES)
+        _draw_stroke(draw, img, mapped, w, color, stroke_type)
 
     return img
 
@@ -242,11 +330,47 @@ def process_flat_directory(data_dir):
     return done, skip, fail
 
 
+def process_single_file(path):
+    """为单个案例 JSON 生成同名 PNG（写在 JSON 旁边）。
+    用于 web 端导出的用户绘制 JSON。不改动 index.json。
+    返回 (done, skip, fail)。
+    """
+    if not os.path.isfile(path):
+        print(f"[错误] 文件不存在：{os.path.abspath(path)}")
+        return 0, 0, 1
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            case = json.load(f)
+    except Exception as e:
+        print(f"[错误] 无法读取 {os.path.basename(path)}: {e}")
+        return 0, 0, 1
+
+    png_path = os.path.splitext(path)[0] + ".png"
+    try:
+        img = draw_case(case, SIZE, PADDING)
+        img.save(png_path, "PNG", optimize=True)
+        print(f"[完成] {os.path.basename(path)} -> {os.path.abspath(png_path)}")
+        return 1, 0, 0
+    except Exception as e:
+        print(f"[失败] {os.path.basename(path)}: {e}")
+        return 0, 0, 1
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
+
+    # 单文件模式: python gen_thumbnails.py a.json [b.json ...]
+    if len(sys.argv) > 1:
+        t_done = t_skip = t_fail = 0
+        for p in sys.argv[1:]:
+            d, s, f = process_single_file(p)
+            t_done += d; t_skip += s; t_fail += f
+        print("=" * 40)
+        print(f"单文件模式：生成 {t_done}, 跳过 {t_skip}, 失败 {t_fail}")
+        return
 
     if not os.path.isdir(DATA_DIR):
         print(f"[错误] 数据目录不存在：{os.path.abspath(DATA_DIR)}")

@@ -296,6 +296,84 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     }
   }, [exportToDataURL, drawing, state.currentStep, state.progress]);
 
+  // 导出用户绘制路径为 JSON（输出本项目标准案例格式：steps[].strokes，
+  // 与数据目录里的图案 JSON 一致，可直接被 gen_thumbnails.py 渲染）
+  const handleExportJson = useCallback(() => {
+    if (userStrokes.length === 0) {
+      alert('还没有绘制内容，先画几笔再导出吧～');
+      return;
+    }
+    try {
+      // 用户笔画存的是画布 CSS 像素坐标（绘制时的屏幕尺寸），
+      // 这里用 getTransform 的逆变换换算回 viewBox 坐标
+      // 画布尺寸直接读 clientWidth/Height（与 renderLayers 的 displayWidth/Height 同源）
+      const cv = brushRef.current || outlineRef.current;
+      const w = cv ? cv.clientWidth : 600;
+      const h = cv ? cv.clientHeight : 600;
+      const [vx0, vy0, vx1, vy1] = drawing.viewBox;
+      const vw = vx1 - vx0;
+      const vh = vy1 - vy0;
+      const scale = Math.min(w / vw, h / vh) * 0.8; // 与 getTransform 一致（留 10% 边距）
+      const offsetX = (w - vw * scale) / 2 - vx0 * scale;
+      const offsetY = (h - vh * scale) / 2 - vy0 * scale;
+
+      // 换算后的 strokes（viewBox 坐标），保留用户选择的颜色与画笔类型
+      // （gen_thumbnails.py 只读 points/width，多余字段会被忽略）
+      const strokes = userStrokes.map(s => ({
+        width: Math.round((s.width / scale) * 100) / 100,
+        color: s.color,
+        type: s.type,
+        points: s.points.map(p => [
+          Math.round((p[0] - offsetX) / scale * 100) / 100,
+          Math.round((p[1] - offsetY) / scale * 100) / 100
+        ])
+      }));
+
+      // 扩大 viewBox 以包含全部笔画（只扩不缩，保持原坐标系；
+      // 用户在图案外围边距里画的内容不会超出 viewBox 被裁掉）
+      const pad = 8; // 与 gen_thumbnails.py 的 PADDING 对应
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      let maxHalfWidth = 0;
+      for (const s of strokes) {
+        const half = s.width / 2;
+        if (half > maxHalfWidth) maxHalfWidth = half;
+        for (const [x, y] of s.points) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+      const margin = pad + maxHalfWidth;
+      const viewBox: [number, number, number, number] = [
+        Math.min(vx0, Math.round(minX - margin)),
+        Math.min(vy0, Math.round(minY - margin)),
+        Math.max(vx1, Math.round(maxX + margin)),
+        Math.max(vy1, Math.round(maxY + margin))
+      ];
+      // 单点笔画（minX==maxX）时保证 viewBox 有最小尺寸
+      if (viewBox[2] - viewBox[0] < 2 * margin) viewBox[2] = viewBox[0] + 2 * margin;
+      if (viewBox[3] - viewBox[1] < 2 * margin) viewBox[3] = viewBox[1] + 2 * margin;
+
+      const payload = {
+        id: `user-${Date.now()}`,
+        name: drawing.name ? `${drawing.name}-用户绘制` : '用户绘制',
+        viewBox,
+        steps: [{ id: 1, tip: '', strokes }]
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `${payload.name}-${Date.now()}.json`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('导出 JSON 失败:', err);
+      alert('导出失败，请重试');
+    }
+  }, [userStrokes, drawing.name, drawing.viewBox]);
+
   // 分享：优先调用系统分享面板，不支持时复制链接
   const handleShare = useCallback(() => {
     const url = window.location.href;
@@ -312,7 +390,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     }
   }, []);
 
-  // 切换画笔类型：点击某支画笔进入绘制模式；再点同一支则退出绘制模式
+  // 切换画笔类型：点击某支画笔进入绘制模式，再点同一支则退出绘制模式
   const handleStrokeTypeSelect = useCallback((key: StrokeType) => {
     if (drawingMode && strokeType === key) {
       setDrawingMode(false);
@@ -560,8 +638,19 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
             <button className="draw-tool-btn" onClick={handleClear} title="清除">
               <img className="tool-btn-icon" src={clearIcon} alt="清除" />
             </button>
-            <button className="draw-tool-btn save-btn" onClick={handleExport} title="保存">
+            <button className="draw-tool-btn save-btn" onClick={handleExport} title="保存图片">
               <img className="tool-btn-icon" src={saveIcon} alt="保存" />
+            </button>
+            <button
+              className="draw-tool-btn export-json-btn"
+              onClick={handleExportJson}
+              title="导出绘制路径 JSON"
+            >
+              <svg className="tool-btn-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="导出 JSON">
+                <path d="M12 3v12" />
+                <path d="M7 11l5 5 5-5" />
+                <path d="M4 20h16" />
+              </svg>
             </button>
             <button className="draw-tool-btn share-btn" onClick={handleShare} title="分享">
               <img className="tool-btn-icon" src={shareIcon} alt="分享" />

@@ -1,5 +1,15 @@
 <!-- 一笔一笔 StepDraw - 子分类列表页 -->
 <view class="group-page">
+  <!-- 主分类头部：图标 + 名称（左右结构） -->
+  <view class="group-header">
+    <view class="header-icon">
+      <text class="header-emoji">{{groupEmoji || groupName.charAt(0)}}</text>
+    </view>
+    <view class="header-text">
+      <text class="header-name">{{groupName}}</text>
+    </view>
+  </view>
+
   <block wx:if="{{loading && categories.length === 0}}">
     <view class="loading-state">
       <text>加载中...</text>

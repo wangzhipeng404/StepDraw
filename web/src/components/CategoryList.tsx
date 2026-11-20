@@ -37,10 +37,19 @@ export function CategoryList() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // 返回目标：多级分类回所属主分类，扁平分类（如 linedrawer）回首页
+  // 正常流程用 navigate(-1) 弹栈；直达深链（无历史，如分享链接直接打开）
+  // 才回所属主分类。若用固定路径跳转，会把上一页重复压栈，导致多返回一层
   const backPath = categoryId.includes('/')
     ? `/group/${categoryId.split('/')[0]}`
     : '/';
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(backPath);
+    }
+  };
 
   useEffect(() => {
     if (categoryId) {
@@ -129,7 +138,7 @@ export function CategoryList() {
 
   return (
     <div className="category-list">
-      <Navbar showBack onBack={() => navigate(backPath)} />
+      <Navbar showBack onBack={handleBack} />
 
       <div className="category-list-content">
         <div className="category-header">

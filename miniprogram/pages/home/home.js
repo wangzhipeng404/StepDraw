@@ -11,8 +11,9 @@ Page({
     this.loadCategories();
   },
 
-  onPullDownRefresh () {
+  onPullDownRefresh() {
     this.loadCategories();
+    wx.stopPullDownRefresh();
   },
 
   async loadCategories() {
@@ -100,19 +101,14 @@ Page({
     });
   },
 
-  onPullDownRefresh() {
-    this.loadCategories();
-    wx.stopPullDownRefresh();
-  },
-
   /**
    * 分享给朋友
    */
   onShareAppMessage() {
     return {
-      title: '一笔一笔 StepDraw - 一起来学画画吧！',
+      title: '我发现一个宝藏小程序 Step Draw，一起来学画画吧！',
       path: '/pages/home/home',
-      imageUrl: `${config.BASE_URL}/cocomaterial/plants/Cherry_tree.png`
+      imageUrl: `${config.BASE_URL}/../cover.png`
     };
   },
 
@@ -121,9 +117,9 @@ Page({
    */
   onShareTimeline() {
     return {
-      title: '一笔一笔 StepDraw - 一起来学画画吧！',
+      title: '我发现一个宝藏小程序Step Draw，一起来学画画吧！',
       query: '',
-      imageUrl: `${config.BASE_URL}/cocomaterial/plants/Cherry_tree.png`
+      imageUrl: `${config.BASE_URL}/../cover.png`
     };
   }
 })

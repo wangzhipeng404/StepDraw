@@ -22,16 +22,18 @@ Page({
   onLoad(options) {
     const { id, name } = options;
     if (id) {
+      // 分享链接的 id 是编码过的（含 / 的多级路径），先解码
+      const categoryId = decodeURIComponent(id);
       const categoryName = decodeURIComponent(name || '');
       this.setData({
-        categoryId: id,
+        categoryId,
         categoryName
       });
       // 设置导航栏标题为当前分类名称
       wx.setNavigationBarTitle({
         title: categoryName || '分类列表'
       });
-      this.loadDrawings(id);
+      this.loadDrawings(categoryId);
     }
   },
 
@@ -125,8 +127,9 @@ Page({
     const { categoryName, drawings } = this.data;
     const firstDrawing = drawings.length > 0 ? drawings[0] : null;
     return {
-      title: `一笔一笔 StepDraw - 来画${categoryName}吧！`,
-      path: `/pages/category/category?id=${this.data.categoryId}&name=${encodeURIComponent(categoryName)}`,
+      title: `我发现一个宝藏小程序 Step Draw，一起来画${categoryName}吧！`,
+      // id 含多级路径（如 quickdraw/cat），必须整体编码，否则微信分享会按 / 截断
+      path: `/pages/category/category?id=${encodeURIComponent(this.data.categoryId)}&name=${encodeURIComponent(categoryName)}`,
       imageUrl: firstDrawing && firstDrawing.thumbnail ? `${config.BASE_URL}/${firstDrawing.thumbnail}` : undefined
     };
   },
@@ -138,8 +141,8 @@ Page({
     const { categoryName, drawings } = this.data;
     const firstDrawing = drawings.length > 0 ? drawings[0] : null;
     return {
-      title: `一笔一笔 StepDraw - 来画${categoryName}吧！`,
-      query: `id=${this.data.categoryId}&name=${encodeURIComponent(categoryName)}`,
+      title: `我发现一个宝藏小程序 Step Draw，一起来画${categoryName}吧！`,
+      query: `id=${encodeURIComponent(this.data.categoryId)}&name=${encodeURIComponent(categoryName)}`,
       imageUrl: firstDrawing && firstDrawing.thumbnail ? `${config.BASE_URL}/${firstDrawing.thumbnail}` : undefined
     };
   },

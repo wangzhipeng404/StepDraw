@@ -26,6 +26,14 @@ miniprogram/dist/
 miniprogram/.editorconfig
 miniprogram/project.config.json
 
+# iPad / iOS subproject
+ipad/build/
+*.ipa
+*.xcarchive/
+DerivedData/
+*.xcuserstate
+ipad/**/*.xcuserstate
+
 # Data files (large datasets)
 quickdraw_animals/*.jsonl
 quickdraw_animals/*.gz

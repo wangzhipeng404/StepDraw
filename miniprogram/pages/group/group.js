@@ -6,6 +6,7 @@ Page({
     BASE_URL: config.BASE_URL,
     groupId: '',
     groupName: '',
+    groupEmoji: '',
     categories: [],
     loading: true
   },
@@ -40,6 +41,11 @@ Page({
         url: config.getCategoryIndexUrl(),
         success: (res) => {
           const data = res.data;
+          // 取主分类的 emoji（groups 配置里）
+          const groupInfo = (data.groups || []).find((g) => g.id === groupId);
+          if (groupInfo && groupInfo.emoji) {
+            this.setData({ groupEmoji: groupInfo.emoji });
+          }
           const all = data.categories || [];
           // 分类按 dir 精确等于或前缀匹配归入分组（目录结构保证唯一）
           const bgColors = ['#FFE5E5', '#E5F3FF', '#FFF5E5', '#F0F5E5', '#FFE5FF', '#E5FFE5', '#E5F5FF', '#FFF5F5', '#F5E5FF', '#FFE5F5'];
@@ -76,8 +82,9 @@ Page({
 
   onShareAppMessage() {
     return {
-      title: `一笔一笔 StepDraw - 来画${this.data.groupName}吧！`,
-      path: `/pages/home/home`
+      title: `我发现一个宝藏小程序 Step Draw，一起来画${this.data.groupName}吧！`,
+      path: `/pages/home/home`,
+      imageUrl: `${config.BASE_URL}/../cover.png`
     };
   }
 })

@@ -84,7 +84,8 @@ Page({
   currentStroke: null,
 
   onLoad(options) {
-    const drawingId = options.id;
+    // 分享链接的 query 会按 / 截断路径，所以分享时对 id 做了 encodeURIComponent，这里先解码
+    const drawingId = options.id ? decodeURIComponent(options.id) : '';
     this.drawingId = drawingId; // 保存 drawingId 用于分享
     this.loadDrawing(drawingId);
 
@@ -1191,8 +1192,9 @@ Page({
     this._shareFromButton = false;
 
     const shareInfo = {
-      title: drawing ? `一起来画${drawing.name}吧！` : "一笔一笔 StepDraw",
-      path: `/pages/detail/detail?id=${drawingId}`
+      title: drawing ? `我发现一个宝藏小程序 Step Draw，一起来画${drawing.name}吧！` : "我发现一个宝藏小程序 Step Draw，一起来画画吧",
+      // id 含多级路径（如 quickdraw/cat/xxx），必须整体编码，否则微信分享会按 / 截断
+      path: `/pages/detail/detail?id=${encodeURIComponent(drawingId)}`
     };
 
     if (fromButton && this._shareImagePath) {
@@ -1214,8 +1216,8 @@ Page({
     const drawingId = this.drawingId || "";
 
     return {
-      title: drawing ? `一起来画${drawing.name}吧！` : "一笔一笔 StepDraw",
-      query: `id=${drawingId}`,
+      title: drawing ? `我发现一个宝藏小程序 Step Draw，一起来画${drawing.name}吧！` : "我发现一个宝藏小程序 Step Draw，一起来画画吧！",
+      query: `id=${encodeURIComponent(drawingId)}`,
       imageUrl: drawing && drawing.thumbnail ? config.getAssetUrl(drawing.thumbnail) : undefined
     };
   },

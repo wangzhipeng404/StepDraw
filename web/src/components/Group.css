@@ -16,20 +16,25 @@
   padding-bottom: 60px;
 }
 
+/* 主分类头部（左右结构：图标 + 名称） */
 .group-page-header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #aa3bff 0%, #7c3aed 100%);
+  border-radius: 16px;
+  padding: 28px;
   margin-bottom: 28px;
 }
 
 .group-page-icon {
   width: 72px;
   height: 72px;
-  margin: 0 auto 14px;
-  background: linear-gradient(135deg, #f0e6ff 0%, #e6f0ff 100%);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .group-page-icon span {
@@ -37,16 +42,21 @@
   line-height: 1;
 }
 
+.group-page-text {
+  margin-left: 20px;
+  min-width: 0;
+}
+
 .group-page-header h1 {
   font-size: 26px;
   font-weight: 600;
-  color: #333;
-  margin: 0 0 6px;
+  color: #fff;
+  margin: 0 0 4px;
 }
 
 .group-page-header p {
   font-size: 14px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.8);
   margin: 0;
 }
 
@@ -151,6 +161,27 @@
 @media (max-width: 768px) {
   .group-page-content {
     padding: 16px;
+  }
+
+  .group-page-header {
+    padding: 20px;
+  }
+
+  .group-page-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .group-page-icon span {
+    font-size: 28px;
+  }
+
+  .group-page-text {
+    margin-left: 14px;
+  }
+
+  .group-page-header h1 {
+    font-size: 22px;
   }
 
   .category-grid {
