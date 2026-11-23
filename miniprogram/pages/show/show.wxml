@@ -9,6 +9,7 @@
             type="2d"
             id="outlineCanvas"
             class="drawing-canvas"
+            bindtap="onCanvasTap"
           ></canvas>
         </view>
         <!-- 步骤提示固定在右下角（纯展示，无交互） -->

@@ -263,6 +263,21 @@
   color: #000;
 }
 
+/* 单步循环按钮（与轮廓按钮同款开关样式：非选中灰边、选中蓝边） */
+.loop-btn {
+  border: 1rpx solid #8a8a8a;
+}
+
+.loop-btn.active {
+  border: 1rpx solid #1890ff;
+  background: #e6f7ff;
+}
+
+.loop-icon {
+  width: 56rpx;
+  height: 56rpx;
+}
+
 /* 轮廓按钮样式 */
 .outline-btn {
   width: 72rpx;

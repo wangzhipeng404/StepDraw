@@ -7,7 +7,7 @@ import { STROKE_TYPES } from '../types';
 import { loadDrawing } from '../data/drawings';
 import { useDrawingPlayer } from '../hooks/useDrawingPlayer';
 import { useDrawingCanvas } from '../hooks/useDrawingCanvas';
-import { toImagePoint, zoomAnchored, IDENTITY_VIEW, buildUnderlay, floodFill, isPointInMask, pickLineForRecolor } from '../utils/canvas';
+import { toImagePoint, zoomAnchored, IDENTITY_VIEW, buildUnderlay, floodFill, isPointInMask, pickLineForRecolor, pickUserActionIndex } from '../utils/canvas';
 import type { ViewTransform } from '../utils/canvas';
 import { Navbar } from './Navbar';
 import preIcon from '../assets/pre.png';
@@ -24,6 +24,8 @@ import undoIcon from '../assets/undo.png';
 import clearIcon from '../assets/clear.png';
 import saveIcon from '../assets/save.png';
 import shareIcon from '../assets/share.png';
+import stepLoopIcon from '../assets/stepLoop.png';
+import stepLoopIconActive from '../assets/stepLoopActive.png';
 import './DrawingDetail.css';
 
 // 颜色选项
@@ -39,6 +41,16 @@ const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
 // 活动指针（pan / pinch 用）
 interface ActivePointer { id: number; x: number; y: number; }
 const getPointerDistance = (a: ActivePointer, b: ActivePointer) => Math.hypot(b.x - a.x, b.y - a.y);
+
+// dataURL（PNG）-> Blob，供分享附带图片使用
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [head, body] = dataUrl.split(',');
+  const mime = /data:(.*?)(;|$)/.exec(head)?.[1] || 'image/png';
+  const bin = atob(body || '');
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
 
 interface DrawingCanvasProps {
   drawing: Drawing;
@@ -56,8 +68,30 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
   renderRef.current = render;
 
   // 绘图模式相关状态
-  // 用户操作栈：笔画与填充按时间序混排，撤销/清除按序弹出
+  // 用户操作栈：笔画与填充按时间序混排
   const [userActions, setUserActions] = useState<UserAction[]>([]);
+  // 撤销增量栈：记录每次修改（add 追加 / erase 按位删除），撤销即逆操作。
+  // 橡皮擦会删掉中间某一条，"撤销=删最后一条"会删错对象；按增量逆操作才能
+  // 把"刚擦掉的那块"原样放回原位。用 ref 存放，不参与渲染依赖。
+  type UndoDelta =
+    | { type: 'add' }
+    | { type: 'erase'; index: number; action: UserAction }
+    | { type: 'clear'; actions: UserAction[] };
+  const undoStackRef = useRef<UndoDelta[]>([]);
+
+  // 用户操作栈的同步镜像：快速连续操作（如橡皮擦一帧内划过多笔）时，
+  // setState 尚未提交、闭包里的 userActions 已过期，读这个 ref 才能拿到最新栈。
+  // 所有增删都经 pushAction / eraseAt / handleClear 同步更新它。
+  const userActionsRef = useRef<UserAction[]>([]);
+  useEffect(() => { userActionsRef.current = userActions; }, [userActions]);
+
+  // 追加一个用户操作（笔画/填充），并记录撤销增量
+  const pushAction = useCallback((action: UserAction) => {
+    const next = [...userActionsRef.current, action];
+    userActionsRef.current = next;
+    undoStackRef.current.push({ type: 'add' });
+    setUserActions(next);
+  }, []);
   const [strokeColor, setStrokeColor] = useState('#000000');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [strokeType, setStrokeType] = useState<StrokeType>('pen');
@@ -82,8 +116,10 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
   const viewRef = useRef<ViewTransform>({ ...IDENTITY_VIEW });
   // 手势状态：pan（单指/鼠标拖动）/ pinch（双指捏合）
   const activePointersRef = useRef<Map<number, ActivePointer>>(new Map());
-  const gestureModeRef = useRef<'none' | 'pan' | 'pinch' | 'draw'>('none');
+  const gestureModeRef = useRef<'none' | 'pan' | 'pinch' | 'pinchpan' | 'draw' | 'erase'>('none');
   const pinchStartRef = useRef<{ dist: number; view: ViewTransform; cx: number; cy: number } | null>(null);
+  // 绘制模式下的双指平移：记录当前两指中点，按中点位移平移画布
+  const pinchPanMidRef = useRef<{ x: number; y: number } | null>(null);
   const drawPointerIdRef = useRef<number | null>(null);
 
   // 获取 Canvas 位置与尺寸（在组件挂载后获取，并在窗口大小变化时更新）
@@ -147,10 +183,10 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       color: currentStroke.color,
       type: currentStroke.type
     };
-    setUserActions(prev => [...prev, { kind: 'stroke', stroke: newStroke }]);
+    pushAction({ kind: 'stroke', stroke: newStroke });
     currentStrokeRef.current = null;
     drawPointerIdRef.current = null;
-  }, []);
+  }, [pushAction]);
 
   // 当前手绘笔画数（墙版本标记）：线条增删后已喷涂区域的形状可能变化，旧掩码作废
   const strokeCount = userActions.filter(a => a.kind === 'stroke').length;
@@ -177,7 +213,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       strokeColor
     );
     if (recolor) {
-      setUserActions(prev => [...prev, { kind: 'stroke', stroke: recolor }]);
+      pushAction({ kind: 'stroke', stroke: recolor });
       return;
     }
 
@@ -194,7 +230,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
           mask: a.fill.mask, // 共享同一份掩码位图
           strokeCount
         };
-        setUserActions(prev => [...prev, { kind: 'fill', fill }]);
+        pushAction({ kind: 'fill', fill });
         return;
       }
     }
@@ -222,8 +258,35 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       mask: res.canvas,
       strokeCount
     };
-    setUserActions(prev => [...prev, { kind: 'fill', fill }]);
-  }, [drawing, userActions, strokeColor, showFillHint, strokeCount]);
+    pushAction({ kind: 'fill', fill });
+  }, [drawing, userActions, strokeColor, showFillHint, strokeCount, pushAction]);
+
+  // 橡皮擦：整笔擦除。点击/拖动落点处命中的最上层用户操作（笔画或填充）整块移除。
+  // 命中用 pickUserActionIndex（探针法，含填充掩码）；记录 {index, action} 增量，
+  // 撤销时把这块按原下标放回（橡皮擦可能删的是中间某条，不能简单删最后一条）。
+  const eraseAt = useCallback((clientX: number, clientY: number) => {
+    const rect = canvasRectRef.current;
+    if (!rect) return;
+    const p = toImagePoint(clientX, clientY, rect.left, rect.top, rect.width, rect.height, viewRef.current);
+    if (!p) return;
+    const dpr = window.devicePixelRatio || 1;
+    const actions = userActionsRef.current;
+    const idx = pickUserActionIndex(
+      actions,
+      { cssW: rect.width, cssH: rect.height, dpr },
+      p[0],
+      p[1]
+    );
+    if (idx >= 0) {
+      const action = actions[idx];
+      if (action) {
+        const next = actions.filter((_, i) => i !== idx);
+        userActionsRef.current = next;
+        undoStackRef.current.push({ type: 'erase', index: idx, action });
+        setUserActions(next);
+      }
+    }
+  }, []);
 
   // 开始（指针按下）
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -238,7 +301,10 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     // 双指落下
     if (pointers.length === 2) {
       if (drawingMode) {
-        // 绘制模式忽略第二指（与小程序一致），不触发缩放
+        // 绘制模式双指：收尾可能残留的一笔，转入双指平移（画着画着想挪画面）
+        commitStroke();
+        pinchPanMidRef.current = { x: (pointers[0].x + pointers[1].x) / 2, y: (pointers[0].y + pointers[1].y) / 2 };
+        gestureModeRef.current = 'pinchpan';
         return;
       }
       // 非绘制模式：进入捏合缩放（以起始中点为锚点）
@@ -263,6 +329,10 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
         // 填充：单击落点即填充当前颜色，不拖拽
         applyFill(e.clientX, e.clientY);
         gestureModeRef.current = 'none';
+      } else if (strokeType === 'eraser') {
+        // 橡皮擦：按下即擦一次，之后拖动持续擦（见 move 分支）
+        eraseAt(e.clientX, e.clientY);
+        gestureModeRef.current = 'erase';
       } else {
         // 绘制模式：开始一笔
         const p = toImage(e.clientX, e.clientY);
@@ -280,7 +350,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       // 非绘制模式：单指/鼠标拖动平移
       gestureModeRef.current = 'pan';
     }
-  }, [drawingMode, strokeWidth, strokeColor, strokeType, toImage, applyFill]);
+  }, [drawingMode, strokeWidth, strokeColor, strokeType, toImage, applyFill, eraseAt, commitStroke]);
 
   // 指针移动：按手势模式分派（绘制 / 平移 / 捏合缩放）
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -322,12 +392,37 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       return;
     }
 
+    // 绘制模式双指平移：按两指中点位移平移画布（不缩放）
+    if (mode === 'pinchpan') {
+      const stored = activePointersRef.current.get(e.pointerId);
+      if (!stored) return;
+      stored.x = e.clientX;
+      stored.y = e.clientY;
+      const pointers = Array.from(activePointersRef.current.values());
+      if (pointers.length >= 2 && pinchPanMidRef.current) {
+        const midX = (pointers[0].x + pointers[1].x) / 2;
+        const midY = (pointers[0].y + pointers[1].y) / 2;
+        viewRef.current = {
+          ...viewRef.current,
+          tx: viewRef.current.tx + (midX - pinchPanMidRef.current.x),
+          ty: viewRef.current.ty + (midY - pinchPanMidRef.current.y)
+        };
+        pinchPanMidRef.current = { x: midX, y: midY };
+      }
+      return;
+    }
+
     // 绘制（绘制模式）
     if (mode === 'draw' && currentStrokeRef.current && e.pointerId === drawPointerIdRef.current) {
       const p = toImage(e.clientX, e.clientY);
       if (p) currentStrokeRef.current.points.push(p);
     }
-  }, [toImage]);
+
+    // 橡皮擦拖动：持续擦除经过之处命中的用户内容
+    if (mode === 'erase') {
+      eraseAt(e.clientX, e.clientY);
+    }
+  }, [toImage, eraseAt]);
 
   // 指针抬起 / 离开 / 取消
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -352,21 +447,61 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
         gestureModeRef.current = remaining === 0 ? 'none' : 'pinch';
       }
       if (remaining < 2) pinchStartRef.current = null;
-    } else if (mode === 'pan' && remaining === 0) {
+    } else if (mode === 'pinchpan') {
+      // 绘制模式双指平移结束
+      if (remaining === 1 && strokeType !== 'fill' && strokeType !== 'eraser') {
+        // 单指仍在画布上：从该指继续画新一笔（沿用当前画笔）
+        const [last] = Array.from(activePointersRef.current.values());
+        if (last) {
+          const p = toImage(last.x, last.y);
+          if (p) {
+            currentStrokeRef.current = {
+              points: [p],
+              width: strokeWidth,
+              color: strokeColor,
+              type: strokeType
+            };
+            drawPointerIdRef.current = last.id;
+            gestureModeRef.current = 'draw';
+          }
+        }
+      }
+      if (remaining < 2) pinchPanMidRef.current = null;
+      // 未转入绘制（填充/橡皮擦/落点越界）且双指已结束：复位手势，避免卡在 pinchpan
+      if (gestureModeRef.current === 'pinchpan') {
+        gestureModeRef.current = 'none';
+      }
+    } else if ((mode === 'pan' || mode === 'erase') && remaining === 0) {
       gestureModeRef.current = 'none';
     }
-  }, [commitStroke]);
+  }, [commitStroke, toImage, strokeWidth, strokeColor, strokeType]);
 
-  // 撤销上一笔（笔画/填充共用时间序栈，撤销哪个都行）
+  // 撤销上一操作（笔画/填充/擦除共用增量栈）。
+  // add 的逆操作=删最后一条；erase 的逆操作=把擦掉的按原下标放回；
+  // clear 的逆操作=整体恢复。与橡皮擦"删中间某条"配合，撤销才不会删错对象。
   const handleUndo = useCallback(() => {
-    if (userActions.length > 0) {
-      setUserActions(userActions.slice(0, -1));
+    const delta = undoStackRef.current.pop();
+    if (!delta) return;
+    let next: UserAction[];
+    if (delta.type === 'add') {
+      next = userActionsRef.current.slice(0, -1);
+    } else if (delta.type === 'erase') {
+      next = [...userActionsRef.current];
+      next.splice(delta.index, 0, delta.action);
+    } else {
+      next = delta.actions;
     }
-  }, [userActions]);
+    userActionsRef.current = next;
+    setUserActions(next);
+  }, []);
 
-  // 清除所有用户绘制（笔画 + 填充）
+  // 清除所有用户绘制（笔画 + 填充），记录整体快照供撤销恢复
   const handleClear = useCallback(() => {
     if (window.confirm('确定要清除所有绘制内容吗？')) {
+      if (userActionsRef.current.length > 0) {
+        undoStackRef.current.push({ type: 'clear', actions: [...userActionsRef.current] });
+      }
+      userActionsRef.current = [];
       setUserActions([]);
       currentStrokeRef.current = null;
     }
@@ -469,10 +604,31 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     }
   }, [userActions, drawing.name, drawing.viewBox]);
 
-  // 分享：优先调用系统分享面板，不支持时复制链接
+  // 分享：优先调用系统分享面板（支持时带上当前画面合成图），不支持时复制链接。
+  // 合成图 = 参考图案（当前进度）+ 用户绘制（笔画/填充），与"保存图片"同源，
+  // 让分享卡片直接展示用户临摹成果，而不是空白参考图。
   const handleShare = useCallback(() => {
     const url = window.location.href;
     if (navigator.share && window.isSecureContext) {
+      // Web Share Level 2：可附带文件（图片）。不支持 files 的平台回退为纯链接分享。
+      try {
+        const dataUrl = exportToDataURL(drawing, state.currentStep, state.progress);
+        if (dataUrl) {
+          const blob = dataUrlToBlob(dataUrl);
+          const file = new File([blob], `${drawing.name || 'drawing'}.png`, { type: 'image/png' });
+          const shareData: ShareData & { files?: File[] } = { title: document.title, url, files: [file] };
+          const canShareFiles = typeof (navigator as Navigator & { canShare?: (d: ShareData) => boolean }).canShare === 'function'
+            ? (navigator as Navigator & { canShare: (d: ShareData) => boolean }).canShare(shareData)
+            : true;
+          if (canShareFiles) {
+            navigator.share(shareData).catch(() => {});
+            return;
+          }
+        }
+      } catch (err) {
+        // 合成失败（如导出报错）则退化为纯链接分享
+        console.warn('分享附图失败，退化为链接分享:', err);
+      }
       navigator.share({ title: document.title, url }).catch(() => {});
       return;
     }
@@ -483,7 +639,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     } else {
       alert(url);
     }
-  }, []);
+  }, [exportToDataURL, drawing, state.currentStep, state.progress]);
 
   // 切换画笔类型：点击某支画笔进入绘制模式，再点同一支则退出绘制模式
   const handleStrokeTypeSelect = useCallback((key: StrokeType) => {
@@ -648,6 +804,17 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
               >
                 <span className="speed-text">{state.speed}x</span>
               </button>
+              <button
+                className={`control-btn loop-btn ${state.loopCurrentStep ? 'active' : ''}`}
+                onClick={actions.toggleLoop}
+                title={state.loopCurrentStep ? '单步循环（开）' : '单步循环（关）'}
+              >
+                <img
+                  className="loop-icon"
+                  src={state.loopCurrentStep ? stepLoopIconActive : stepLoopIcon}
+                  alt="单步循环"
+                />
+              </button>
             </div>
           </div>
 
@@ -810,5 +977,7 @@ export function DrawingDetail() {
     return null;
   }
 
-  return <DrawingCanvas drawing={drawing} onBack={handleBack} />;
+  // key=drawing.id：切换图案时强制重建画布组件，重置用户绘制栈、撤销增量栈、
+  // 视图变换等实例状态，避免上一幅图的残留（撤销栈/画布内容）串到下一幅。
+  return <DrawingCanvas key={drawing.id} drawing={drawing} onBack={handleBack} />;
 }

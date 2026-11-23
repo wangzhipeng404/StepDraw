@@ -35,6 +35,7 @@ Page({
     speed: 1,
     speedIndex: 1,
     speedText: '1',
+    loopCurrentStep: false, // 单步循环：播放只覆盖当前步骤，播完停在该步末尾
     showOutline: true,
     totalSteps: 0,
     globalProgress: 0,
@@ -48,7 +49,8 @@ Page({
       { key: 'pencil', name: '铅笔', icon: '/images/pencil.png', iconActive: '/images/pencil_active.png' },
       { key: 'marker', name: '马克笔', icon: '/images/markpen.png', iconActive: '/images/mark_pen_active.png' },
       { key: 'brush', name: '毛笔', icon: '/images/ink_brush.png', iconActive: '/images/ink_brush_active.png' },
-      { key: 'fill', name: '填充', icon: '/images/bucket.png', iconActive: '/images/bucket_active.png' }
+      { key: 'fill', name: '填充', icon: '/images/bucket.png', iconActive: '/images/bucket_active.png' },
+      { key: 'eraser', name: '橡皮擦', icon: '/images/erayz.png', iconActive: '/images/erayz_active.png' }
     ],
     // 绘制模式：先选中画笔进入，再点同一支画笔退出；非绘制模式下画布支持缩放/移动
     drawingMode: false,
@@ -565,6 +567,57 @@ Page({
     return null;
   },
 
+  // 拾取点 (imageX, imageY)（图像 CSS 像素）处最上层的一个用户操作，
+  // 返回其在 userActions 中的下标（后画的优先），点不到返回 -1。
+  // 与 pickLineForRecolor 同一套探针法，但只查用户内容（笔画 + 填充），供橡皮擦使用。
+  // 命中阈值比改色拾取更宽松（alpha ≥ 30）：铅笔/马克笔/毛笔是半透明笔触，
+  // 边缘 alpha 低，擦得掉才算好用。
+  pickUserActionIndex(imageX, imageY) {
+    const w = this.canvasWidth, h = this.canvasHeight;
+    const probeX = Math.floor(imageX), probeY = Math.floor(imageY);
+    if (probeX < 0 || probeY < 0 || probeX >= w || probeY >= h) return -1;
+
+    const probe = this.createLayer();
+    const ctx = probe.getContext('2d');
+    if (!ctx) return -1;
+
+    const probeHit = (draw) => {
+      ctx.clearRect(0, 0, w, h);
+      draw();
+      return ctx.getImageData(probeX, probeY, 1, 1).data[3] >= 30;
+    };
+
+    // 从后往前（最上层优先）：先查笔画，再查填充
+    for (let i = this.userActions.length - 1; i >= 0; i--) {
+      const a = this.userActions[i];
+      if (a.kind === 'stroke') {
+        if (!a.stroke.points || a.stroke.points.length < 1) continue;
+        if (probeHit(() => this.drawUserStroke(ctx, a.stroke))) return i;
+      } else if (a.kind === 'fill') {
+        if (probeHit(() => ctx.drawImage(tintMask(a.fill.mask, a.fill.color, () => this.createLayer()), 0, 0))) return i;
+      }
+    }
+    return -1;
+  },
+
+  // 橡皮擦：整笔擦除。点击/拖动落点处命中的最上层用户操作（笔画或填充）整块移除。
+  // 记录 {index, action} 增量：橡皮擦删的可能是中间某条，撤销时按原下标放回，
+  // 而不是简单删最后一条（那样会删错对象）。
+  applyErase(clientX, clientY) {
+    if (!this.canvasRect) return;
+    const [x, y] = this.toImagePoint(clientX, clientY);
+    const idx = this.pickUserActionIndex(x, y);
+    if (idx < 0) return;
+    const action = this.userActions[idx];
+    if (!action) return;
+    this.userActions.splice(idx, 1);
+    if (!this._undoStack) this._undoStack = [];
+    this._undoStack.push({ type: 'erase', index: idx, action });
+    this.drawOutlineLayer();
+    this.drawHistoryLayer();
+    this.invalidateShareCover();
+  },
+
   // 油漆桶：点击落点处漫水填充当前颜色。落点经 toImagePoint 换算到图像坐标
   // （画布 CSS 像素），与 underlay 同坐标系，直接喂给 floodFill。
   // 再次喷涂同一区域：复用该区域已有掩码（共享位图，不重算），只叠一层新颜色。
@@ -576,9 +629,7 @@ Page({
     // 0) 点中线条：复制一份线盖在原线上、换成喷涂色（撤销时副本消失、原线还原）
     const recolor = this.pickLineForRecolor(x, y, this.data.strokeColor);
     if (recolor) {
-      this.userActions.push({ kind: 'stroke', stroke: recolor });
-      this.drawOutlineLayer();
-      this.drawHistoryLayer();
+      this.pushUserAction({ kind: 'stroke', stroke: recolor });
       this.invalidateShareCover();
       return;
     }
@@ -611,7 +662,7 @@ Page({
 
   // 把一个填充操作压栈并刷新画面
   pushFill(seed, color, mask, strokeCount) {
-    this.userActions.push({
+    this.pushUserAction({
       kind: 'fill',
       fill: {
         key: 'fill-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
@@ -621,8 +672,6 @@ Page({
         strokeCount
       }
     });
-    this.drawOutlineLayer();
-    this.drawHistoryLayer();
     this.invalidateShareCover();
   },
 
@@ -858,7 +907,15 @@ Page({
   },
 
   onTogglePlay() {
-    const { currentStep, progress, totalSteps, playing } = this.data;
+    const { currentStep, progress, totalSteps, playing, loopCurrentStep } = this.data;
+
+    // 单步循环模式：当前步已画完时点播放，重播当前步
+    if (loopCurrentStep && !playing && progress >= 1) {
+      this.setData({ progress: 0, playing: true });
+      this.drawOutlineLayer();
+      this.startPlay();
+      return;
+    }
 
     // 如果已全部绘制完成，点击播放则重新开始
     if (!playing && currentStep === totalSteps - 1 && progress >= 1) {
@@ -911,7 +968,14 @@ Page({
 
         if (newProgress >= 1) {
           // 当前步骤完成
-          if (currentStep < totalSteps - 1) {
+          const { loopCurrentStep } = this.data;
+          if (loopCurrentStep) {
+            // 单步循环：停在本步末尾，不再前进到下一步
+            this.setData({
+              progress: 1,
+              globalProgress: (currentStep + 1) / this.data.totalSteps
+            });
+          } else if (currentStep < totalSteps - 1) {
             this.setData({
               currentStep: currentStep + 1,
               progress: 0,
@@ -930,6 +994,10 @@ Page({
           this.setData({ progress: newProgress, globalProgress });
         }
         this.drawOutlineLayer();
+      } else if (this.data.loopCurrentStep) {
+        // 单步循环：当前步已画完，停止（onTogglePlay 负责重播当前步）
+        this.setData({ playing: false });
+        clearInterval(this.playTimer);
       } else if (currentStep < totalSteps - 1) {
         this.setData({
           currentStep: currentStep + 1,
@@ -958,6 +1026,20 @@ Page({
   onToggleOutline() {
     this.setData({ showOutline: !this.data.showOutline });
     this.drawOutlineLayer();
+  },
+
+  // 单步循环：只循环播放当前步骤，方便反复看某一笔
+  onToggleLoop() {
+    const loop = !this.data.loopCurrentStep;
+    this.setData({ loopCurrentStep: loop });
+    // 开关切换时若正在播放，用新规则重启定时器（速度/循环参数在 startPlay 内读取）
+    if (this.data.playing) {
+      if (this.playTimer) {
+        clearInterval(this.playTimer);
+        this.playTimer = null;
+      }
+      this.startPlay();
+    }
   },
 
   onProgressChange(e) {
@@ -1003,10 +1085,27 @@ Page({
     const touches = e.touches;
 
     if (this.data.drawingMode) {
+      // 绘制模式双指：收尾当前笔，转入双指平移（画着画着想挪画面）
+      if (touches.length >= 2) {
+        if (this.currentStroke) {
+          this.commitCurrentStroke();
+        }
+        this._pinchMidX = (touches[0].clientX + touches[1].clientX) / 2;
+        this._pinchMidY = (touches[0].clientY + touches[1].clientY) / 2;
+        this._currentTouchMode = 'pinchpan';
+        return;
+      }
       const t = touches[0];
       // 填充工具：单指单击落点即填充当前颜色，不拖拽（第二指落下忽略）
       if (this.data.strokeType === 'fill') {
-        if (touches.length === 1) this.applyFill(t.clientX, t.clientY);
+        this.applyFill(t.clientX, t.clientY);
+        return;
+      }
+      // 橡皮擦：按下即擦一次，之后拖动持续擦（见 move 分支）
+      if (this.data.strokeType === 'eraser') {
+        this.applyErase(t.clientX, t.clientY);
+        this._drawFingerId = t.identifier;
+        this._currentTouchMode = 'erase';
         return;
       }
       // 其他画笔：只用第一支手指绘制，忽略后续手指
@@ -1039,6 +1138,27 @@ Page({
     this._currentTouchMode = 'pan';
   },
 
+  // 收尾当前笔画：入操作栈并刷新画面（绘制/双指平移交接共用）
+  commitCurrentStroke() {
+    const stroke = this.currentStroke;
+    this.currentStroke = null;
+    this._drawFingerId = null;
+    if (stroke) {
+      this.pushUserAction({ kind: 'stroke', stroke });
+      this.drawBrushLayer(); // currentStroke 已置空，清掉顶层正在绘制的笔
+      this.invalidateShareCover();
+    }
+  },
+
+  // 追加一个用户操作（笔画/填充），并记录撤销增量（add 的逆操作=删最后一条）
+  pushUserAction(action) {
+    this.userActions.push(action);
+    if (!this._undoStack) this._undoStack = [];
+    this._undoStack.push({ type: 'add' });
+    this.drawOutlineLayer();
+    this.drawHistoryLayer();
+  },
+
   // 触摸移动
   onTouchMove(e) {
     if (!this.canvasRect) return;
@@ -1066,6 +1186,27 @@ Page({
       return;
     }
 
+    if (mode === 'pinchpan' && touches.length >= 2) {
+      // 绘制模式双指平移：按两指中点位移平移画布（不缩放）
+      const midX = (touches[0].clientX + touches[1].clientX) / 2;
+      const midY = (touches[0].clientY + touches[1].clientY) / 2;
+      if (this._pinchMidX !== undefined) {
+        this.viewTx += midX - this._pinchMidX;
+        this.viewTy += midY - this._pinchMidY;
+        this.renderView();
+      }
+      this._pinchMidX = midX;
+      this._pinchMidY = midY;
+      return;
+    }
+
+    if (mode === 'erase' && touches.length >= 1) {
+      // 橡皮擦拖动：持续擦除经过之处命中的用户内容
+      const t = touches.find(tt => tt.identifier === this._drawFingerId) || touches[0];
+      this.applyErase(t.clientX, t.clientY);
+      return;
+    }
+
     if (mode === 'pan' && touches.length === 1) {
       // 平移：单指拖动
       const dx = touches[0].clientX - this._panLastX;
@@ -1087,13 +1228,7 @@ Page({
       // 仅当绘图手指本身抬起时才收尾（第二只多余手指抬起不应结束当前笔）
       const stillDrawing = e.touches.some(t => t.identifier === this._drawFingerId);
       if (!stillDrawing) {
-        const stroke = this.currentStroke;
-        this.currentStroke = null;
-        this._drawFingerId = null;
-        this.userActions.push({ kind: 'stroke', stroke });
-        this.drawHistoryLayer();
-        this.drawBrushLayer();
-        this.invalidateShareCover();
+        this.commitCurrentStroke();
       }
     }
 
@@ -1104,6 +1239,25 @@ Page({
         this._panLastY = e.touches[0].clientY;
         this._currentTouchMode = 'pan';
         this._pinchLastDist = 0;
+        return;
+      }
+    }
+
+    if (mode === 'pinchpan') {
+      // 绘制模式双指平移结束：单指仍在画布上则从该指继续画新一笔（沿用当前画笔）
+      if (remaining === 1 && this.data.strokeType !== 'fill' && this.data.strokeType !== 'eraser') {
+        const t = e.touches[0];
+        const [x, y] = this.toImagePoint(t.clientX, t.clientY);
+        const { strokeColor, strokeWidth, strokeType } = this.data;
+        this.currentStroke = {
+          points: [[x, y]],
+          width: strokeWidth,
+          color: strokeColor,
+          type: strokeType
+        };
+        this._drawFingerId = t.identifier;
+        this._currentTouchMode = 'draw';
+        this.drawBrushLayer();
         return;
       }
     }
@@ -1197,6 +1351,10 @@ Page({
       content: '确定要清除所有绘制内容吗？',
       success: (res) => {
         if (res.confirm) {
+          if (this.userActions.length > 0) {
+            if (!this._undoStack) this._undoStack = [];
+            this._undoStack.push({ type: 'clear', actions: this.userActions.slice() });
+          }
           this.userActions = [];
           this.currentStroke = null;
           this._actionCount = -1;
@@ -1439,11 +1597,20 @@ Page({
     };
   },
 
-  // 撤销上一步操作（笔画/填充共用时间序栈，撤销哪个都行）
+  // 撤销上一操作（笔画/填充/擦除共用增量栈）。
+  // add 的逆操作=删最后一条；erase 的逆操作=把擦掉的按原下标放回；
+  // clear 的逆操作=整体恢复。与橡皮擦"删中间某条"配合，撤销才不会删错对象。
   onUndo() {
-    if (this.userActions.length === 0) return;
-    this.userActions.pop();
-    // 操作数减少，drawOutlineLayer/drawHistoryLayer 会自动重建填充+笔画缓存
+    if (!this._undoStack || this._undoStack.length === 0) return;
+    const delta = this._undoStack.pop();
+    if (delta.type === 'add') {
+      this.userActions.pop();
+    } else if (delta.type === 'erase') {
+      this.userActions.splice(delta.index, 0, delta.action);
+    } else if (delta.type === 'clear') {
+      this.userActions = delta.actions;
+    }
+    // 操作数变化后，drawOutlineLayer/drawHistoryLayer 会自动重建填充+笔画缓存
     this.drawOutlineLayer();
     this.drawHistoryLayer();
     this.invalidateShareCover();

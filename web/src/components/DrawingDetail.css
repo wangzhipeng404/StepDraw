@@ -262,6 +262,30 @@
   color: #000;
 }
 
+/* 单步循环按钮（与轮廓按钮同款开关样式：非选中灰边、选中蓝边） */
+.loop-btn {
+  width: 46px;
+  height: 46px;
+  border: 1px solid #8a8a8a;
+  background: #f5f5f5;
+  padding: 0;
+}
+
+.loop-btn:hover {
+  background: #e0e0e0;
+}
+
+.loop-btn.active {
+  border: 1px solid #1890ff;
+  background: #e6f7ff;
+}
+
+.loop-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
 /* 进度条 */
 .progress-container {
   padding: 12px;
@@ -654,21 +678,23 @@
 
   .control-btn-row {
     gap: 12px;
+    flex-wrap: wrap;
+    row-gap: 12px;
   }
 
   .control-btn {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
   }
 
   .btn-icon {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
   }
 
   .outline-btn {
-    min-width: 48px;
-    height: 48px;
+    min-width: 44px;
+    height: 44px;
   }
 
   .outline-text {
@@ -676,12 +702,17 @@
   }
 
   .speed-btn {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
   }
 
   .speed-text {
     font-size: 18px;
+  }
+
+  .loop-btn {
+    width: 44px;
+    height: 44px;
   }
 
   .progress-container {

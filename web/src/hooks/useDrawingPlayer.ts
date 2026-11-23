@@ -119,6 +119,10 @@ export function useDrawingPlayer({ drawing, initialState }: UseDrawingPlayerProp
   // 切换播放/暂停
   const togglePlay = useCallback(() => {
     setState(prev => {
+      // 单步循环：当前步已画完时点播放，重播当前步（否则 animate 会立刻又停住）
+      if (prev.loopCurrentStep && !prev.playing && prev.progress >= 1) {
+        return { ...prev, progress: 0, playing: true };
+      }
       // 如果已全部绘制完成，点击播放则重新开始
       if (prev.currentStep === totalSteps - 1 && prev.progress >= 1) {
         return { ...prev, currentStep: 0, progress: 0, playing: true };

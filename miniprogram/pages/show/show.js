@@ -35,7 +35,9 @@ Page({
     speed: 1,
     totalSteps: 0,
     globalProgress: 0,
-    canvasSize: 0
+    canvasSize: 0,
+    // 轮廓默认隐藏，双击画布切换显示
+    showOutline: false
   },
 
   // 单层画布：只播放图案，没有用户绘制，不需要三层
@@ -173,7 +175,7 @@ Page({
     this.doneCache = cache;
   },
 
-  // 重建轮廓底图的离屏缓存（展示模式轮廓常显，构建一次即可）
+  // 重建轮廓底图的离屏缓存（构建一次即可，显隐由 showOutline 控制）
   rebuildOutlineCache() {
     if (!this.outlineCtx) return;
     const { drawing } = this.data;
@@ -213,7 +215,7 @@ Page({
     }
 
     ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
-    if (this.outlineCache) ctx.drawImage(this.outlineCache, 0, 0);
+    if (this.outlineCache && this.data.showOutline) ctx.drawImage(this.outlineCache, 0, 0);
     if (this.doneCache) ctx.drawImage(this.doneCache, 0, 0);
 
     // 当前步骤的动画部分
@@ -402,5 +404,45 @@ Page({
     if (this.playTimer) {
       clearInterval(this.playTimer);
     }
-  }
+    if (this._tapTimer) {
+      clearTimeout(this._tapTimer);
+    }
+  },
+
+  // 画布点击：单击 停止/启动播放，双击 显示/隐藏轮廓
+  onCanvasTap() {
+    if (this._tapTimer) {
+      // 双击：取消单击逻辑，切换轮廓显隐
+      clearTimeout(this._tapTimer);
+      this._tapTimer = null;
+      this.setData({ showOutline: !this.data.showOutline }, () => {
+        this.drawOutlineLayer();
+      });
+      return;
+    }
+    this._tapTimer = setTimeout(() => {
+      this._tapTimer = null;
+      this.togglePlay();
+    }, 300);
+  },
+
+  // 停止/启动播放（播放已全部结束时，单击从头重新开始）
+  togglePlay() {
+    const { playing, drawing, currentStep, progress, totalSteps } = this.data;
+    if (!drawing) return;
+
+    if (playing) {
+      clearInterval(this.playTimer);
+      this.playTimer = null;
+      this.setData({ playing: false });
+      return;
+    }
+
+    const finished = progress >= 1 && currentStep >= totalSteps - 1;
+    if (finished) {
+      this.setData({ currentStep: 0, progress: 0, globalProgress: 0 });
+    }
+    this.setData({ playing: true });
+    this.startPlay();
+  },
 })

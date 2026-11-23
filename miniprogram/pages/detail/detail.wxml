@@ -78,6 +78,9 @@
           <view class="control-btn speed-btn" bindtap="onSpeedChange">
             <text class="speed-text">{{speedText}}x</text>
           </view>
+          <view class="control-btn loop-btn {{loopCurrentStep ? 'active' : ''}}" bindtap="onToggleLoop">
+            <image class="loop-icon" src="{{loopCurrentStep ? '/images/stepLoopActive.png' : '/images/stepLoop.png'}}" mode="aspectFit" />
+          </view>
         </view>
       </view>
 

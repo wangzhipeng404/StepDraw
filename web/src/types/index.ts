@@ -11,6 +11,8 @@ import brushIcon from '../assets/ink_brush.png';
 import brushIconActive from '../assets/ink_brush_active.png';
 import bucketIcon from '../assets/bucket.png';
 import bucketIconActive from '../assets/bucket_active.png';
+import eraserIcon from '../assets/erayz.png';
+import eraserIconActive from '../assets/erayz_active.png';
 
 // 笔画：一组点构成的线条
 export interface Stroke {
@@ -63,8 +65,8 @@ export interface UserStroke {
   type: StrokeType;
 }
 
-// 画笔类型
-export type StrokeType = 'pen' | 'pencil' | 'marker' | 'brush' | 'fill';
+// 画笔类型（eraser 是整笔擦除：点/拖命中哪个用户笔画或填充就删哪个，不产生笔画）
+export type StrokeType = 'pen' | 'pencil' | 'marker' | 'brush' | 'fill' | 'eraser';
 
 // 画笔类型定义
 export const STROKE_TYPES: { key: StrokeType; name: string; icon: string; iconActive: string }[] = [
@@ -72,7 +74,8 @@ export const STROKE_TYPES: { key: StrokeType; name: string; icon: string; iconAc
   { key: 'pencil', name: '铅笔', icon: pencilIcon, iconActive: pencilIconActive },
   { key: 'marker', name: '马克笔', icon: markerIcon, iconActive: markerIconActive },
   { key: 'brush', name: '毛笔', icon: brushIcon, iconActive: brushIconActive },
-  { key: 'fill', name: '填充', icon: bucketIcon, iconActive: bucketIconActive }
+  { key: 'fill', name: '填充', icon: bucketIcon, iconActive: bucketIconActive },
+  { key: 'eraser', name: '橡皮擦', icon: eraserIcon, iconActive: eraserIconActive }
 ];
 
 // 绘图模式

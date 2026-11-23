@@ -678,6 +678,58 @@ export function isPointInMask(mask: HTMLCanvasElement, x: number, y: number): bo
 }
 
 /**
+ * 拾取点 (imageX, imageY)（图像 CSS 像素）处最上层的一个用户操作，返回其在
+ * userActions 中的下标（后画的优先），点不到返回 -1。
+ * 与 pickLineForRecolor 同一套探针法（逐条画到探针画布查像素 alpha），
+ * 但只查用户内容（笔画 + 填充），供橡皮擦使用。仅在点击/拖动时调用，开销可忽略。
+ */
+export function pickUserActionIndex(
+  userActions: UserAction[],
+  size: { cssW: number; cssH: number; dpr: number },
+  imageX: number,
+  imageY: number
+): number {
+  if (size.cssW === 0 || size.cssH === 0) return -1;
+  const dpr = size.dpr;
+  const w = Math.max(1, Math.round(size.cssW * dpr));
+  const h = Math.max(1, Math.round(size.cssH * dpr));
+  const probeX = Math.floor(imageX * dpr);
+  const probeY = Math.floor(imageY * dpr);
+  if (probeX < 0 || probeY < 0 || probeX >= w || probeY >= h) return -1;
+
+  const probe = document.createElement('canvas');
+  probe.width = w; probe.height = h;
+  const ctx = probe.getContext('2d');
+  if (!ctx) return -1;
+
+  // 画一个用户操作后采样探针像素：alpha ≥ 30 视为命中
+  // （比改色拾取更宽松：铅笔/马克笔/毛笔是半透明笔触，边缘 alpha 低，擦得掉才算好用）
+  const probeHit = (draw: () => void): boolean => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    draw();
+    return ctx.getImageData(probeX, probeY, 1, 1).data[3] >= 30;
+  };
+
+  // 从后往前（最上层优先）：先查笔画，再查填充
+  for (let i = userActions.length - 1; i >= 0; i--) {
+    const a = userActions[i];
+    if (a.kind === 'stroke') {
+      if (!a.stroke.points || a.stroke.points.length < 1) continue;
+      if (probeHit(() => {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        renderUserStroke(ctx, a.stroke);
+      })) return i;
+    } else if (a.kind === 'fill') {
+      if (probeHit(() => {
+        ctx.drawImage(tintMask(a.fill.mask, a.fill.color), 0, 0);
+      })) return i;
+    }
+  }
+  return -1;
+}
+
+/**
  * 拾取点 (imageX, imageY)（图像 CSS 像素）下最上层的一条线条，返回"复制换色"后
  * 的 UserStroke（图像坐标、新颜色）；点不到线条返回 null。
  * 拾取顺序：用户笔迹（在上层，后画的优先）→ 图案线条（从顶层往底层）。
