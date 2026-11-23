@@ -245,7 +245,7 @@ Page({
       if (completedStrokes < totalStrokes) {
         const currentStroke = strokes[completedStrokes];
         if (currentStroke) {
-          this.drawStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true, scale);
+          this.drawStroke(ctx, currentStroke, currentStrokeProgress, config.PLAY_STROKE_COLOR, true, scale);
         }
       }
     }

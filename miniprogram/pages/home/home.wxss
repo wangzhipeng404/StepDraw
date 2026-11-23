@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   padding: 24rpx 30rpx;
-  background: linear-gradient(135deg, #aa3bff 0%, #7c3aed 100%);
+  background: linear-gradient(180deg, #aa3bff 0%, #7c3aed 100%);
   position: sticky;
   top: 0;
   z-index: 100;

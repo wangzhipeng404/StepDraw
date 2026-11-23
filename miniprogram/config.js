@@ -5,6 +5,9 @@
 
 const BASE_URL = 'https://wangzhipeng404.github.io/StepDraw/data';
 
+// 播放时"正在绘制"笔画的颜色：介于轮廓底图（#333@15%）与最终线条（#000）之间的深灰
+const PLAY_STROKE_COLOR = '#666';
+
 /**
  * 获取分类索引地址
  * @returns {string}
@@ -44,6 +47,7 @@ function getAssetUrl(path) {
 
 module.exports = {
   BASE_URL,
+  PLAY_STROKE_COLOR,
   getCategoryIndexUrl,
   getCategoryUrl,
   getDrawingUrl,

@@ -1,4 +1,7 @@
 {
-  "navigationBarTitleText": "一笔一划",
-  "enablePullDownRefresh": true
+  "navigationBarTitleText": "Step Draw",
+  "navigationBarBackgroundColor": "#aa3bff",
+  "navigationBarTextStyle": "white",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "light"
 }

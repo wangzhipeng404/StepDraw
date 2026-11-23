@@ -140,11 +140,11 @@ NAME_MAP = {
     "tuberlin/wheelbarrow": "独轮车", "tuberlin/windmill": "风车",
     "tuberlin/wine-bottle": "酒瓶", "tuberlin/wineglass": "酒杯",
     "tuberlin/wrist-watch": "手表", "tuberlin/zebra": "斑马",
-    "justcolor/mandal": "曼陀罗",
-    "justcolor/animals": "动物",
-    "justcolor/nature": "自然",
+    "coloring/mandal": "曼陀罗",
+    "coloring/animals": "动物",
+    "coloring/nature": "自然",
     # coloring
-    "coloring/AmongUs": "太空杀",
+    "coloring/AmongUs": "宇航员",
     "coloring/ArielMermaid": "美人鱼",
     "coloring/Ballerina": "芭蕾舞者",
     "coloring/Beach": "海滩",
@@ -158,9 +158,9 @@ NAME_MAP = {
 
 # ==================== emoji 映射（key 同 NAME_MAP；未命中的保持原样） ====================
 EMOJI_MAP = {
-    "linedrawer": "📖",
-    "featured": "📦",
-    "animals": "🐾", "plants": "🌿",
+    "linedrawer": "🎭",
+    "featured": "✨",
+    "animals": "🦁", "plants": "🌿",
     "cocomaterial/Buildings": "🏛️", "cocomaterial/Read": "📚",
     "cocomaterial/family": "👨‍👩‍👧‍👦",
     "aiposegallery/pose": "🧘", "aiposegallery/portrait": "🧑", "aiposegallery/costume": "👕",
@@ -203,9 +203,9 @@ EMOJI_MAP = {
     "tuberlin/lamp": "💡", "tuberlin/tablelamp": "💡", "tuberlin/floorlamp": "💡",
     "tuberlin/santaclaus": "🎅", "tuberlin/present": "🎁",
     "tuberlin/star": "⭐", "tuberlin/rocket": "🚀", "tuberlin/heart": "❤️",
-    "justcolor/mandal": "🕸️",
-    "justcolor/animals": "🐼",
-    "justcolor/nature": "🌸",
+    "coloring/mandal": "🕸️",
+    "coloring/animals": "🐼",
+    "coloring/nature": "🌸",
     # coloring
     "coloring/AmongUs": "👨‍🚀",
     "coloring/ArielMermaid": "🧜‍♀️",

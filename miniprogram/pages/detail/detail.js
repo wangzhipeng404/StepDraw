@@ -410,7 +410,7 @@ Page({
         if (completedStrokes < totalStrokes) {
           const currentStroke = strokes[completedStrokes];
           if (currentStroke) {
-            this.drawStroke(ctx, currentStroke, currentStrokeProgress, '#E53935', true, scale);
+            this.drawStroke(ctx, currentStroke, currentStrokeProgress, config.PLAY_STROKE_COLOR, true, scale);
           }
         }
       }
@@ -1296,7 +1296,7 @@ Page({
     }, 100);
   },
 
-  // 将当前步骤（已完成笔画 + 正在动画的红色笔画）绘制到目标 ctx
+  // 将当前步骤（已完成笔画 + 正在动画的笔画）绘制到目标 ctx
   drawCurrentStepToCtx(ctx) {
     const { drawing, currentStep, progress } = this.data;
     const { scale, offsetX, offsetY } = this.getTransform();
@@ -1320,7 +1320,7 @@ Page({
         this.drawStroke(ctx, strokes[i], 1, '#000', false, scale);
       }
       if (completedStrokes < totalStrokes && strokes[completedStrokes]) {
-        this.drawStroke(ctx, strokes[completedStrokes], currentStrokeProgress, '#E53935', true, scale);
+        this.drawStroke(ctx, strokes[completedStrokes], currentStrokeProgress, config.PLAY_STROKE_COLOR, true, scale);
       }
     }
     ctx.restore();

@@ -9,7 +9,7 @@
 .group-header {
   display: flex;
   align-items: center;
-  background: linear-gradient(135deg, #aa3bff 0%, #7c3aed 100%);
+  background: linear-gradient(180deg, #aa3bff 0%, #7c3aed 100%);
   border-radius: 24rpx;
   padding: 36rpx;
   margin-bottom: 30rpx;

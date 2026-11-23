@@ -9,17 +9,17 @@
     {
       "id": "featured",
       "name": "综合",
-      "emoji": "📦"
+      "emoji": "✨"
     },
     {
       "id": "linedrawer",
       "name": "漫画",
-      "emoji": "📖"
+      "emoji": "🎭"
     },
     {
       "id": "animals",
       "name": "动物",
-      "emoji": "🐾"
+      "emoji": "🦁"
     },
     {
       "id": "plants",
@@ -29,7 +29,7 @@
     {
       "id": "tuberlin",
       "name": "万物",
-      "emoji": "🌍"
+      "emoji": "🎪"
     },
     {
       "id": "coloring",
@@ -41,7 +41,7 @@
     {
       "id": "animals",
       "name": "动物",
-      "emoji": "🐾",
+      "emoji": "🦁",
       "count": 241,
       "dir": "animals"
     },
@@ -139,14 +139,14 @@
     {
       "id": "featured",
       "name": "综合",
-      "emoji": "📦",
+      "emoji": "✨",
       "count": 45,
       "dir": "featured"
     },
     {
       "id": "linedrawer",
       "name": "漫画",
-      "emoji": "📖",
+      "emoji": "🎭",
       "count": 182,
       "dir": "linedrawer"
     },

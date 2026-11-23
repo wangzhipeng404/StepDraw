@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "子分类",
+  "navigationBarBackgroundColor": "#aa3bff",
+  "navigationBarTextStyle": "white",
   "enablePullDownRefresh": true,
-  "backgroundTextStyle": "dark"
+  "backgroundTextStyle": "light"
 }

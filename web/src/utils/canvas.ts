@@ -332,6 +332,9 @@ export function zoomAnchored(
 
 type CanvasLike = HTMLCanvasElement;
 
+/** 播放时"正在绘制"笔画的颜色：介于轮廓底图（#333@15%）与最终线条（#000）之间的深灰 */
+export const PLAY_STROKE_COLOR = '#666';
+
 /**
  * 三层渲染的可变状态（缓存），由 hook 持有并逐帧传入。
  * 尺寸/dpr 变化时 renderLayers 会返回全新状态（旧缓存作废）。
@@ -831,7 +834,7 @@ function renderCurrentStep(
       }
       if (completedStrokes < strokes.length) {
         const current = strokes[completedStrokes];
-        if (current) renderStroke(ctx, current, currentStrokeProgress, '#E53935', true);
+        if (current) renderStroke(ctx, current, currentStrokeProgress, PLAY_STROKE_COLOR, true);
       }
     } else {
       const targetLength = stepProgress * totalLength;
@@ -856,7 +859,7 @@ function renderCurrentStep(
       }
       if (completedStrokes < strokes.length) {
         const current = strokes[completedStrokes];
-        if (current) renderStroke(ctx, current, currentStrokeProgress, '#E53935', true);
+        if (current) renderStroke(ctx, current, currentStrokeProgress, PLAY_STROKE_COLOR, true);
       }
     }
   }
