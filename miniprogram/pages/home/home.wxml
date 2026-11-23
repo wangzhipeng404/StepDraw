@@ -4,7 +4,7 @@
   <view class="navbar">
     <view class="navbar-brand">
       <view class="navbar-icon">
-        <image src="/images/logo.png" style="width: 72rpx;height: 72rpx;border-radius: 4px;" />
+        <image src="/images/logo.jpg" style="width: 72rpx;height: 72rpx;border-radius: 50%;" />
       </view>
       <view class="navbar-text">
         <text class="navbar-title">Step Draw</text>

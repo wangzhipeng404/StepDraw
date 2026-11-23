@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自定义色按钮：渐变环 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="ring"
+            android:innerRadius="8dp"
+            android:thickness="4dp"
+            android:useLevel="false">
+            <gradient
+                android:type="sweep"
+                android:startColor="#E53935"
+                android:centerColor="#FB8C00"
+                android:endColor="#8E24AA" />
+        </shape>
+    </item>
+    <item
+        android:left="5dp"
+        android:top="5dp"
+        android:right="5dp"
+        android:bottom="5dp">
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

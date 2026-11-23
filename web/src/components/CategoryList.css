@@ -4,6 +4,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  /* dvh 跟随真实可视视口（平板浏览器地址栏伸缩），旧浏览器忽略、回退到上一行 */
+  min-height: 100dvh;
   background: #fafafa;
 }
 
@@ -71,6 +73,8 @@
   gap: 20px;
   padding: 20px;
   max-height: calc(100vh - 180px);
+  /* 平板/手机浏览器里 100vh 包含地址栏背后的区域，100dvh 才是实际可见高度 */
+  max-height: calc(100dvh - 180px);
   overflow-y: auto;
 }
 
@@ -148,6 +152,29 @@
   background: #fff;
 }
 
+/* 旧引擎（部分平板浏览器）不支持 aspect-ratio 时的兜底：
+   没有它，缩略图容器高度会塌缩（图片未就绪时尤其明显），卡片就只剩标题那么高。
+   用 padding-bottom: 100%（百分比按宽度算）锁死 1:1，子元素改绝对定位。 */
+@supports not (aspect-ratio: 1) {
+  .drawing-thumbnail {
+    display: block;
+    height: 0;
+    padding-bottom: 100%;
+  }
+
+  .thumbnail-image {
+    position: absolute;
+    top: 5%;
+    left: 5%;
+  }
+
+  .thumbnail-placeholder {
+    position: absolute;
+    top: 10%;
+    left: 10%;
+  }
+}
+
 .thumbnail-placeholder span {
   font-size: 48px;
   font-weight: 300;
@@ -192,29 +219,6 @@
   padding: 48px 20px;
   color: #999;
   font-size: 14px;
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  gap: 16px;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #aa3bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 .loading-state {

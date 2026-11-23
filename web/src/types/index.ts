@@ -79,13 +79,17 @@ export const STROKE_TYPES: { key: StrokeType; name: string; icon: string; iconAc
 export type DrawMode = 'demo' | 'draw'; // 演示模式 | 绘图模式
 
 // 颜色填充（油漆桶）：点选封闭区域，区域按当前颜色填满。
-// image 是填充区域位图（设备像素、区域外全透明），渲染时一次 drawImage 即可；
-// 撤销/清除与笔画共用 userActions 栈，行为同构。
+// mask 是区域掩码位图（设备像素、区域白色 alpha=255、区域外透明），与颜色解耦：
+// 在同一区域再次喷涂 = 叠一层新颜色、共享同一份 mask（不复制位图），
+// 撤销时逐层退回上一个颜色。渲染时按 (mask, color) 上色。
+// strokeCount 记录喷涂时刻的手绘笔画数：墙（线条）没变过时才能复用旧掩码，
+// 用户画了新线/撤销了线（区域可能被分割）则必须重新 flood。
 export interface UserFill {
   key: string;
   seed: [number, number]; // 点击落点（图像坐标，CSS 像素）
   color: string;
-  image: HTMLCanvasElement;
+  mask: HTMLCanvasElement;
+  strokeCount: number; // 喷涂时的手绘笔画数（墙版本标记）
 }
 
 // 用户操作栈：笔画与填充按时间序统一入栈，撤销/清除按序弹出

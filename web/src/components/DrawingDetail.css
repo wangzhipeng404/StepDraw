@@ -135,7 +135,7 @@
   object-fit: contain;
 }
 
-/* 复位按钮左侧：模式快捷切换按钮（绘制 <-> 缩放/移动） */
+/* 右下角边缘：模式快捷切换按钮（绘制 <-> 缩放/移动） */
 .mode-toggle-btn {
   position: absolute;
   bottom: 0;
@@ -640,7 +640,7 @@
   .mode-toggle-btn {
     width: 38px;
     height: 38px;
-    right: 38px;
+    right: 0;
   }
 
   .mode-toggle-icon {

@@ -24,6 +24,7 @@ function getStepLength(step) {
 
 // 一笔一笔 StepDraw - 小程序详情页
 const config = require('../../config');
+const { floodFill, isPointInMask, tintMask } = require('../../utils/fill');
 
 Page({
   data: {
@@ -46,11 +47,12 @@ Page({
       { key: 'pen', name: '钢笔', icon: '/images/fountain_pen.png', iconActive: '/images/fountain_active.png' },
       { key: 'pencil', name: '铅笔', icon: '/images/pencil.png', iconActive: '/images/pencil_active.png' },
       { key: 'marker', name: '马克笔', icon: '/images/markpen.png', iconActive: '/images/mark_pen_active.png' },
-      { key: 'brush', name: '毛笔', icon: '/images/ink_brush.png', iconActive: '/images/ink_brush_active.png' }
+      { key: 'brush', name: '毛笔', icon: '/images/ink_brush.png', iconActive: '/images/ink_brush_active.png' },
+      { key: 'fill', name: '填充', icon: '/images/bucket.png', iconActive: '/images/bucket_active.png' }
     ],
     // 绘制模式：先选中画笔进入，再点同一支画笔退出；非绘制模式下画布支持缩放/移动
     drawingMode: false,
-    colorOptions: ['#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#000000'],
+    colorOptions: ['#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#000000', '#FFFFFFF'],
     // 自定义颜色弹层
     showColorPicker: false,
     isCustomColor: false, // 当前颜色是否为自定义（不在预设色板中）
@@ -58,7 +60,9 @@ Page({
     isCustomWidth: false, // 当前粗细是否为自定义（不在预设档位中）
     presetWidths: [2, 4, 6, 8, 12],
     minWidth: 1,
-    maxWidth: 40
+    maxWidth: 40,
+    // 填充失败提示（不封闭等），画布上轻量显示，自动消失
+    fillHint: ''
   },
 
   // ========== 三层画布 ==========
@@ -75,12 +79,15 @@ Page({
   canvasesReady: false,
   canvasRect: null, // 存储 Canvas 位置信息
 
-  // 离屏缓存：轮廓底图（灰色全图案）、已完成步骤
+  // 离屏缓存：轮廓底图（灰色全图案）、用户填充（图案线之下）、已完成步骤、用户笔画（图案线之上）
   outlineCache: null,
+  fillCache: null,
   doneCache: null,
+  strokeCache: null,
 
-  // 用户笔画放在实例上，避免每次触摸都走 setData 序列化
-  userStrokes: [],
+  // 用户操作放在实例上，避免每次触摸都走 setData 序列化。
+  // 笔画与填充按时间序混排（{kind:'stroke',stroke} | {kind:'fill',fill}），撤销/清除按序弹出。
+  userActions: [],
   currentStroke: null,
 
   onLoad(options) {
@@ -155,7 +162,7 @@ Page({
       }, 100);
 
       this.canvasesReady = true;
-      this._userCount = -1;
+      this._actionCount = -1;
       // 视图变换初始状态（画布原图大小、无平移），实例上保存避免每帧 setData
       this.viewScale = 1;
       this.viewTx = 0;
@@ -360,9 +367,18 @@ Page({
       this.rebuildOutlineCache();
       this._outlineKey = this.data.showOutline;
     }
+    // 用户操作数变化（新增/撤销/清除填充或笔画）时重建填充+笔画缓存
+    const actionCount = this.userActions.length;
+    if (this._actionCount !== actionCount) {
+      this.rebuildFillCache();
+      this.rebuildStrokeCache();
+      this._actionCount = actionCount;
+    }
 
     this.withViewTransform(ctx, () => {
       if (this.outlineCache) ctx.drawImage(this.outlineCache, 0, 0);
+      // 填充在图案线条之下：颜色垫底，黑色轮廓压在上面（涂色本效果）
+      if (this.fillCache) ctx.drawImage(this.fillCache, 0, 0);
       if (this.doneCache) ctx.drawImage(this.doneCache, 0, 0);
 
       // 当前步骤的动画部分
@@ -402,31 +418,219 @@ Page({
     });
   },
 
-  // 中层：用户已完成的笔画
-  // 性能要点：已完成的笔画先整体画到离屏缓存 userCache（仅笔画增删时重建），
+  // 中层：用户已完成的笔画（画在图案线条之上）
+  // 性能要点：已完成的笔画先整体画到离屏缓存 strokeCache（仅笔画增删时重建），
   // 每帧/每次缩放移动只在视图变换下 drawImage 一次缓存
   drawHistoryLayer() {
     if (!this.historyCtx) return;
-    const strokes = this.userStrokes;
+    const actionCount = this.userActions.length;
 
-    // 笔画数变化（新增/撤销/清除）时重建用户离屏缓存
-    if (this._userCount !== strokes.length) {
-      this.rebuildUserCache();
-      this._userCount = strokes.length;
+    // 操作数变化（新增/撤销/清除）时重建用户笔画离屏缓存
+    if (this._actionCount !== actionCount) {
+      this.rebuildStrokeCache();
+      this._actionCount = actionCount;
     }
     this.withViewTransform(this.historyCtx, () => {
-      if (this.userCache) this.historyCtx.drawImage(this.userCache, 0, 0);
+      if (this.strokeCache) this.historyCtx.drawImage(this.strokeCache, 0, 0);
     });
   },
 
-  // 重建用户笔画离屏缓存（撤销/清除/完成一笔时调用）
-  rebuildUserCache() {
+  // 重建"用户填充"离屏缓存（画在图案线条之下，涂色本效果）。
+  // 同一区域再次喷涂 = 多一层 (mask, color)，共享同一份 mask；按时间序叠色。
+  rebuildFillCache() {
     const cache = this.createLayer();
     const ctx = cache.getContext('2d');
-    for (const stroke of this.userStrokes) {
-      this.drawUserStroke(ctx, stroke);
+    for (const a of this.userActions) {
+      if (a.kind === 'fill') {
+        ctx.drawImage(tintMask(a.fill.mask, a.fill.color, () => this.createLayer()), 0, 0);
+      }
     }
-    this.userCache = cache;
+    this.fillCache = cache;
+  },
+
+  // 重建"用户笔画"离屏缓存（画在图案线条之上；撤销/清除/完成一笔时调用）
+  rebuildStrokeCache() {
+    const cache = this.createLayer();
+    const ctx = cache.getContext('2d');
+    for (const a of this.userActions) {
+      if (a.kind === 'stroke') this.drawUserStroke(ctx, a.stroke);
+    }
+    this.strokeCache = cache;
+  },
+
+  // 合成"填充用底图"（墨线合成图，透明底，画布 CSS 像素尺寸）。
+  // 墙 = 整幅图案所有步骤的线条（画浓作墙）+ 用户内容（填充位图 + 笔画）。
+  // 为什么不复用 outlineCache/doneCache：引导层 15% 半透明 alpha < 墙阈值不算墙，
+  // doneCache 只缓存 < currentStep 的步。这里直接从数据渲染"墙"（只用于找墙，不上屏）。
+  buildUnderlay() {
+    const { drawing } = this.data;
+    if (!drawing) return null;
+    const { scale, offsetX, offsetY } = this.getTransform();
+    const under = this.createLayer();
+    const ctx = under.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+    for (const step of drawing.steps) {
+      for (const stroke of step.strokes) {
+        this.drawStroke(ctx, stroke, 1, '#000', false, scale);
+      }
+    }
+    ctx.restore();
+
+    // 用户手绘笔画作为墙（自由线条也能围出区域）。
+    // 注意：已喷涂的填充是"色块"不是"线"，不作墙——否则已涂区域会被当成
+    // 线条挡在新填充前面，导致"已经喷过的地方喷不上"。
+    for (const a of this.userActions) {
+      if (a.kind === 'stroke') this.drawUserStroke(ctx, a.stroke);
+    }
+    return under;
+  },
+
+  // 当前手绘笔画数（墙版本标记）：线条增删后已喷涂区域的形状可能变化，旧掩码作废
+  getStrokeCount() {
+    let n = 0;
+    for (const a of this.userActions) if (a.kind === 'stroke') n++;
+    return n;
+  },
+
+  // 拾取点 (imageX, imageY)（图像 CSS 像素）下最上层的一条线条，返回"复制换色"后
+  // 的 UserStroke（图像坐标、新颜色）；点不到线条返回 null。
+  // 拾取顺序：用户笔迹（上层，后画的优先）→ 图案线条（从顶层往底层）。
+  // 油漆桶点中线条改色：复制一份线盖在原线上，撤销时副本消失、原线还原。
+  // 仅在点击时调用一次（逐条画到探针画布查像素 alpha），开销可忽略。
+  // 副本用 drawUserStroke 绘制（图像 CSS 像素坐标），宽度按原线实际渲染宽度换算以对齐。
+  pickLineForRecolor(imageX, imageY, newColor) {
+    const { drawing } = this.data;
+    if (!drawing || !drawing.steps || drawing.steps.length === 0) return null;
+    const w = this.canvasWidth, h = this.canvasHeight;
+    const probeX = Math.floor(imageX), probeY = Math.floor(imageY);
+    if (probeX < 0 || probeY < 0 || probeX >= w || probeY >= h) return null;
+
+    const probe = this.createLayer();
+    const ctx = probe.getContext('2d');
+    if (!ctx) return null;
+
+    // 画一条线后采样探针像素：alpha ≥ 60 视为命中（兼容 marker/brush 半透明核心）
+    const probeHit = (draw) => {
+      ctx.clearRect(0, 0, w, h);
+      draw();
+      return ctx.getImageData(probeX, probeY, 1, 1).data[3] >= 60;
+    };
+
+    // 1) 用户笔迹（最上层）：同几何同类型，只换色
+    for (let i = this.userActions.length - 1; i >= 0; i--) {
+      const a = this.userActions[i];
+      if (a.kind !== 'stroke') continue;
+      const s = a.stroke;
+      if (!s.points || s.points.length < 1) continue;
+      if (probeHit(() => this.drawUserStroke(ctx, s))) {
+        return {
+          points: s.points.map(p => [p[0], p[1]]),
+          width: s.width,
+          color: newColor,
+          type: s.type
+        };
+      }
+    }
+
+    // 2) 图案线条（viewBox 坐标 -> 图像坐标，宽度换算成原线实际渲染宽度以对齐）
+    const { scale, offsetX, offsetY } = this.getTransform();
+    for (let si = drawing.steps.length - 1; si >= 0; si--) {
+      const step = drawing.steps[si];
+      if (!step) continue;
+      for (let li = step.strokes.length - 1; li >= 0; li--) {
+        const stroke = step.strokes[li];
+        if (!stroke || stroke.points.length < 2) continue;
+        const hit = probeHit(() => {
+          ctx.save();
+          ctx.translate(offsetX, offsetY);
+          ctx.scale(scale, scale);
+          this.drawStroke(ctx, stroke, 1, '#000', false, scale);
+          ctx.restore();
+        });
+        if (hit) {
+          return {
+            points: stroke.points.map(([vx, vy]) => [vx * scale + offsetX, vy * scale + offsetY]),
+            // 原图案线 drawStroke 的渲染宽度 = stroke.width / canvasWidth * 256 * scale
+            width: stroke.width / this.canvasWidth * 256 * scale,
+            color: newColor,
+            type: 'pen'
+          };
+        }
+      }
+    }
+    return null;
+  },
+
+  // 油漆桶：点击落点处漫水填充当前颜色。落点经 toImagePoint 换算到图像坐标
+  // （画布 CSS 像素），与 underlay 同坐标系，直接喂给 floodFill。
+  // 再次喷涂同一区域：复用该区域已有掩码（共享位图，不重算），只叠一层新颜色。
+  applyFill(clientX, clientY) {
+    if (!this.canvasRect) return;
+    const [x, y] = this.toImagePoint(clientX, clientY);
+    const strokeCount = this.getStrokeCount();
+
+    // 0) 点中线条：复制一份线盖在原线上、换成喷涂色（撤销时副本消失、原线还原）
+    const recolor = this.pickLineForRecolor(x, y, this.data.strokeColor);
+    if (recolor) {
+      this.userActions.push({ kind: 'stroke', stroke: recolor });
+      this.drawOutlineLayer();
+      this.drawHistoryLayer();
+      this.invalidateShareCover();
+      return;
+    }
+
+    // 1) 命中已有填充区域：复用其掩码（墙没变过时），直接叠一层新颜色
+    for (let i = this.userActions.length - 1; i >= 0; i--) {
+      const a = this.userActions[i];
+      if (a.kind !== 'fill') continue;
+      if (a.fill.strokeCount !== strokeCount) continue; // 线条变过，旧区域形状不可信
+      if (isPointInMask(a.fill.mask, x, y)) {
+        this.pushFill([x, y], this.data.strokeColor, a.fill.mask, strokeCount);
+        return;
+      }
+    }
+
+    // 2) 未命中：对"线条墙"做漫水填充，算出区域掩码
+    const under = this.buildUnderlay();
+    if (!under) return;
+    const res = floodFill(under, x, y, () => this.createLayer());
+    if (!res.ok) {
+      if (res.reason === 'border') {
+        this.setFillHint('这个区域不封闭（线条有缺口），颜色会流出去');
+      } else if (res.reason === 'online') {
+        this.setFillHint('点这里的是线条，请点在线条围出的空白处');
+      }
+      return;
+    }
+    this.pushFill([x, y], this.data.strokeColor, res.canvas, strokeCount);
+  },
+
+  // 把一个填充操作压栈并刷新画面
+  pushFill(seed, color, mask, strokeCount) {
+    this.userActions.push({
+      kind: 'fill',
+      fill: {
+        key: 'fill-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        seed,
+        color,
+        mask,
+        strokeCount
+      }
+    });
+    this.drawOutlineLayer();
+    this.drawHistoryLayer();
+    this.invalidateShareCover();
+  },
+
+  // 填充失败提示：画布上轻量显示，2.6s 后自动消失
+  setFillHint(msg) {
+    this.setData({ fillHint: msg });
+    if (this._fillHintTimer) clearTimeout(this._fillHintTimer);
+    this._fillHintTimer = setTimeout(() => this.setData({ fillHint: '' }), 2600);
   },
 
   // 顶层：当前正在绘制的笔画（每帧重画，但只有一笔，开销很小）
@@ -799,9 +1003,14 @@ Page({
     const touches = e.touches;
 
     if (this.data.drawingMode) {
-      // 绘制模式：只用第一支手指绘制，忽略后续手指
+      const t = touches[0];
+      // 填充工具：单指单击落点即填充当前颜色，不拖拽（第二指落下忽略）
+      if (this.data.strokeType === 'fill') {
+        if (touches.length === 1) this.applyFill(t.clientX, t.clientY);
+        return;
+      }
+      // 其他画笔：只用第一支手指绘制，忽略后续手指
       if (!this.currentStroke) {
-        const t = touches[0];
         const [x, y] = this.toImagePoint(t.clientX, t.clientY);
         const { strokeColor, strokeWidth, strokeType } = this.data;
         this.currentStroke = {
@@ -881,7 +1090,7 @@ Page({
         const stroke = this.currentStroke;
         this.currentStroke = null;
         this._drawFingerId = null;
-        this.userStrokes.push(stroke);
+        this.userActions.push({ kind: 'stroke', stroke });
         this.drawHistoryLayer();
         this.drawBrushLayer();
         this.invalidateShareCover();
@@ -947,7 +1156,7 @@ Page({
     const isCustomColor = !this.data.colorOptions.includes(prevColor);
     this.setData({
       showColorPicker: false,
-      strokeColor: prevColor,
+      // strokeColor: prevColor,
       isCustomColor
     });
   },
@@ -955,7 +1164,11 @@ Page({
   // 颜色实时变化（组件内拖动/输入时触发，实时预览到画笔）
   onColorPickerChange(e) {
     const hex = e.detail.hex;
-    this.setData({ strokeColor: hex, isCustomColor: true });
+    this.setData({ 
+      strokeColor: hex,
+      isCustomColor: true,
+      showColorPicker: false
+    });
   },
 
   // 确定选择自定义颜色
@@ -984,9 +1197,10 @@ Page({
       content: '确定要清除所有绘制内容吗？',
       success: (res) => {
         if (res.confirm) {
-          this.userStrokes = [];
+          this.userActions = [];
           this.currentStroke = null;
-          this._userCount = -1;
+          this._actionCount = -1;
+          this.drawOutlineLayer();
           this.drawHistoryLayer();
           this.drawBrushLayer();
           this.invalidateShareCover();
@@ -1031,8 +1245,11 @@ Page({
 
         // 按层序合成（使用离屏缓存，导出不受当前缩放/平移视图影响，始终为完整原图）
         if (this.outlineCache) offscreenCtx.drawImage(this.outlineCache, 0, 0);
+        // 填充在图案线条之下（涂色本效果）
+        if (this.fillCache) offscreenCtx.drawImage(this.fillCache, 0, 0);
         if (this.doneCache) offscreenCtx.drawImage(this.doneCache, 0, 0);
-        if (this.userCache) offscreenCtx.drawImage(this.userCache, 0, 0);
+        // 用户手绘笔画在图案线条之上
+        if (this.strokeCache) offscreenCtx.drawImage(this.strokeCache, 0, 0);
 
         // 当前动画笔画（按 viewBox 变换绘制到导出画布）
         this.drawCurrentStepToCtx(offscreenCtx);
@@ -1222,11 +1439,12 @@ Page({
     };
   },
 
-  // 撤销上一笔
+  // 撤销上一步操作（笔画/填充共用时间序栈，撤销哪个都行）
   onUndo() {
-    if (this.userStrokes.length === 0) return;
-    this.userStrokes.pop();
-    // 笔画数减少，drawHistoryLayer 会自动重建中层
+    if (this.userActions.length === 0) return;
+    this.userActions.pop();
+    // 操作数减少，drawOutlineLayer/drawHistoryLayer 会自动重建填充+笔画缓存
+    this.drawOutlineLayer();
     this.drawHistoryLayer();
     this.invalidateShareCover();
   }

@@ -1,4 +1,5 @@
 // 一笔一笔 StepDraw - 共享导航栏组件
+import logo from '../assets/logo.jpg'
 
 import './Navbar.css';
 interface NavbarProps {
@@ -20,7 +21,7 @@ export function Navbar({
     <nav className="navbar">
       <div className="navbar-brand">
         <div className="navbar-icon">
-          <img src="/logo2.png" className="navbar-icon-logo" />
+          <img src={logo} className="navbar-icon-logo" />
         </div>
         <div>
           <h1 className="navbar-title">{title}</h1>

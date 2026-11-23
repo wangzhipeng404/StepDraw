@@ -37,6 +37,16 @@ ipad/**/*.xcuserstate
 # ipeddle 工作目录（在仓库外的 ~/.local/share/ipeddle，这里兜底）
 /.build/
 
+# Android 子项目（构建产物 + 本地工具链）
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.iml
+android/.idea/
+# 本地构建工具链（JDK / Android SDK / Gradle，~2GB，勿入库）
+/.tools/
+
 # Data files (large datasets)
 quickdraw_animals/*.jsonl
 quickdraw_animals/*.gz

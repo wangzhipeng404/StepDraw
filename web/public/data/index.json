@@ -27,24 +27,9 @@
       "emoji": "🌿"
     },
     {
-      "id": "quickdraw",
-      "name": "动物线稿",
-      "emoji": "✏️"
-    },
-    {
       "id": "tuberlin",
       "name": "万物",
       "emoji": "🌍"
-    },
-    {
-      "id": "aiposegallery",
-      "name": "人物",
-      "emoji": "🧍"
-    },
-    {
-      "id": "cocomaterial",
-      "name": "生活",
-      "emoji": "🏡"
     }
   ],
   "categories": [

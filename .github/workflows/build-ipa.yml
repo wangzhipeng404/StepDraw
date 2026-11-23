@@ -15,7 +15,7 @@
 # 前提：ipad/ 下是一份纯 SwiftPM 包（Package.swift + ipeddle.toml），
 #       与 Xcode 工程共用同一份源码（ipad/StepDraw/）。
 #
-# 触发：默认手动（Actions 页点 Run workflow）；push 到 main 且只改了 ipad/** 时自动构建。
+# 触发：仅手动（在仓库 Actions 页点 Run workflow → Build iPad IPA (unsigned)）。
 
 name: Build iPad IPA (unsigned)
 
@@ -28,11 +28,6 @@ on:
         default: "Release"
         type: choice
         options: [Release, Debug]
-  push:
-    branches: [main]
-    paths:
-      - "ipad/**"
-      - ".github/workflows/build-ipa.yml"
 
 permissions:
   contents: read

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 右侧操作栏按钮（图标位 + 文字） -->
+    <style name="SideBtn">
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">@color/accent</item>
+        <item name="android:background">@drawable/ripple_chip</item>
+    </style>
+
+    <!-- 播放控制小圆钮 -->
+    <style name="TransportBtn">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:background">@drawable/ripple_circle</item>
+    </style>
+
+    <!-- 色板圆点（颜色代码里设置） -->
+    <style name="ColorDot">
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="android:layout_marginStart">6dp</item>
+        <item name="android:background">@drawable/ripple_circle</item>
+    </style>
+
+    <!-- 笔种按钮 -->
+    <style name="BrushBtn">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">38dp</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:background">@drawable/ripple_chip</item>
+    </style>
+</resources>

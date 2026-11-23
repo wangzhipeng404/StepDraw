@@ -381,6 +381,7 @@ function getTransform(size: { cssW: number; cssH: number }, drawing: Drawing): {
   const offsetY = (height - patternHeight * scale) / 2 - viewBox[1] * scale;
   return { scale, offsetX, offsetY };
 }
+export { getTransform };
 
 // 重建"已完成步骤"离屏缓存（步骤切换/尺寸变化时调用）
 function rebuildDoneCache(
@@ -448,25 +449,34 @@ function rebuildOutlineCache(
 // 而误报"不封闭"。
 // 所以这里：
 //  1) 用 alpha 通道判定"墙"（墨线），不靠颜色容差对比；
-//  2) 对墙做 1 像素二值膨胀，把 ≤2px 的缺口自动弥合；
-//  3) 墙内做 flood fill，碰到画布边缘 = 真的不封闭。
-// 结果是一张与画布同尺寸（设备像素）、区域外全透明的位图，存进 UserFill.image。
+//  2) 对墙做 1 像素二值膨胀，把 ≤2px 的缺口自动弥合（只用于遍历防漏）；
+//  3) 墙内做 flood fill，碰到画布边缘 = 真的不封闭；
+//  4) 输出时把填充向外扩 1px（只到抗锯齿 halo，不盖线条实体像素），
+//     消掉填充与线条之间的白色缝隙。
+// 结果是一张与画布同尺寸（设备像素）、区域白色 alpha=255 的区域掩码，存进 UserFill.mask。
 // ============================================================
 
-// 墙的 alpha 阈值：≥ 该值算墨线（抗锯齿半透明边缘落在墙和背景之间，
-// 膨胀一步后能被两侧任一邻域收编，不会成为泄漏通道）。
+// 墙的 alpha 阈值：≥ 该值算墨线实体。抗锯齿 halo 分两层：
+//  - 内层 halo（alpha ≥ 100）算墙实体，视觉上已是线条边缘；
+//  - 外层 halo（alpha < 100）近乎透明，不填会透出白底形成"白缝"，输出时补上。
 const WALL_ALPHA = 100;
 // 墙膨胀半径（设备像素）：手画线条缺口通常 ≤4px（2 设备像素），膨胀 1px
 // 即可把两侧墙接上；太大反而会把细区域填死。
 const WALL_DILATE = 1;
 
-/** 对二值墙图做 box 膨胀（每个 3x3 邻域有墙即成墙），r 次 */
-function dilateWall(src: ImageData, r: number): Uint8Array {
-  const w = src.width, h = src.height;
-  let prev = new Uint8Array(w * h);
+/** 二值化墙图：alpha ≥ WALL_ALPHA 为 1（墨线实体） */
+function binarizeWall(src: ImageData): Uint8Array {
+  const n = src.width * src.height;
+  const wall = new Uint8Array(n);
   const sd = src.data;
-  for (let i = 0; i < w * h; i++) prev[i] = sd[i * 4 + 3] >= WALL_ALPHA ? 1 : 0;
-  let cur = new Uint8Array(w * h);
+  for (let i = 0; i < n; i++) wall[i] = sd[i * 4 + 3] >= WALL_ALPHA ? 1 : 0;
+  return wall;
+}
+
+/** 对二值墙图做 box 膨胀（每个 3x3 邻域有墙即成墙），r 次 */
+function dilateWall(wall: Uint8Array, w: number, h: number, r: number): Uint8Array {
+  let prev: Uint8Array = wall;
+  let cur: Uint8Array = new Uint8Array(w * h);
   for (let k = 0; k < r; k++) {
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -502,8 +512,7 @@ export type FillResult =
 export function floodFill(
   underlay: HTMLCanvasElement,
   seedX: number,
-  seedY: number,
-  color: string
+  seedY: number
 ): FillResult {
   const w = underlay.width;
   const h = underlay.height;
@@ -514,10 +523,9 @@ export function floodFill(
   const sy = Math.floor(seedY);
   if (sx < 0 || sy < 0 || sx >= w || sy >= h) return { ok: false, reason: 'oob' };
 
-  const wall = dilateWall(src.getImageData(0, 0, w, h), WALL_DILATE);
-  const fr = parseInt(color.slice(1, 3), 16);
-  const fg = parseInt(color.slice(3, 5), 16);
-  const fb = parseInt(color.slice(5, 7), 16);
+  const img = src.getImageData(0, 0, w, h);
+  const baseWall = binarizeWall(img);
+  const wall = dilateWall(baseWall, w, h, WALL_DILATE);
 
   // 种子本身就在墙上（点在了线条上）：无处可填
   if (wall[sy * w + sx]) return { ok: false, reason: 'online' };
@@ -547,7 +555,11 @@ export function floodFill(
 
   if (touchesBorder) return { ok: false, reason: 'border' };
 
-  // 只输出被填充的像素（区域外全透明），一次 putImageData
+  // 输出：区域掩码（白色 alpha=255、区域外全透明），与颜色解耦。
+  // 连通域 + 1px 外扩，但不覆盖线条实体像素（baseWall）。
+  // 外扩盖住线条的抗锯齿 halo（alpha < WALL_ALPHA 的半透明边缘）——
+  // 膨胀墙让 visited 离线条多了 1px，不补的话 halo 下透出白底形成白缝。
+  // 渲染时按 (mask, color) 上色；再次喷涂同一区域可复用此 mask。
   const out = document.createElement('canvas');
   out.width = w;
   out.height = h;
@@ -555,10 +567,21 @@ export function floodFill(
   if (!outCtx) return { ok: false, reason: 'oob' };
   const outData = outCtx.createImageData(w, h);
   const od = outData.data;
-  for (let p = 0; p < visited.length; p++) {
-    if (!visited[p]) continue;
-    const i = p * 4;
-    od[i] = fr; od[i + 1] = fg; od[i + 2] = fb; od[i + 3] = 255;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      if (baseWall[p]) continue;
+      let hit = visited[p];
+      if (!hit) {
+        if ((x > 0 && visited[p - 1]) || (x < w - 1 && visited[p + 1]) ||
+            (y > 0 && visited[p - w]) || (y < h - 1 && visited[p + w])) {
+          hit = 1;
+        }
+      }
+      if (!hit) continue;
+      const i = p * 4;
+      od[i] = 255; od[i + 1] = 255; od[i + 2] = 255; od[i + 3] = 255;
+    }
   }
   outCtx.putImageData(outData, 0, 0);
   return { ok: true, canvas: out };
@@ -599,12 +622,12 @@ export function buildUnderlay(
     }
   }
 
-  // 用户内容（填充位图 + 笔画）也作为墙，设备像素空间
+  // 用户手绘笔画作为墙（自由线条也能围出区域）。
+  // 注意：已喷涂的填充是"色块"不是"线"，不作墙——否则已涂区域会被当成
+  // 线条挡在新填充前面，导致"已经喷过的地方喷不上"。色块不阻挡新的漫水。
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   for (const a of userActions) {
-    if (a.kind === 'fill') {
-      ctx.drawImage(a.fill.image, 0, 0);
-    } else {
+    if (a.kind === 'stroke') {
       ctx.save();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       renderUserStroke(ctx, a.stroke);
@@ -614,8 +637,128 @@ export function buildUnderlay(
   return under;
 }
 
+// 把白色区域掩码按颜色上色（掩码白色处 -> 颜色，其余透明），返回新画布。
+// 每次重建填充缓存时调用；颜色与区域解耦，改色只是换颜色、不重算区域。
+function tintMask(mask: HTMLCanvasElement, color: string): HTMLCanvasElement {
+  const w = mask.width, h = mask.height;
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const outCtx = out.getContext('2d');
+  if (!outCtx) return out;
+  const srcCtx = mask.getContext('2d');
+  if (!srcCtx) return out;
+  const src = srcCtx.getImageData(0, 0, w, h).data;
+  const outData = outCtx.createImageData(w, h);
+  const od = outData.data;
+  const fr = parseInt(color.slice(1, 3), 16);
+  const fg = parseInt(color.slice(3, 5), 16);
+  const fb = parseInt(color.slice(5, 7), 16);
+  for (let i = 0; i < w * h; i++) {
+    if (src[i * 4 + 3] < 128) continue;
+    const j = i * 4;
+    od[j] = fr; od[j + 1] = fg; od[j + 2] = fb; od[j + 3] = 255;
+  }
+  outCtx.putImageData(outData, 0, 0);
+  return out;
+}
+
+// 判断点 (x,y)（掩码像素坐标）是否落在某区域掩码内。
+// 用于"再次喷涂同区域时复用旧掩码"的判定。
+export function isPointInMask(mask: HTMLCanvasElement, x: number, y: number): boolean {
+  const w = mask.width, h = mask.height;
+  const ix = Math.floor(x), iy = Math.floor(y);
+  if (ix < 0 || iy < 0 || ix >= w || iy >= h) return false;
+  const ctx = mask.getContext('2d');
+  if (!ctx) return false;
+  const d = ctx.getImageData(ix, iy, 1, 1).data;
+  return d[3] >= 128;
+}
+
+/**
+ * 拾取点 (imageX, imageY)（图像 CSS 像素）下最上层的一条线条，返回"复制换色"后
+ * 的 UserStroke（图像坐标、新颜色）；点不到线条返回 null。
+ * 拾取顺序：用户笔迹（在上层，后画的优先）→ 图案线条（从顶层往底层）。
+ * 用于油漆桶点中线条时改色：复制一份线盖在原线上，撤销时副本消失、原线还原。
+ * 仅在点击时调用一次（逐条画到探针画布查像素 alpha），开销可忽略。
+ */
+export function pickLineForRecolor(
+  drawing: Drawing,
+  userActions: UserAction[],
+  size: { cssW: number; cssH: number; dpr: number },
+  imageX: number,
+  imageY: number,
+  newColor: string
+): UserStroke | null {
+  if (size.cssW === 0 || size.cssH === 0) return null;
+  const dpr = size.dpr;
+  const w = Math.max(1, Math.round(size.cssW * dpr));
+  const h = Math.max(1, Math.round(size.cssH * dpr));
+  const probeX = Math.floor(imageX * dpr);
+  const probeY = Math.floor(imageY * dpr);
+  if (probeX < 0 || probeY < 0 || probeX >= w || probeY >= h) return null;
+
+  const probe = document.createElement('canvas');
+  probe.width = w; probe.height = h;
+  const ctx = probe.getContext('2d');
+  if (!ctx) return null;
+
+  // 画一条线后采样探针像素：alpha ≥ 60 视为命中（兼容 marker/brush 的半透明核心）
+  const probeHit = (draw: () => void): boolean => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    draw();
+    return ctx.getImageData(probeX, probeY, 1, 1).data[3] >= 60;
+  };
+
+  // 1) 用户笔迹（最上层）：同几何同类型，只换色
+  for (let i = userActions.length - 1; i >= 0; i--) {
+    const a = userActions[i];
+    if (a.kind !== 'stroke') continue;
+    const s = a.stroke;
+    if (s.points.length < 1) continue;
+    const hit = probeHit(() => {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      renderUserStroke(ctx, s);
+    });
+    if (hit) {
+      return {
+        points: s.points.map(p => [p[0], p[1]] as [number, number]),
+        width: s.width,
+        color: newColor,
+        type: s.type
+      };
+    }
+  }
+
+  // 2) 图案线条（viewBox 坐标 -> 图像坐标，宽度按 scale 换算以对齐原线）
+  const { scale, offsetX, offsetY } = getTransform(size, drawing);
+  for (let si = drawing.steps.length - 1; si >= 0; si--) {
+    const step = drawing.steps[si];
+    if (!step) continue;
+    for (let li = step.strokes.length - 1; li >= 0; li--) {
+      const stroke = step.strokes[li];
+      if (!stroke || stroke.points.length < 2) continue;
+      const hit = probeHit(() => {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.translate(offsetX, offsetY);
+        ctx.scale(scale, scale);
+        renderStroke(ctx, stroke, 1, '#000', false);
+      });
+      if (hit) {
+        return {
+          points: stroke.points.map(([vx, vy]) => [vx * scale + offsetX, vy * scale + offsetY] as [number, number]),
+          width: stroke.width * scale,
+          color: newColor,
+          type: 'pen'
+        };
+      }
+    }
+  }
+  return null;
+}
+
 // 重建"用户填充"离屏缓存（设备像素空间，渲染在图案线条之下，涂色本效果）。
-// 填充位图与画布同尺寸，直接平铺。
+// 同一区域再次喷涂 = 多一层 (mask, color)，共享同一份 mask；按时间序叠色。
 function rebuildFillCache(state: LayerState, userActions: UserAction[]): void {
   const cache = createCacheCanvas(state.size);
   const ctx = cache.getContext('2d');
@@ -624,7 +767,7 @@ function rebuildFillCache(state: LayerState, userActions: UserAction[]): void {
     return;
   }
   for (const a of userActions) {
-    if (a.kind === 'fill') ctx.drawImage(a.fill.image, 0, 0);
+    if (a.kind === 'fill') ctx.drawImage(tintMask(a.fill.mask, a.fill.color), 0, 0);
   }
   state.fillCache = cache;
 }

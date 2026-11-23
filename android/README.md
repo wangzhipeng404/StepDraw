@@ -1,0 +1,98 @@
+# StepDraw Android（一笔一笔）
+
+Android 平板原生应用：**单界面自由绘制 + 加载图案轮廓临摹**。
+与 [web 版](../web) 和 [iPad 版](../ipad) 共用同一份图案数据（远程 GitHub Pages），
+交互逻辑（三层离屏画布、笔画生长动画、视图变换、进度插值）均从 iPad 端 Swift 移植到原生 Kotlin。
+
+## 运行
+
+1. 用 Android Studio 打开 `android/` 目录
+2. 选择平板模拟器（API 26+）或真机，横屏运行
+3. 首次运行需联网拉取图案数据；已下载的图案/缩略图缓存在 `cacheDir/StepDrawData/`
+4. 如需换数据源，只改 [data/DataStore.kt](app/src/main/java/com/stepdraw/android/data/DataStore.kt) 里的 `REMOTE_BASE_URL`
+
+### 命令行构建
+
+```bash
+cd android
+./gradlew :app:assembleDebug    # 产物在 app/build/outputs/apk/debug/
+```
+
+## 界面布局（与 iPad 版对齐）
+
+```
+┌──────────────────────────────────────────────────────┐
+│ 图案名 · 步骤 n/N · 提示文字        [绘制/移动][图案][复位] │  顶部栏
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│                     画 布（正方形居中）                 │
+│                                                      │
+│                                   ┌────┐            │
+│                                   │保存│            │  右侧栏
+│                                   │分享│            │
+│                                   │撤销│            │
+│                                   │清空│            │
+│                                   └────┘            │
+├──────────────────────────────────────────────────────┤
+│ [轮廓] [◀] [▶播放] [▶] [↺] [1x]  ━━━━━━━━━━━━ 进度条    │
+│ ● ● ● ● ● ● ⚙  ──粗细──  [钢笔][铅笔][马克][毛笔]        │  底部工具栏
+└──────────────────────────────────────────────────────┘
+```
+
+## 操作方式
+
+| 模式 | 单指 | 双指 |
+|---|---|---|
+| 绘制模式（默认） | 落笔绘制 | 捏合缩放 + 移动（落下第二指会结束当前笔） |
+| 移动模式 | 拖拽平移 | 捏合缩放 |
+
+- **自由绘制**：启动即空白画布，可直接画（内容坐标 = 屏幕坐标，支持缩放/平移）
+- **加载图案**：「图案」打开选择弹窗（分组 → 分类 → 缩略图网格，搜索 / 难度筛选 / 分页），
+  选中后淡色全轮廓作引导底图，已画步骤黑色，正在生长的笔画红色高亮
+- 顶部「✕」可清除图案回到空白画布（笔迹随图案坐标空间一并清除）
+- 播放控制：上一步 / 播放暂停 / 下一步 / 重播 / 倍速（0.5x/1x/2x）/ 进度条拖动
+- 「轮廓」开关切换引导底图；「复位」恢复视图原始缩放与位置
+- 「保存」导出完整作品（图案全步骤 + 你的笔迹，3x 分辨率）到应用目录并通知媒体库；「分享」调起系统分享
+- 「撤销」去掉最后一笔；「清空」清掉所有你的笔迹（图案数据不受影响）
+
+## 架构
+
+```
+app/src/main/java/com/stepdraw/android/
+├── MainActivity.kt            # 主界面布局 + UI 同步（对应 iPad MainView + Toolbars）
+├── PatternBrowserBottomSheet.kt # 图案选择（三级导航 + 搜索/筛选/分页，对应 PatternBrowser）
+├── data/
+│   ├── Models.kt              # 数据模型 + 视图变换 + 笔画几何（对应 Models + ViewTransform）
+│   └── DataStore.kt           # 远程加载 + 内存/磁盘缓存 + 请求去重（对应 DataStore）
+├── drawing/
+│   ├── DrawingEngine.kt       # 三层离屏渲染（outline/history/brush）+ 画笔（对应 DrawingEngine）
+│   └── CanvasHostView.kt      # 触摸手势状态机 + Choreographer 每帧渲染（对应 DrawingGestures）
+├── viewmodel/
+│   └── DrawingViewModel.kt    # 播放状态机 + 绘制状态 + 每帧 tick（对应 DrawingViewModel）
+└── util/
+    ├── Json.kt                # Gson 封装
+    └── ImageLoader.kt         # 缩略图异步加载（LruCache + OkHttp）
+```
+
+### 渲染管线（与 web / iPad 端同构）
+
+每帧（Choreographer @ 显示刷新率）：
+
+1. 播放中则按"每秒 100 内容像素 × 倍速"推进当前步骤进度（长笔画画得久）
+2. 引擎检查各离屏缓存是否失效（尺寸/图案/步骤/笔画数变化才重建）
+3. 三层分别合成（按指纹增量重建位图，手势时零重绘，只动变换）：
+   - **outline**：淡色全轮廓 + 已完成步骤 + 当前笔画（按弧长截断到 progress，红色）
+   - **history**：用户已完成笔画
+   - **brush**：正在画的一笔
+4. 缓存位图整体做"缩放/平移"变换后 blit —— 手势时零重绘，只动变换
+
+> 与 iPad 版的差异：
+> - 无 Pencil 悬停笔尖预览层（Android 无对应 API，iPhone/iPad 的 pencil layer 省略）
+> - 渲染按原生屏幕像素（Android View 宽高本就是 px，不像 iOS 的 point 需乘 density）
+> - 「保存」写到 `getExternalFilesDir`（应用私有外部目录）并通知媒体库，免存储权限（Android 10+）；
+>   「分享」通过 FileProvider 调起系统分享
+
+## 图标
+
+[tools/gen_icon.py](tools/gen_icon.py) 复用 iPad 端同款算法（纯标准库），生成
+自适应图标 `ic_launcher_foreground.png` / `ic_launcher_background.png`（432×432，安全区内）。

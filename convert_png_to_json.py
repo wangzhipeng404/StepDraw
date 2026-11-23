@@ -13,7 +13,7 @@ import math
 from PIL import Image, ImageDraw
 
 # ==================== 配置 ====================
-SRC_DIR = r"E:\otherCode\ai-pose-gallery-zh\img"
+SRC_DIR = r"C:\Users\epro\Downloads\hiroshima\coloring"
 OUT_ROOT = "./web/public/data/pose"
 
 TARGET_SIZE = 512

@@ -20,8 +20,8 @@ from svgelements import SVG, Path, Shape, Move, Close, Line
 from PIL import Image
 
 # ==================== 配置 ====================
-INPUT_DIR =  "E:/otherCode/ai-pose-gallery-zh/img/costume"        # 输入图片目录
-OUTPUT_DIR = "./web/public/data/costume"        # 输出 JSON 目录
+INPUT_DIR =  r"C:\Users\epro\Downloads\hiroshima\coloring"        # 输入图片目录
+OUTPUT_DIR = r"C:\Users\epro\Downloads\hiroshima\coloring_out"        # 输出 JSON 目录
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 OVERWRITE = False  # 是否强制重新生成，设为 True 则覆盖已存在的文件
 RECURSIVE = False   # 是否递归遍历子目录

@@ -81,6 +81,25 @@
   font-weight: 500;
 }
 
+/* 填充失败提示：画布顶部居中，轻量，自动消失 */
+.fill-hint-overlay {
+  position: absolute;
+  top: 16rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10rpx 24rpx;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 999rpx;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.fill-hint-text {
+  font-size: 24rpx;
+  color: #fff;
+  white-space: nowrap;
+}
+
 /* 右上角最边缘：视图复位按钮（正方形，贴合卡片右上角） */
 .view-reset-btn {
   position: absolute;

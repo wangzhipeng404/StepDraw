@@ -7,7 +7,7 @@ import { STROKE_TYPES } from '../types';
 import { loadDrawing } from '../data/drawings';
 import { useDrawingPlayer } from '../hooks/useDrawingPlayer';
 import { useDrawingCanvas } from '../hooks/useDrawingCanvas';
-import { toImagePoint, zoomAnchored, IDENTITY_VIEW, buildUnderlay, floodFill } from '../utils/canvas';
+import { toImagePoint, zoomAnchored, IDENTITY_VIEW, buildUnderlay, floodFill, isPointInMask, pickLineForRecolor } from '../utils/canvas';
 import type { ViewTransform } from '../utils/canvas';
 import { Navbar } from './Navbar';
 import preIcon from '../assets/pre.png';
@@ -152,21 +152,61 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     drawPointerIdRef.current = null;
   }, []);
 
+  // 当前手绘笔画数（墙版本标记）：线条增删后已喷涂区域的形状可能变化，旧掩码作废
+  const strokeCount = userActions.filter(a => a.kind === 'stroke').length;
+
   // 油漆桶：点击落点处漫水填充当前颜色。
-  // 底图 = 整幅引导线（画浓作墙）+ 用户内容（设备像素）；填充结果作为独立操作入栈。
+  // 再次喷涂同一区域：复用该区域已有的掩码（共享位图，不重算、不复制），只叠一层新颜色；
+  // 区域不封闭/点在线条上时给轻量 hint。
   const applyFill = useCallback((clientX: number, clientY: number) => {
     const rect = canvasRectRef.current;
     if (!rect) return;
     const dpr = window.devicePixelRatio || 1;
     const p = toImagePoint(clientX, clientY, rect.left, rect.top, rect.width, rect.height, viewRef.current);
     if (!p) return;
+    const px = p[0] * dpr;
+    const py = p[1] * dpr;
+
+    // 0) 点中线条：复制一份线盖在原线上、换成喷涂色（撤销时副本消失、原线还原）
+    const recolor = pickLineForRecolor(
+      drawing,
+      userActions,
+      { cssW: rect.width, cssH: rect.height, dpr },
+      p[0],
+      p[1],
+      strokeColor
+    );
+    if (recolor) {
+      setUserActions(prev => [...prev, { kind: 'stroke', stroke: recolor }]);
+      return;
+    }
+
+    // 1) 命中已有填充区域：复用其掩码（墙没变过时），直接叠一层新颜色
+    for (let i = userActions.length - 1; i >= 0; i--) {
+      const a = userActions[i];
+      if (a.kind !== 'fill') continue;
+      if (a.fill.strokeCount !== strokeCount) continue; // 线条变过，旧区域形状不可信
+      if (isPointInMask(a.fill.mask, px, py)) {
+        const fill: UserFill = {
+          key: `fill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          seed: p,
+          color: strokeColor,
+          mask: a.fill.mask, // 共享同一份掩码位图
+          strokeCount
+        };
+        setUserActions(prev => [...prev, { kind: 'fill', fill }]);
+        return;
+      }
+    }
+
+    // 2) 未命中：对"线条墙"做漫水填充，算出区域掩码
     const under = buildUnderlay(
       { cssW: rect.width, cssH: rect.height, dpr },
       drawing,
       userActions
     );
     if (!under) return;
-    const res = floodFill(under, p[0] * dpr, p[1] * dpr, strokeColor);
+    const res = floodFill(under, px, py);
     if (!res.ok) {
       if (res.reason === 'border') {
         showFillHint('这个区域不封闭（线条有缺口），颜色会流出去');
@@ -179,10 +219,11 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       key: `fill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       seed: p,
       color: strokeColor,
-      image: res.canvas
+      mask: res.canvas,
+      strokeCount
     };
     setUserActions(prev => [...prev, { kind: 'fill', fill }]);
-  }, [drawing, userActions, strokeColor, showFillHint]);
+  }, [drawing, userActions, strokeColor, showFillHint, strokeCount]);
 
   // 开始（指针按下）
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {

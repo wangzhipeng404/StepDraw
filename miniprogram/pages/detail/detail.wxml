@@ -36,6 +36,10 @@
         <view class="step-tip-overlay">
           <text class="tip-text">{{drawing && drawing.steps[currentStep] ? drawing.steps[currentStep].tip : ''}}</text>
         </view>
+        <!-- 填充失败提示：画布顶部居中，轻量，自动消失 -->
+        <view wx:if="{{fillHint}}" class="fill-hint-overlay">
+          <text class="fill-hint-text">{{fillHint}}</text>
+        </view>
         <!-- 右上角最边缘：复位按钮，点击将缩放/平移恢复为原始大小与位置 -->
         <view class="view-reset-btn" bindtap="onViewReset">
           <image class="view-reset-icon" src="/images/reset.png" mode="aspectFit" />

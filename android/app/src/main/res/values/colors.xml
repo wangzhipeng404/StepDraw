@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 web / iPad 端一致的色板 -->
+    <color name="accent">#1E88E5</color>
+    <color name="canvas_bg">#F2F2F7</color>
+    <color name="bar_bg">#F7F7FA</color>
+    <color name="chip_bg">#EDEDF2</color>
+    <color name="chip_bg_active">#D6E8FB</color>
+    <color name="text_primary">#1C1C1E</color>
+    <color name="text_secondary">#8E8E93</color>
+    <color name="card_stroke">#1F000000</color>
+
+    <color name="pal_red">#E53935</color>
+    <color name="pal_blue">#1E88E5</color>
+    <color name="pal_green">#43A047</color>
+    <color name="pal_orange">#FB8C00</color>
+    <color name="pal_purple">#8E24AA</color>
+    <color name="pal_black">#000000</color>
+</resources>

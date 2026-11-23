@@ -174,7 +174,6 @@ export function CategoryList() {
                         src={`${DATA_BASE_URL}/${drawing.thumbnail}`}
                         alt={drawing.name}
                         className="thumbnail-image"
-                        loading="lazy"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                           e.currentTarget.nextElementSibling?.classList.remove('hidden');

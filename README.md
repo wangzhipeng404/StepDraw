@@ -7,6 +7,21 @@
 ```
 StepDraw/
 ├── web/                          # Web 版 (React + TypeScript)
+├── ipad/                         # iPad 版 (Swift / SwiftUI，ipeddle 交叉构建未签名 IPA)
+├── android/                      # Android 平板版 (Kotlin，与 iPad 版同构移植)
+└── miniprogram/                  # 小程序版 (预留)
+```
+
+各端共用同一份图案数据（远程 GitHub Pages，`web/public/data/`）。
+- Web 版见 [web/](web)
+- iPad 版见 [ipad/README.md](ipad/README.md)
+- Android 版见 [android/README.md](android/README.md)
+
+### web 子目录
+
+```
+StepDraw/
+├── web/                          # Web 版 (React + TypeScript)
 │   ├── public/
 │   │   └── data/                 # 图案数据
 │   │       ├── index.json        # 索引文件
