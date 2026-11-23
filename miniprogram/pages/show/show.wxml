@@ -1,0 +1,21 @@
+<!-- 一笔一笔 StepDraw - 小程序展示模式页 -->
+<!-- 没有任何按钮：进入即自动播放绘制，长按分类卡片进入 -->
+<view class="show">
+  <view class="main-content">
+    <view class="canvas-wrapper">
+      <view class="canvas-container">
+        <view class="canvas-stack" style="width: {{canvasSize}}px; height: {{canvasSize}}px;">
+          <canvas
+            type="2d"
+            id="outlineCanvas"
+            class="drawing-canvas"
+          ></canvas>
+        </view>
+        <!-- 步骤提示固定在右下角（纯展示，无交互） -->
+        <view class="step-tip-overlay">
+          <text class="tip-text">{{drawing && drawing.steps[currentStep] ? drawing.steps[currentStep].tip : ''}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

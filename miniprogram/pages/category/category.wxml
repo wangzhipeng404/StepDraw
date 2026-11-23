@@ -29,6 +29,7 @@
           class="drawing-card"
           data-id="{{drawing.id}}"
           bindtap="onDrawingTap"
+          bindlongpress="onDrawingLongPress"
         >
           <view class="thumbnail">
             <image

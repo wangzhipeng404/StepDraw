@@ -19,11 +19,9 @@
 新增类别: 放好目录后重跑本脚本即可，不用改代码；
 新 group 若未配置，自动追加到末尾（name=目录名，emoji 用 📁）。
 
-注意: 会删除 group 一级目录下遗留的旧 index.json（两级结构下 group 不再有独立索引；
-扁平类别如 linedrawer 的 index.json 是类别索引本身，不受影响）。
-
 用法:
-    python build_index.py
+    python normalize_category_indexes.py  # 先补全各类别的 index.json
+    python build_index.py                 # 再合并生成总索引
 """
 
 import json
@@ -45,6 +43,15 @@ GROUPS = [
     {"id": "tuberlin",      "name": "万物",   "emoji": "🌍"},
     {"id": "aiposegallery", "name": "人物",   "emoji": "🧍"},
     {"id": "cocomaterial",  "name": "生活",   "emoji": "🏡"},
+    {"id": "coloring",      "name": "涂色本", "emoji": "🎨"},
+]
+# ==================== 忽略的一级分组（不参与索引，留空表示不忽略） ====================
+# 填一级目录名（即 GROUPS 里的 id），命中的整个 group 会从 index.json 中移除
+IGNORED_GROUPS = [
+    # "tuberlin",
+    "quickdraw",
+    "aiposegallery",
+    "cocomaterial",
 ]
 # =======================================================================
 
@@ -59,6 +66,9 @@ def build():
     categories = []
 
     for entry in sorted(os.listdir(DATA_DIR)):
+        if entry in IGNORED_GROUPS:
+            print(f"[忽略] {entry} (IGNORED_GROUPS)")
+            continue
         group_dir = os.path.join(DATA_DIR, entry)
         if not os.path.isdir(group_dir):
             continue
@@ -67,12 +77,7 @@ def build():
             d for d in os.listdir(group_dir) if os.path.isdir(os.path.join(group_dir, d)))
 
         if subdirs:
-            # 两级结构：删除 group 级遗留的旧索引
-            stale = os.path.join(group_dir, "index.json")
-            if os.path.isfile(stale):
-                os.remove(stale)
-                print(f"[清理] 删除遗留索引 {entry}/index.json")
-
+            # 两级结构
             for cat in subdirs:
                 cat_dir = os.path.join(group_dir, cat)
                 idx_path = os.path.join(cat_dir, "index.json")

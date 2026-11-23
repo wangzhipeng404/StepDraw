@@ -34,14 +34,14 @@ import sys
 from PIL import Image, ImageDraw
 
 # ==================== 配置 ====================
-DATA_DIR = r"C:\Users\epro\Downloads\hiroshima\slef"
+DATA_DIR = "./web/public/data/coloring"
 SIZE = 256                          # 封面边长(px)，可改 512
 PADDING = 8                         # 边距(px)，基于 SIZE
 BG_COLOR = (255, 255, 255, 255)     # 白底；透明改 (0,0,0,0)
 LINE_COLOR = (51, 51, 51, 255)      # #333
 LINE_WIDTH_BASE = 3                 # 与 JSON 中 width 对应
 SMOOTH_SAMPLES = 8                  # 每段贝塞尔插值数；1 = 关闭平滑
-OVERWRITE = True                   # True = 覆盖已存在的 PNG
+OVERWRITE = False                   # True = 覆盖已存在的 PNG
 # =============================================
 
 

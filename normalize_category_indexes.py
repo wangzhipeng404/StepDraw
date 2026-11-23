@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-一次性整理：把 web/public/data 下二级目录的 index.json 适配新结构。
+整理 data/ 下二级目录的 index.json：补全缺失索引、适配新结构。
 
 对每个 data/<group>/<cat>/ 目录做：
+    0. 没有 index.json 时自动扫描案例 JSON 生成
     1. 更新 index.json 的 name / emoji（映射表，未命中的保持原样）
     2. 修正 items[].thumbnail 为 "<group>/<cat>/<id>.png"
     3. 修正单个案例 JSON 里的 thumbnail 字段（不一致才写）
     4. 重建 index.json（count 以 items 实际数量为准）
 
 用法:
-    python normalize_category_indexes.py
+    python normalize_category_indexes.py [仅处理指定 group ...]
 """
 
 import json
@@ -139,6 +140,20 @@ NAME_MAP = {
     "tuberlin/wheelbarrow": "独轮车", "tuberlin/windmill": "风车",
     "tuberlin/wine-bottle": "酒瓶", "tuberlin/wineglass": "酒杯",
     "tuberlin/wrist-watch": "手表", "tuberlin/zebra": "斑马",
+    "justcolor/mandal": "曼陀罗",
+    "justcolor/animals": "动物",
+    "justcolor/nature": "自然",
+    # coloring
+    "coloring/AmongUs": "太空杀",
+    "coloring/ArielMermaid": "美人鱼",
+    "coloring/Ballerina": "芭蕾舞者",
+    "coloring/Beach": "海滩",
+    "coloring/Cinnamoroll": "玉桂狗",
+    "coloring/DragonBall": "龙珠",
+    "coloring/Kitten": "小猫",
+    "coloring/Princess": "公主",
+    "coloring/SantaClaus": "圣诞老人",
+    "coloring/axolotl": "美西螈",
 }
 
 # ==================== emoji 映射（key 同 NAME_MAP；未命中的保持原样） ====================
@@ -188,6 +203,20 @@ EMOJI_MAP = {
     "tuberlin/lamp": "💡", "tuberlin/tablelamp": "💡", "tuberlin/floorlamp": "💡",
     "tuberlin/santaclaus": "🎅", "tuberlin/present": "🎁",
     "tuberlin/star": "⭐", "tuberlin/rocket": "🚀", "tuberlin/heart": "❤️",
+    "justcolor/mandal": "🕸️",
+    "justcolor/animals": "🐼",
+    "justcolor/nature": "🌸",
+    # coloring
+    "coloring/AmongUs": "👨‍🚀",
+    "coloring/ArielMermaid": "🧜‍♀️",
+    "coloring/Ballerina": "🩰",
+    "coloring/Beach": "🏖️",
+    "coloring/Cinnamoroll": "🐶",
+    "coloring/DragonBall": "🐉",
+    "coloring/Kitten": "🐱",
+    "coloring/Princess": "👸",
+    "coloring/SantaClaus": "🎅",
+    "coloring/axolotl": "🦎",
 }
 
 
@@ -204,10 +233,50 @@ def is_chinese(text):
     return any("一" <= ch <= "鿿" for ch in (text or ""))
 
 
+def scan_cases(cat_dir):
+    """扫描目录下所有案例 JSON（排除 index.json），返回按文件名排序的条目列表"""
+    items = []
+    for fn in sorted(os.listdir(cat_dir)):
+        if not fn.endswith(".json") or fn == "index.json":
+            continue
+        cid = fn[:-5]
+        items.append({
+            "id": cid,
+            "name": cid,
+            "thumbnail": "",       # 由 process_category 统一填充
+            "difficulty": 3,       # 未知时默认 3
+            "stepCount": 0,        # 尝试从案例文件读取
+        })
+        case_path = os.path.join(cat_dir, fn)
+        try:
+            with open(case_path, "r", encoding="utf-8") as f:
+                case = json.load(f)
+            if case.get("name"):
+                items[-1]["name"] = case["name"]
+            if case.get("difficulty"):
+                items[-1]["difficulty"] = case["difficulty"]
+            steps = case.get("steps")
+            if isinstance(steps, list):
+                items[-1]["stepCount"] = len(steps)
+        except Exception:
+            pass
+    return items
+
+
 def process_category(group, cat, cat_dir):
     index_path = os.path.join(cat_dir, "index.json")
-    with open(index_path, "r", encoding="utf-8") as f:
-        idx = json.load(f)
+    if os.path.isfile(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            idx = json.load(f)
+    else:
+        # 没有索引时自动从案例 JSON 扫描生成
+        idx = {
+            "category": f"{group}/{cat}" if group else cat,
+            "name": cat,
+            "viewBox": [0, 0, 256, 256],
+            "count": 0,
+            "items": scan_cases(cat_dir),
+        }
 
     items = idx.get("items", [])
     prefix = f"{group}/{cat}" if group else cat
@@ -287,11 +356,8 @@ def main():
             # 二级目录组
             print(f"== {group} ==")
             for cat in subdirs:
-                idx_path = os.path.join(group_dir, cat, "index.json")
-                if not os.path.isfile(idx_path):
-                    print(f"  [跳过] {group}/{cat}: 没有 index.json")
-                    continue
-                total += process_category(group, cat, os.path.join(group_dir, cat))
+                cat_dir = os.path.join(group_dir, cat)
+                total += process_category(group, cat, cat_dir)
         elif os.path.isfile(os.path.join(group_dir, "index.json")):
             # 组目录本身就是扁平类别（如 linedrawer）
             print(f"== {group} (扁平) ==")

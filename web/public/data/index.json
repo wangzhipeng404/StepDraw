@@ -30,30 +30,14 @@
       "id": "tuberlin",
       "name": "万物",
       "emoji": "🌍"
+    },
+    {
+      "id": "coloring",
+      "name": "涂色本",
+      "emoji": "🎨"
     }
   ],
   "categories": [
-    {
-      "id": "aiposegallery/costume",
-      "name": "服装",
-      "emoji": "👕",
-      "count": 1407,
-      "dir": "aiposegallery/costume"
-    },
-    {
-      "id": "aiposegallery/portrait",
-      "name": "肖像",
-      "emoji": "🧑",
-      "count": 1499,
-      "dir": "aiposegallery/portrait"
-    },
-    {
-      "id": "aiposegallery/pose",
-      "name": "姿态",
-      "emoji": "🧘",
-      "count": 1439,
-      "dir": "aiposegallery/pose"
-    },
     {
       "id": "animals",
       "name": "动物",
@@ -62,25 +46,95 @@
       "dir": "animals"
     },
     {
-      "id": "cocomaterial/Buildings",
-      "name": "建筑",
-      "emoji": "🏛️",
-      "count": 53,
-      "dir": "cocomaterial/Buildings"
+      "id": "coloring/AmongUs",
+      "name": "太空杀",
+      "emoji": "👨‍🚀",
+      "count": 33,
+      "dir": "coloring/AmongUs"
     },
     {
-      "id": "cocomaterial/Read",
-      "name": "阅读",
-      "emoji": "📚",
-      "count": 58,
-      "dir": "cocomaterial/Read"
+      "id": "coloring/ArielMermaid",
+      "name": "美人鱼",
+      "emoji": "🧜‍♀️",
+      "count": 32,
+      "dir": "coloring/ArielMermaid"
     },
     {
-      "id": "cocomaterial/family",
-      "name": "家庭",
-      "emoji": "👨‍👩‍👧‍👦",
-      "count": 20,
-      "dir": "cocomaterial/family"
+      "id": "coloring/Ballerina",
+      "name": "芭蕾舞者",
+      "emoji": "🩰",
+      "count": 21,
+      "dir": "coloring/Ballerina"
+    },
+    {
+      "id": "coloring/Beach",
+      "name": "海滩",
+      "emoji": "🏖️",
+      "count": 7,
+      "dir": "coloring/Beach"
+    },
+    {
+      "id": "coloring/Cinnamoroll",
+      "name": "玉桂狗",
+      "emoji": "🐶",
+      "count": 52,
+      "dir": "coloring/Cinnamoroll"
+    },
+    {
+      "id": "coloring/DragonBall",
+      "name": "龙珠",
+      "emoji": "🐉",
+      "count": 43,
+      "dir": "coloring/DragonBall"
+    },
+    {
+      "id": "coloring/Kitten",
+      "name": "小猫",
+      "emoji": "🐱",
+      "count": 22,
+      "dir": "coloring/Kitten"
+    },
+    {
+      "id": "coloring/Princess",
+      "name": "公主",
+      "emoji": "👸",
+      "count": 59,
+      "dir": "coloring/Princess"
+    },
+    {
+      "id": "coloring/SantaClaus",
+      "name": "圣诞老人",
+      "emoji": "🎅",
+      "count": 51,
+      "dir": "coloring/SantaClaus"
+    },
+    {
+      "id": "coloring/animals",
+      "name": "动物",
+      "emoji": "🐾",
+      "count": 38,
+      "dir": "coloring/animals"
+    },
+    {
+      "id": "coloring/axolotl",
+      "name": "美西螈",
+      "emoji": "🦎",
+      "count": 37,
+      "dir": "coloring/axolotl"
+    },
+    {
+      "id": "coloring/mandal",
+      "name": "曼陀罗",
+      "emoji": "🕸️",
+      "count": 30,
+      "dir": "coloring/mandal"
+    },
+    {
+      "id": "coloring/nature",
+      "name": "自然",
+      "emoji": "🌸",
+      "count": 7,
+      "dir": "coloring/nature"
     },
     {
       "id": "featured",
@@ -102,83 +156,6 @@
       "emoji": "🌿",
       "count": 94,
       "dir": "plants"
-    },
-    {
-      "id": "quickdraw/bear",
-      "name": "熊",
-      "emoji": "🐻",
-      "count": 100,
-      "dir": "quickdraw/bear"
-    },
-    {
-      "id": "quickdraw/bird",
-      "name": "鸟",
-      "emoji": "🐦",
-      "count": 100,
-      "dir": "quickdraw/bird"
-    },
-    {
-      "id": "quickdraw/cat",
-      "name": "猫",
-      "emoji": "🐱",
-      "count": 100,
-      "dir": "quickdraw/cat"
-    },
-    {
-      "id": "quickdraw/cow",
-      "name": "牛",
-      "emoji": "🐮",
-      "count": 100,
-      "dir": "quickdraw/cow"
-    },
-    {
-      "id": "quickdraw/dog",
-      "name": "狗",
-      "emoji": "🐶",
-      "count": 100,
-      "dir": "quickdraw/dog"
-    },
-    {
-      "id": "quickdraw/elephant",
-      "name": "大象",
-      "emoji": "🐘",
-      "count": 100,
-      "dir": "quickdraw/elephant"
-    },
-    {
-      "id": "quickdraw/fish",
-      "name": "鱼",
-      "emoji": "🐟",
-      "count": 100,
-      "dir": "quickdraw/fish"
-    },
-    {
-      "id": "quickdraw/horse",
-      "name": "马",
-      "emoji": "🐴",
-      "count": 100,
-      "dir": "quickdraw/horse"
-    },
-    {
-      "id": "quickdraw/panda",
-      "name": "熊猫",
-      "emoji": "🐼",
-      "count": 11,
-      "dir": "quickdraw/panda"
-    },
-    {
-      "id": "quickdraw/pig",
-      "name": "猪",
-      "emoji": "🐷",
-      "count": 100,
-      "dir": "quickdraw/pig"
-    },
-    {
-      "id": "quickdraw/rabbit",
-      "name": "兔子",
-      "emoji": "🐰",
-      "count": 100,
-      "dir": "quickdraw/rabbit"
     },
     {
       "id": "tuberlin/airplane",
