@@ -1,0 +1,39 @@
+<!-- 一笔一笔 StepDraw - 小程序首页（二级分类：分组 + 分类卡片） -->
+<view class="home">
+  <!-- 导航栏 -->
+  <view class="navbar">
+    <view class="navbar-brand">
+      <view class="navbar-icon">
+        <image src="/images/logo.jpg" style="width: 72rpx;height: 72rpx;border-radius: 50%;" />
+      </view>
+      <view class="navbar-text">
+        <text class="navbar-title">Step Draw</text>
+        <text class="navbar-subtitle">一笔一划学画画</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <text class="page-title">选择你想画的图案</text>
+    <text class="page-subtitle">先选主分类，再选具体图案</text>
+  </view>
+
+  <!-- 主分类卡片 -->
+  <view class="group-grid">
+    <block tt:for="{{groups}}" tt:key="id">
+      <view
+        class="group-card"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
+        bindtap="onGroupTap"
+      >
+        <view class="group-icon">
+          <text class="group-emoji">{{item.emoji}}</text>
+        </view>
+        <text class="group-name">{{item.name}}</text>
+        <text class="group-meta">{{item.categoryCount}} 个子分类 · {{item.count}} 个图案</text>
+      </view>
+    </block>
+  </view>
+</view>

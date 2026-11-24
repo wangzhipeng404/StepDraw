@@ -265,11 +265,10 @@
 
 /* 单步循环按钮（与轮廓按钮同款开关样式：非选中灰边、选中蓝边） */
 .loop-btn {
-  border: 1rpx solid #8a8a8a;
+  border: none;
 }
 
 .loop-btn.active {
-  border: 1rpx solid #1890ff;
   background: #e6f7ff;
 }
 
@@ -490,6 +489,25 @@
 .tool-btn-icon {
   width: 40rpx;
   height: 40rpx;
+}
+
+/* 放映按钮：胶囊形，图标+文字横排，与圆形工具按钮区分 */
+.draw-tool-btn.replay-btn {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 36rpx;
+  flex-direction: row;
+  gap: 8rpx;
+}
+
+.tool-btn-label {
+  font-size: 26rpx;
+  color: #1e88e5;
+  font-weight: 500;
+}
+
+.tool-btn-hover {
+  background: #d6ecff;
 }
 
 /* 分享按钮是 <button> 元素，需额外重置小程序按钮默认样式

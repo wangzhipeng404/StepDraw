@@ -10,6 +10,7 @@
     修改下方 INPUT_DIR 和 OUTPUT_DIR 即可。
 """
 
+import bisect
 import json
 import math
 import os
@@ -34,6 +35,15 @@ PADDING = 8
 SAMPLES_PER_SEG = 8
 SIMPLIFY_EPS = 0.8
 THUMB_SIZE = 256  # 封面缩略图尺寸
+
+# 缩略图路径约定（与 normalize_category_indexes.py 一致）：<group>/<cat>/<id>.png
+# group 默认取 OUTPUT_DIR 的目录名（它同步到 web/public/data 后即为一级目录）；
+# 有子目录时 cat 取子目录名，直接在 OUTPUT_DIR 下时退化为 <group>/<id>.png
+THUMB_GROUP = None
+
+# 笔迹拆分：单步（一条笔迹）在 256 坐标系下的最大长度，超过则拆成多段连续笔迹
+MAX_STROKE_LEN = 120.0
+MIN_SEG_LEN = 1.5          # 短于此长度的碎片直接丢弃
 
 # vtracer 参数
 FILTER_SPECKLE = 4
@@ -148,15 +158,137 @@ def path_metrics(points):
     return abs(area) / 2, length
 
 
-def order_paths(paths):
-    """启发式笔顺排序：面积 → 长度 → 位置"""
-    def sort_key(p):
-        area, length = path_metrics(p)
-        avg_x = sum(x for x, _ in p) / len(p)
-        min_y = min(y for _, y in p)
-        return (-round(area, -2), -round(length, -1), min_y, avg_x)
+def path_length(points):
+    length = 0.0
+    for i in range(len(points) - 1):
+        length += math.hypot(points[i + 1][0] - points[i][0],
+                             points[i + 1][1] - points[i][1])
+    return length
 
-    return sorted(paths, key=sort_key)
+
+def orient_path(points):
+    """确定笔迹方向：从上往下画、从左往右画（屏幕坐标，y 向下）。
+
+    开放笔画：整体走向竖直时取顶→底，接近水平时取左→右；
+    封闭轮廓：旋转到最高点（平手取最左）起笔，优先顺时针。
+    返回 (定向后的点列, 长度)"""
+    n = len(points)
+    if n < 3:
+        return points, path_length(points)
+    total = path_length(points)
+    if total <= 0:
+        return points, total
+    end_dist = math.hypot(points[-1][0] - points[0][0],
+                          points[-1][1] - points[0][1])
+    if end_dist > max(1.0, 0.2 * total):
+        # 开放笔画：按整体走向定向（顶→底 / 左→右）
+        net_dx = points[-1][0] - points[0][0]
+        net_dy = points[-1][1] - points[0][1]
+        keep = net_dy > 0 if abs(net_dy) >= abs(net_dx) else net_dx > 0
+        return (list(points) if keep else list(reversed(points))), total
+    # 封闭轮廓：去掉与起点重合的尾点，旋转到最高点起笔
+    ring = list(points)
+    if end_dist < max(1.0, 0.05 * total) and ring[-1] == ring[0]:
+        ring.pop()
+    m = len(ring)
+    idx = 0
+    for i in range(1, m):
+        if (ring[i][1] < ring[idx][1] - 0.5
+                or (abs(ring[i][1] - ring[idx][1]) <= 0.5
+                    and ring[i][0] < ring[idx][0])):
+            idx = i
+    # 鞋带公式：屏幕坐标（y 向下）下，正值 = 顺时针
+    shoelace = 0.0
+    for i in range(m):
+        x1, y1 = ring[i]
+        x2, y2 = ring[(i + 1) % m]
+        shoelace += x1 * y2 - x2 * y1
+    step = 1 if shoelace >= 0 else -1
+    rot = [ring[(idx + k * step) % m] for k in range(m)]
+    return rot, total
+
+
+def split_path(points, max_len=MAX_STROKE_LEN, min_len=MIN_SEG_LEN):
+    """按弧长把长笔迹拆成多段，每段共享衔接点，保证连续且长度 ≤ max_len。
+
+    在弧长 max_len 的整数倍处切分（必要时在顶点之间的线上插点），
+    相邻段共享切分点，因此描起来是一笔接一笔的连续动作。
+    """
+    n = len(points)
+    if n < 2:
+        return []
+    lens = [0.0]
+    for i in range(n - 1):
+        lens.append(lens[-1] + math.hypot(points[i + 1][0] - points[i][0],
+                                          points[i + 1][1] - points[i][1]))
+    total = lens[-1]
+    if total <= max_len:
+        return [points] if total >= min_len else []
+
+    cut_arcs = [k * max_len for k in range(1, int(total // max_len) + 1)
+                if k * max_len < total - 1e-9]
+    if not cut_arcs:
+        return [points]
+
+    def point_at_arc(arc):
+        i = max(0, min(bisect.bisect_right(lens, arc) - 1, n - 2))
+        link = lens[i + 1] - lens[i]
+        t = (arc - lens[i]) / link if link > 0 else 0.0
+        return [round(points[i][0] + t * (points[i + 1][0] - points[i][0]), 2),
+                round(points[i][1] + t * (points[i + 1][1] - points[i][1]), 2)]
+
+    # 原始顶点 + 切分点，按弧长排序（同弧长时顶点优先，稳定排序保证）
+    wps = [(lens[k], points[k]) for k in range(n)]
+    wps += [(a, point_at_arc(a)) for a in cut_arcs]
+    wps.sort(key=lambda x: x[0])
+    dedup = []
+    for arc, p in wps:
+        if dedup and arc - dedup[-1][0] < 1e-3:
+            continue
+        dedup.append((arc, p))
+
+    # 每到切分点就收一段，下一段从切分点起笔
+    segs, cur = [], [dedup[0][1]]
+    for idx in range(1, len(dedup)):
+        cur.append(dedup[idx][1])
+        arc = dedup[idx][0]
+        frac = arc / max_len
+        if abs(frac - round(frac)) < 1e-3:
+            if path_length(cur) >= min_len:
+                segs.append(cur)
+            cur = [dedup[idx][1]]
+    if path_length(cur) >= min_len:
+        segs.append(cur)
+    return segs or [points]
+
+
+def order_paths(paths):
+    """启发式笔顺：大轮廓先画，细节后补；位置从上往下、从左往右。
+
+    排序键（升序）：
+      1) 包围面积大的优先（大轮廓先画，细节后补，同一量级合并）
+      2) 位置：最高点从上往下，再从左往右
+      3) 长笔画先画
+
+    每条笔迹先整条定向为「从上往下 / 从左往右」的起笔方向，
+    再拆分为 ≤ MAX_STROKE_LEN 的连续段（段间共享衔接点，保证连续）。
+    """
+    def sort_key(p):
+        area, _ = path_metrics(p)
+        length = path_length(p)
+        sy = min(pt[1] for pt in p)
+        sx = min(pt[0] for pt in p if pt[1] == sy)
+        return (-round(area / 100),
+                round(sy, 1),
+                round(sx, 1),
+                -round(length / 10))
+
+    steps = []
+    for pts in sorted(paths, key=sort_key):
+        oriented, _ = orient_path(pts)
+        for seg in split_path(oriented):
+            steps.append(seg)
+    return steps
 
 
 def _otsu_threshold(gray):
@@ -305,6 +437,19 @@ def analyze_traits(image_path, paths):
         return (None,) * 3
 
 
+def compute_thumbnail(output_path):
+    """计算缩略图路径（与 normalize_category_indexes.py 的约定一致）：
+    有子目录 → <group>/<cat>/<id>.png；直接在 OUTPUT_DIR 下 → <group>/<id>.png。
+    cat 取输出文件相对 OUTPUT_DIR 的直接上级目录名，id 取 JSON 文件名（不含扩展名）。"""
+    group = THUMB_GROUP or os.path.basename(os.path.normpath(OUTPUT_DIR))
+    rel = os.path.relpath(output_path, OUTPUT_DIR).replace("\\", "/")
+    cid = os.path.splitext(os.path.basename(rel))[0]
+    if "/" in rel:
+        cat = rel.rsplit("/", 1)[0].split("/")[-1]
+        return f"{group}/{cat}/{cid}.png"
+    return f"{group}/{cid}.png"
+
+
 def generate_thumbnail(input_path, output_png):
     """将原图转换为 PNG 作为封面"""
     try:
@@ -382,7 +527,7 @@ def convert_one(input_path, output_path, gen_thumbnail=False):
         "tags": ["生成"],
         "difficulty": difficulty,
         "viewBox": [0, 0, TARGET_SIZE, TARGET_SIZE],
-        "thumbnail": "",
+        "thumbnail": compute_thumbnail(output_path),
         "steps": steps,
     }
 
@@ -461,15 +606,20 @@ def main():
             try:
                 with open(output_path, "r", encoding="utf-8") as f:
                     existing_json = json.load(f)
-                # 计算 thumbnail 路径
-                rel_thumb_path = os.path.relpath(output_path, OUTPUT_DIR).replace("\\", "/")[:-5]
+                # 计算 thumbnail 路径（与 normalize_category_indexes.py 一致）
                 items.append({
                     "id": existing_json.get("id", os.path.splitext(fn)[0]),
                     "name": existing_json.get("name", os.path.splitext(fn)[0]),
-                    "thumbnail": f"{category}/{rel_thumb_path}.png",
+                    "thumbnail": compute_thumbnail(output_path),
                     "difficulty": existing_json.get("difficulty", 1),
                     "stepCount": len(existing_json.get("steps", []))
                 })
+                # 如果已存在的案例 JSON 里 thumbnail 缺失/不一致，顺手补上
+                want_thumb = compute_thumbnail(output_path)
+                if existing_json.get("thumbnail") != want_thumb:
+                    existing_json["thumbnail"] = want_thumb
+                    with open(output_path, "w", encoding="utf-8") as f:
+                        json.dump(existing_json, f, ensure_ascii=False, separators=(",", ":"))
                 # 如果生成封面且封面不存在，补生封面
                 if GENERATE_THUMBNAIL:
                     png_path = output_path.replace(".json", ".png")
@@ -487,12 +637,10 @@ def main():
                 fail += 1
             else:
                 print(f"[{i}/{len(files)}] {fn}: {n} 步")
-                # 计算 thumbnail 路径
-                rel_thumb_path = os.path.relpath(output_path, OUTPUT_DIR).replace("\\", "/")[:-5]
                 items.append({
                     "id": os.path.splitext(fn)[0],
                     "name": os.path.splitext(fn)[0],
-                    "thumbnail": f"{category}/{rel_thumb_path}.png",
+                    "thumbnail": compute_thumbnail(output_path),
                     "difficulty": 1 if n <= 4 else (2 if n <= 7 else 3),
                     "stepCount": n
                 })

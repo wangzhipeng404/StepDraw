@@ -84,6 +84,36 @@ export function getPositionAtProgress(
 }
 
 /**
+ * 按进度截取笔画的已生长前缀（0 < progress < 1）：返回 [起点..插值点] 的折线，
+ * 保留原始路径形状（不是起点到端点的直线弦）；progress >= 1 返回原笔画。
+ * 供油漆桶"改色拾取"使用：当前步只让已生长部分可被点中/复制。
+ */
+function sliceStrokeByProgress(stroke: Stroke, progress: number): Stroke {
+  if (progress >= 1) return stroke;
+  const { totalLength, segments } = calculateStrokeLengths(stroke.points);
+  const prefix: [number, number][] = [stroke.points[0]];
+  if (totalLength === 0 || stroke.points.length < 2) return { width: stroke.width, points: prefix };
+
+  const targetLength = progress * totalLength;
+  let accumulatedLength = 0;
+  for (let i = 0; i < segments.length; i++) {
+    if (accumulatedLength + segments[i] >= targetLength) {
+      const segmentProgress = (targetLength - accumulatedLength) / segments[i];
+      const p0 = stroke.points[i];
+      const p1 = stroke.points[i + 1];
+      prefix.push([
+        p0[0] + (p1[0] - p0[0]) * segmentProgress,
+        p0[1] + (p1[1] - p0[1]) * segmentProgress
+      ]);
+      return { width: stroke.width, points: prefix };
+    }
+    prefix.push(stroke.points[i + 1]);
+    accumulatedLength += segments[i];
+  }
+  return { width: stroke.width, points: prefix };
+}
+
+/**
  * 渲染单个笔画到 Canvas
  */
 export function renderStroke(
@@ -598,10 +628,49 @@ export function floodFill(
  *    的区域判成不封闭；这里把引导线画浓，作为墙用（只用于找墙，不上屏）。
  *  - doneCache 只缓存 < currentStep 的步，缺当前步。
  */
+// 当前步骤在进度 stepProgress 下每条笔画的可见进度（0~1）。
+// 与 renderCurrentStep 的进度映射一致：按笔画弧长分配，总长为 0 时退化为按笔数均分。
+// buildUnderlay（油漆桶的墙）用它保证"墙 = 屏幕上实际可见的线条"：
+// 未播放的步骤、当前步骤未生长到的部分都不算墙。
+export function getStepStrokesProgress(
+  strokes: Stroke[],
+  stepProgress: number
+): number[] {
+  const n = strokes.length;
+  if (stepProgress >= 1) return strokes.map(() => 1);
+  if (stepProgress <= 0) return strokes.map(() => 0);
+
+  const lengths = strokes.map(s => calculateStrokeLengths(s.points).totalLength);
+  const totalLength = lengths.reduce((a, b) => a + b, 0);
+  if (totalLength === 0) {
+    // 零长度笔画：按数量均分
+    const sp = stepProgress * n;
+    return strokes.map((_, i) => Math.max(0, Math.min(1, sp - i)));
+  }
+  const target = stepProgress * totalLength;
+  const progresses = new Array<number>(n).fill(0);
+  let acc = 0;
+  for (let i = 0; i < n; i++) {
+    if (acc + lengths[i] >= target) {
+      progresses[i] = lengths[i] > 0 ? (target - acc) / lengths[i] : 1;
+      break;
+    }
+    progresses[i] = 1;
+    acc += lengths[i];
+  }
+  return progresses;
+}
+
+// 合成"填充用底图"（设备像素、透明底），墙 = 屏幕上实际可见的线条。
+// 已播放的部分（前序步骤全量 + 当前步骤已生长部分）+ 用户手绘笔画。
+// 不把未播放步骤画进墙：油漆桶的封闭区域应和用户在画布上看到的一致，
+// 未画出来的线条不该围出"隐形区域"。
 export function buildUnderlay(
   size: { cssW: number; cssH: number; dpr: number },
   drawing: Drawing,
-  userActions: UserAction[]
+  userActions: UserAction[],
+  currentStep: number,
+  stepProgress: number
 ): HTMLCanvasElement | null {
   if (size.cssW === 0 || size.cssH === 0) return null;
   const dpr = size.dpr;
@@ -615,14 +684,26 @@ export function buildUnderlay(
 
   const { scale, offsetX, offsetY } = getTransform(size, drawing);
 
-  // 整幅引导线画浓（作为墙），让"点未播放步骤的区域"也能封闭
+  // 前序步骤：完整画浓（作为墙）
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
-  for (const step of drawing.steps) {
+  for (let i = 0; i < currentStep; i++) {
+    const step = drawing.steps[i];
+    if (!step) continue;
     for (const stroke of step.strokes) {
       renderStroke(ctx, stroke, 1, '#000', false);
     }
+  }
+
+  // 当前步骤：只画已生长的部分（与 renderCurrentStep 的进度映射一致）
+  const currentStepData = drawing.steps[currentStep];
+  if (currentStepData && currentStepData.strokes.length > 0 && stepProgress > 0) {
+    const progresses = getStepStrokesProgress(currentStepData.strokes, stepProgress);
+    currentStepData.strokes.forEach((stroke, i) => {
+      const p = progresses[i];
+      if (p > 0) renderStroke(ctx, stroke, p, '#000', p < 1);
+    });
   }
 
   // 用户手绘笔画作为墙（自由线条也能围出区域）。
@@ -732,8 +813,10 @@ export function pickUserActionIndex(
 /**
  * 拾取点 (imageX, imageY)（图像 CSS 像素）下最上层的一条线条，返回"复制换色"后
  * 的 UserStroke（图像坐标、新颜色）；点不到线条返回 null。
- * 拾取顺序：用户笔迹（在上层，后画的优先）→ 图案线条（从顶层往底层）。
+ * 拾取顺序：用户笔迹（在上层，后画的优先）→ 图案线条（只取已播放的步骤，从顶层往底层）。
  * 用于油漆桶点中线条时改色：复制一份线盖在原线上，撤销时副本消失、原线还原。
+ * currentStep/stepProgress 限定图案线条的"可点范围"：前序步骤整条、当前步只到已生长
+ * 部分，未播放步骤不参与——否则点在淡色引导轮廓上，会把一根看不见的线复制成彩线冒出来。
  * 仅在点击时调用一次（逐条画到探针画布查像素 alpha），开销可忽略。
  */
 export function pickLineForRecolor(
@@ -742,7 +825,9 @@ export function pickLineForRecolor(
   size: { cssW: number; cssH: number; dpr: number },
   imageX: number,
   imageY: number,
-  newColor: string
+  newColor: string,
+  currentStep: number,
+  stepProgress: number
 ): UserStroke | null {
   if (size.cssW === 0 || size.cssH === 0) return null;
   const dpr = size.dpr;
@@ -785,23 +870,29 @@ export function pickLineForRecolor(
     }
   }
 
-  // 2) 图案线条（viewBox 坐标 -> 图像坐标，宽度按 scale 换算以对齐原线）
+  // 2) 图案线条（viewBox 坐标 -> 图像坐标，宽度按 scale 换算以对齐原线）。
+  // 只拾取已播放的线条：前序步骤整条，当前步按 stepProgress 截取已生长部分，
+  // 未播放步骤不参与（与 buildUnderlay 的墙范围一致）。
   const { scale, offsetX, offsetY } = getTransform(size, drawing);
-  for (let si = drawing.steps.length - 1; si >= 0; si--) {
+  for (let si = Math.min(currentStep, drawing.steps.length - 1); si >= 0; si--) {
     const step = drawing.steps[si];
     if (!step) continue;
+    const progresses = si === currentStep ? getStepStrokesProgress(step.strokes, stepProgress) : null;
     for (let li = step.strokes.length - 1; li >= 0; li--) {
       const stroke = step.strokes[li];
       if (!stroke || stroke.points.length < 2) continue;
+      const p = progresses ? progresses[li] : 1;
+      if (!p || p <= 0) continue; // 当前步未生长到的笔画不拾取
+      const visible = p >= 1 ? stroke : sliceStrokeByProgress(stroke, p);
       const hit = probeHit(() => {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.translate(offsetX, offsetY);
         ctx.scale(scale, scale);
-        renderStroke(ctx, stroke, 1, '#000', false);
+        renderStroke(ctx, visible, 1, '#000', false);
       });
       if (hit) {
         return {
-          points: stroke.points.map(([vx, vy]) => [vx * scale + offsetX, vy * scale + offsetY] as [number, number]),
+          points: visible.points.map(([vx, vy]) => [vx * scale + offsetX, vy * scale + offsetY] as [number, number]),
           width: stroke.width * scale,
           color: newColor,
           type: 'pen'

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "Step Draw",
+  "navigationBarBackgroundColor": "#aa3bff",
+  "navigationBarTextStyle": "white",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "light"
+}

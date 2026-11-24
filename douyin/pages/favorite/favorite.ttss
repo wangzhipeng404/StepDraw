@@ -1,0 +1,90 @@
+/* 一笔一笔 StepDraw - 小程序收藏页样式 */
+.favorite {
+  min-height: 100vh;
+  background: #fafafa;
+}
+
+.header {
+  padding: 30rpx 20rpx;
+  background: #fff;
+  text-align: center;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.drawing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+  padding: 20rpx;
+}
+
+.drawing-card {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+}
+
+.thumbnail {
+  aspect-ratio: 1;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail-placeholder {
+  width: 80%;
+  height: 80%;
+  background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-char {
+  font-size: 80rpx;
+  font-weight: 300;
+  color: #999;
+}
+
+.drawing-info {
+  padding: 16rpx;
+  text-align: center;
+}
+
+.drawing-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 100rpx 20rpx;
+}
+
+.empty-icon {
+  font-size: 100rpx;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.empty-text {
+  font-size: 30rpx;
+  color: #666;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.empty-hint {
+  font-size: 26rpx;
+  color: #999;
+}

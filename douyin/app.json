@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/group/group",
+    "pages/category/category",
+    "pages/detail/detail",
+    "pages/show/show",
+    "pages/favorite/favorite",
+    "pages/settings/settings"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "一笔一笔 StepDraw",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fafafa"
+  }
+}

@@ -1,5 +1,6 @@
 <!-- 一笔一笔 StepDraw - 小程序展示模式页 -->
-<!-- 没有任何按钮：进入即自动播放绘制，长按分类卡片进入 -->
+<!-- 入口一：长按分类卡片进入；入口二：详情页"放映"按钮（先播图案，再回放用户笔迹） -->
+<!-- 画布交互：单击 停止/启动播放，双击 显示/隐藏轮廓 -->
 <view class="show">
   <view class="main-content">
     <view class="canvas-wrapper">
@@ -12,9 +13,9 @@
             bindtap="onCanvasTap"
           ></canvas>
         </view>
-        <!-- 步骤提示固定在右下角（纯展示，无交互） -->
+        <!-- 步骤提示固定在右下角（纯展示，无交互）；放映回放阶段显示"你的作品" -->
         <view class="step-tip-overlay">
-          <text class="tip-text">{{drawing && drawing.steps[currentStep] ? drawing.steps[currentStep].tip : ''}}</text>
+          <text class="tip-text">{{phaseText || (drawing && drawing.steps[currentStep] ? drawing.steps[currentStep].tip : '')}}</text>
         </view>
       </view>
     </view>

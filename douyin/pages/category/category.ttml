@@ -1,0 +1,67 @@
+<!-- 一笔一笔 StepDraw - 分类列表页 -->
+<view class="category-page">
+  <!-- 难度筛选 -->
+  <view class="difficulty-filter">
+    <block tt:for="{{difficulties}}" tt:key="*this">
+      <view
+        class="difficulty-btn {{selectedDifficulty === item ? 'active' : ''}}"
+        data-difficulty="{{item}}"
+        bindtap="onDifficultyChange"
+      >
+        {{item}}
+      </view>
+    </block>
+  </view>
+
+  <!-- 图案列表 -->
+  <view class="drawing-grid">
+    <block tt:if="{{loading && drawings.length === 0}}">
+      <view class="loading-state">
+        <text>加载中...</text>
+      </view>
+    </block>
+    <block tt:elif="{{filteredDrawings.length === 0}}">
+      <view class="empty-state">没有找到匹配的图案</view>
+    </block>
+    <block tt:else>
+      <block tt:for="{{displayedDrawings}}" tt:key="id" tt:for-item="drawing">
+        <view
+          class="drawing-card"
+          data-id="{{drawing.id}}"
+          bindtap="onDrawingTap"
+          bindlongpress="onDrawingLongPress"
+        >
+          <view class="thumbnail">
+            <image
+              tt:if="{{drawing.thumbnail}}"
+              class="thumbnail-image"
+              src="{{BASE_URL}}/{{drawing.thumbnail}}"
+              mode="aspectFit"
+              binderror="onImageError"
+            />
+            <view class="thumbnail-placeholder" tt:else>
+              <text class="placeholder-char">{{drawing.name.charAt(0)}}</text>
+            </view>
+          </view>
+          <view class="drawing-info">
+            <text class="drawing-name">{{drawing.name}}</text>
+            <view class="drawing-tags">
+              <text class="tag tag-difficulty">{{getDifficultyLabel(drawing.difficulty)}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+      <!-- 加载更多提示 -->
+      <block tt:if="{{isLoadingMore}}">
+        <view class="loading-more">
+          <text>加载中...</text>
+        </view>
+      </block>
+      <block tt:elif="{{hasMore === false && filteredDrawings.length > 0}}">
+        <view class="no-more">
+          <text>没有更多了</text>
+        </view>
+      </block>
+    </block>
+  </view>
+</view>

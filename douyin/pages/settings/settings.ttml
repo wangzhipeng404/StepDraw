@@ -1,0 +1,62 @@
+<!-- 一笔一笔 StepDraw - 小程序设置页 -->
+<view class="settings">
+  <view class="header">
+    <text class="title">设置</text>
+  </view>
+
+  <view class="settings-group">
+    <view class="group-title">演示设置</view>
+
+    <view class="setting-item">
+      <text class="setting-label">默认演示模式</text>
+      <picker
+        mode="selector"
+        range="{{['连续生长', '步骤切换']}}"
+        value="{{defaultMode === 'continuous' ? 0 : 1}}"
+        bindchange="onModeChange"
+      >
+        <view class="picker-value">
+          <text>{{defaultMode === 'continuous' ? '连续生长' : '步骤切换'}}</text>
+          <text class="arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="setting-item">
+      <text class="setting-label">默认倍速</text>
+      <picker
+        mode="selector"
+        range="{{['0.5x', '1x', '2x']}}"
+        value="{{defaultSpeed - 1}}"
+        bindchange="onSpeedChange"
+      >
+        <view class="picker-value">
+          <text>{{defaultSpeed}}x</text>
+          <text class="arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="setting-item">
+      <text class="setting-label">自动播放</text>
+      <switch
+        checked="{{autoPlay}}"
+        bindchange="onAutoPlayChange"
+      />
+    </view>
+  </view>
+
+  <view class="settings-group">
+    <view class="group-title">存储</view>
+
+    <view class="setting-item" bindtap="onClearCache">
+      <text class="setting-label">清空缓存</text>
+      <text class="setting-value">清除本地缓存数据</text>
+    </view>
+  </view>
+
+  <view class="about-section">
+    <text class="version">版本 1.0.0</text>
+    <text class="desc">一笔一笔 StepDraw</text>
+  </view>
+</view>

@@ -1,0 +1,198 @@
+<!-- 一笔一笔 StepDraw - 小程序详情页 -->
+<view class="detail">
+  <!-- 主内容区域 -->
+  <view class="main-content">
+    <!-- 画布区：三层 Canvas 叠加
+         底层 outlineCanvas —— JSON 图案数据（轮廓/已完成步骤/动画笔画）
+         中层 historyCanvas —— 用户已完成的笔画（增量绘制）
+         顶层 brushCanvas   —— 当前正在绘制的笔画（触摸事件挂在这层）
+         三层只在导出时合并 -->
+    <view class="canvas-wrapper">
+      <view class="canvas-container">
+        <!-- 三层画布叠放容器：尺寸固定，内部三层绝对定位完全重合 -->
+        <view class="canvas-stack" style="width: {{canvasSize}}px; height: {{canvasSize}}px;">
+          <canvas
+            type="2d"
+            id="outlineCanvas"
+            class="drawing-canvas"
+          ></canvas>
+          <canvas
+            type="2d"
+            id="historyCanvas"
+            class="drawing-canvas"
+          ></canvas>
+          <canvas
+            type="2d"
+            id="brushCanvas"
+            class="drawing-canvas"
+            bindtouchstart="onTouchStart"
+            bindtouchmove="onTouchMove"
+            bindtouchend="onTouchEnd"
+            bindtouchcancel="onTouchEnd"
+            disable-scroll="{{true}}"
+          ></canvas>
+        </view>
+        <!-- 步骤提示固定在右下角 -->
+        <view class="step-tip-overlay">
+          <text class="tip-text">{{drawing && drawing.steps[currentStep] ? drawing.steps[currentStep].tip : ''}}</text>
+        </view>
+        <!-- 填充失败提示：画布顶部居中，轻量，自动消失 -->
+        <view tt:if="{{fillHint}}" class="fill-hint-overlay">
+          <text class="fill-hint-text">{{fillHint}}</text>
+        </view>
+        <!-- 右上角最边缘：复位按钮，点击将缩放/平移恢复为原始大小与位置 -->
+        <view class="view-reset-btn" bindtap="onViewReset">
+          <image class="view-reset-icon" src="/images/reset.png" mode="aspectFit" />
+        </view>
+        <!-- 复位按钮左侧：模式快捷切换（绘制模式 <-> 缩放/移动模式） -->
+        <view class="mode-toggle-btn" bindtap="onToggleDrawMode">
+          <image
+            class="mode-toggle-icon"
+            src="{{drawingMode ? '/images/scale_move.png' : '/images/draw.png'}}"
+            mode="aspectFit"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- 工具栏区域 -->
+    <view class="toolbar-wrapper">
+      <!-- 播放控制栏 -->
+      <view class="control-bar">
+        <view class="control-btn-row">
+          <view class="control-btn outline-btn {{showOutline ? 'active' : ''}}" bindtap="onToggleOutline">
+            <image class="outline-icon" src="{{showOutline ? '/images/cat-solid-active.png' : '/images/cat-solid.png'}}" mode="aspectFit" />
+          </view>
+          <view class="control-btn" bindtap="onPrevStep">
+            <image class="btn-icon" src="/images/pre.png" mode="aspectFit" style="left: -6rpx;width: 56rpx;height: 56rpx;" />
+          </view>
+          <view class="control-btn play-btn {{playing ? 'playing' : ''}}" bindtap="onTogglePlay">
+            <image class="btn-icon" src="{{playing ? '/images/stop.png' : '/images/play.png'}}" mode="aspectFit" />
+          </view>
+          <view class="control-btn" bindtap="onNextStep">
+            <image class="btn-icon" src="/images/next.png" mode="aspectFit" style="right: -4rpx;width: 56rpx;height: 56rpx;" />
+          </view>
+          <view class="control-btn" bindtap="onReset">
+            <image class="btn-icon" src="/images/refresh.png" mode="aspectFit" style="right: -6rpx;width: 56rpx;height: 56rpx;" />
+          </view>
+          <view class="control-btn loop-btn {{loopCurrentStep ? 'active' : ''}}" bindtap="onToggleLoop">
+            <image class="loop-icon" src="{{loopCurrentStep ? '/images/stepLoopActive.png' : '/images/stepLoop.png'}}" mode="aspectFit" style="top: -4rpx;width: 56rpx;height: 56rpx;"  />
+          </view>
+          <view class="control-btn speed-btn" bindtap="onSpeedChange">
+            <text class="speed-text">{{speedText}}x</text>
+          </view>
+          
+        </view>
+      </view>
+
+      <!-- 进度条 -->
+      <view class="progress-container">
+        <slider
+          class="progress-bar"
+          min="0"
+          max="1"
+          step="0.01"
+          value="{{globalProgress}}"
+          block-size="16"
+          block-color="#aa3bff"
+          active-color="#aa3bff"
+          background-color="#e0e0e0"
+          bindchange="onProgressChange"
+        />
+      </view>
+
+      <!-- 颜色选择器 -->
+      <view class="color-bar">
+        <view class="color-item {{strokeColor === item ? 'active' : ''}}"
+            tt:for="{{colorOptions}}"
+            tt:key="index"
+            data-color="{{item}}"
+            bindtap="onColorSelect">
+          <view class="color-circle" style="background-color: {{item}};"></view>
+        </view>
+        <!-- 自定义颜色入口：显示当前选中颜色，中心 + 号，点击打开自定义选色 -->
+        <view class="color-item custom-color-item {{isCustomColor ? 'active' : ''}}" bindtap="onCustomColorTap">
+          <view class="custom-color-circle" style="background-color: {{strokeColor}};">
+            <text class="custom-color-plus">+</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 笔画粗细选择器：左侧快捷选项，右侧滑动条微调 -->
+      <view class="stroke-width-bar">
+        <view class="stroke-width-item {{strokeWidth === item && !isCustomWidth ? 'active' : ''}}"
+            tt:for="{{presetWidths}}"
+            tt:key="index"
+            data-width="{{item}}"
+            bindtap="onStrokeWidthSelect">
+          <view class="stroke-circle" style="width: {{item * 2}}px; height: {{item * 2}}px;"></view>
+        </view>
+        <slider
+          class="width-slider"
+          min="{{minWidth}}"
+          max="{{maxWidth}}"
+          step="1"
+          value="{{strokeWidth}}"
+          block-size="16"
+          block-color="#aa3bff"
+          active-color="#aa3bff"
+          background-color="#e0e0e0"
+          bindchanging="onWidthSliderChange"
+          bindchange="onWidthSliderChange"
+        />
+      </view>
+
+      <!-- 画笔类型选择器：点击选中画笔进入绘制模式，再点同一支退出 -->
+      <view class="stroke-type-bar">
+        <view class="stroke-type-item {{drawingMode && strokeType === item.key ? 'active' : ''}}"
+            tt:for="{{strokeTypes}}"
+            tt:key="key"
+            data-type="{{item.key}}"
+            bindtap="onStrokeTypeSelect">
+          <image
+            class="stroke-type-icon"
+            src="{{drawingMode && strokeType === item.key ? item.iconActive : item.icon}}"
+            mode="aspectFit"
+          />
+        </view>
+      </view>
+
+      <!-- 绘图工具栏 -->
+      <view class="draw-tools-bar">
+        <view class="draw-tool-btn" bindtap="onUndo">
+          <image class="tool-btn-icon" src="/images/undo.png" mode="aspectFit" />
+        </view>
+        <view class="draw-tool-btn" bindtap="onClearUserDrawings">
+          <image class="tool-btn-icon" src="/images/clear.png" mode="aspectFit" />
+        </view>
+        <view class="draw-tool-btn save-btn" bindtap="onExportDrawing">
+          <image class="tool-btn-icon" src="/images/save.png" mode="aspectFit" />
+        </view>
+        <view class="draw-tool-btn replay-btn" bindtap="onShowAction" hover-class="tool-btn-hover">
+          <image class="tool-btn-icon" src="/images/showroom.png" mode="aspectFit" />
+        </view>
+        <button class="draw-tool-btn share-btn" open-type="share" bindtap="onShareButtonTap">
+          <image class="tool-btn-icon" src="/images/share.png" mode="aspectFit" />
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 自定义颜色弹层：竖屏从底部弹出，横屏从右侧弹出 -->
+  <view tt:if="{{showColorPicker}}" class="cp-mask" bindtap="onCancelColorPicker"></view>
+  <view class="cp-panel {{showColorPicker ? 'open' : ''}}">
+    <view class="cp-panel-header">
+      <text class="cp-panel-title">自定义颜色</text>
+      <view class="cp-panel-close" bindtap="onCancelColorPicker">
+        <text>×</text>
+      </view>
+    </view>
+    <scroll-view class="cp-panel-body" scroll-y="true">
+      <color-picker id="colorPicker" value="{{strokeColor}}" bind:change="onColorPickerChange"></color-picker>
+    </scroll-view>
+    <view class="cp-panel-footer">
+      <view class="cp-footer-btn cancel" bindtap="onCancelColorPicker">取消</view>
+      <view class="cp-footer-btn confirm" bindtap="onConfirmColorPicker">确定</view>
+    </view>
+  </view>
+</view>

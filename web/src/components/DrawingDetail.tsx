@@ -118,8 +118,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
   const activePointersRef = useRef<Map<number, ActivePointer>>(new Map());
   const gestureModeRef = useRef<'none' | 'pan' | 'pinch' | 'pinchpan' | 'draw' | 'erase'>('none');
   const pinchStartRef = useRef<{ dist: number; view: ViewTransform; cx: number; cy: number } | null>(null);
-  // 绘制模式下的双指平移：记录当前两指中点，按中点位移平移画布
-  const pinchPanMidRef = useRef<{ x: number; y: number } | null>(null);
+  // 绘制模式下的双指缩放/平移：手势起始状态（距离/中点/视图），见 handlePointerDown
   const drawPointerIdRef = useRef<number | null>(null);
 
   // 获取 Canvas 位置与尺寸（在组件挂载后获取，并在窗口大小变化时更新）
@@ -204,13 +203,16 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     const py = p[1] * dpr;
 
     // 0) 点中线条：复制一份线盖在原线上、换成喷涂色（撤销时副本消失、原线还原）
+    //    只拾取已播放的线条：未播放步骤不参与，避免把看不见的淡色引导线变出来
     const recolor = pickLineForRecolor(
       drawing,
       userActions,
       { cssW: rect.width, cssH: rect.height, dpr },
       p[0],
       p[1],
-      strokeColor
+      strokeColor,
+      state.currentStep,
+      state.progress
     );
     if (recolor) {
       pushAction({ kind: 'stroke', stroke: recolor });
@@ -235,11 +237,15 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       }
     }
 
-    // 2) 未命中：对"线条墙"做漫水填充，算出区域掩码
+    // 2) 未命中：对"已播放的线条墙"做漫水填充，算出区域掩码。
+    //    只把已播放的步骤（+ 当前步骤已生长部分）当作墙，和屏幕所见一致；
+    //    未播放步骤的线条不参与，避免能涂出"看不见线条围成的区域"。
     const under = buildUnderlay(
       { cssW: rect.width, cssH: rect.height, dpr },
       drawing,
-      userActions
+      userActions,
+      state.currentStep,
+      state.progress
     );
     if (!under) return;
     const res = floodFill(under, px, py);
@@ -259,7 +265,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       strokeCount
     };
     pushAction({ kind: 'fill', fill });
-  }, [drawing, userActions, strokeColor, showFillHint, strokeCount, pushAction]);
+  }, [drawing, userActions, strokeColor, showFillHint, strokeCount, pushAction, state.currentStep, state.progress]);
 
   // 橡皮擦：整笔擦除。点击/拖动落点处命中的最上层用户操作（笔画或填充）整块移除。
   // 命中用 pickUserActionIndex（探针法，含填充掩码）；记录 {index, action} 增量，
@@ -301,9 +307,19 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     // 双指落下
     if (pointers.length === 2) {
       if (drawingMode) {
-        // 绘制模式双指：收尾可能残留的一笔，转入双指平移（画着画着想挪画面）
+        // 绘制模式双指：收尾可能残留的一笔，转入双指缩放/平移（画着画着想挪画面/放大细节）
         commitStroke();
-        pinchPanMidRef.current = { x: (pointers[0].x + pointers[1].x) / 2, y: (pointers[0].y + pointers[1].y) / 2 };
+        const [a, b] = pointers;
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        // 记录手势起始状态：缩放按起始距离比（锚定起始中点），
+        // 平移按中点位移，二者都基于起始视图合成，避免逐帧累加漂移（与小程序端同逻辑）
+        pinchStartRef.current = {
+          dist: getPointerDistance(a, b),
+          view: { ...viewRef.current },
+          cx: midX - rect.left - rect.width / 2,
+          cy: midY - rect.top - rect.height / 2
+        };
         gestureModeRef.current = 'pinchpan';
         return;
       }
@@ -325,6 +341,11 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
 
     // 单指
     if (drawingMode) {
+      // PC：右键拖动 = 平移画面（不绘制/填充/擦除）
+      if (e.button === 2) {
+        gestureModeRef.current = 'pan';
+        return;
+      }
       if (strokeType === 'fill') {
         // 填充：单击落点即填充当前颜色，不拖拽
         applyFill(e.clientX, e.clientY);
@@ -392,22 +413,28 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       return;
     }
 
-    // 绘制模式双指平移：按两指中点位移平移画布（不缩放）
+    // 绘制模式双指缩放/平移：缩放倍率来自两指间距变化（锚定起始中点），
+    // 平移来自两指中点位移；都基于"起始视图"合成，不逐帧累加（与小程序端同逻辑）
     if (mode === 'pinchpan') {
       const stored = activePointersRef.current.get(e.pointerId);
       if (!stored) return;
       stored.x = e.clientX;
       stored.y = e.clientY;
       const pointers = Array.from(activePointersRef.current.values());
-      if (pointers.length >= 2 && pinchPanMidRef.current) {
-        const midX = (pointers[0].x + pointers[1].x) / 2;
-        const midY = (pointers[0].y + pointers[1].y) / 2;
-        viewRef.current = {
-          ...viewRef.current,
-          tx: viewRef.current.tx + (midX - pinchPanMidRef.current.x),
-          ty: viewRef.current.ty + (midY - pinchPanMidRef.current.y)
-        };
-        pinchPanMidRef.current = { x: midX, y: midY };
+      const ps = pinchStartRef.current;
+      if (pointers.length >= 2 && ps && ps.dist > 0) {
+        const dist = getPointerDistance(pointers[0], pointers[1]);
+        if (dist > 0) {
+          const newScale = clampScale((ps.view.scale * dist) / ps.dist);
+          const anchored = zoomAnchored(ps.view, newScale, ps.cx, ps.cy);
+          const midX = (pointers[0].x + pointers[1].x) / 2 - rect.left - rect.width / 2;
+          const midY = (pointers[0].y + pointers[1].y) / 2 - rect.top - rect.height / 2;
+          viewRef.current = {
+            scale: newScale,
+            tx: anchored.tx + (midX - ps.cx),
+            ty: anchored.ty + (midY - ps.cy)
+          };
+        }
       }
       return;
     }
@@ -466,7 +493,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
           }
         }
       }
-      if (remaining < 2) pinchPanMidRef.current = null;
+      if (remaining < 2) pinchStartRef.current = null;
       // 未转入绘制（填充/橡皮擦/落点越界）且双指已结束：复位手势，避免卡在 pinchpan
       if (gestureModeRef.current === 'pinchpan') {
         gestureModeRef.current = 'none';
@@ -666,18 +693,13 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     setDrawingMode(prev => !prev);
   }, []);
 
-  // drawingMode 的镜像 ref（滚轮等事件回调里读取最新值，避免闭包过期）
-  const drawingModeRef = useRef(drawingMode);
-  drawingModeRef.current = drawingMode;
-
-  // 滚轮缩放（鼠标 / 触控板）：以指针位置为锚点，非绘制模式下生效。
-  // 用原生非 passive 监听，才能 preventDefault 阻止页面滚动。
+  // 滚轮缩放（鼠标 / 触控板）：以指针位置为锚点，绘制/缩放移动模式下均生效
+  // （PC 上绘制时滚轮即放大缩小）。用原生非 passive 监听，才能 preventDefault 阻止页面滚动。
   useEffect(() => {
     const canvas = brushRef.current;
     if (!canvas) return;
 
     const onWheel = (e: WheelEvent) => {
-      if (drawingModeRef.current) return;
       e.preventDefault();
       const rect = canvasRectRef.current;
       if (!rect) return;
@@ -726,6 +748,7 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
+              onContextMenu={(e) => e.preventDefault()}
               style={{ touchAction: 'none', cursor: drawingMode ? 'crosshair' : 'grab' }}
             />
           </div>

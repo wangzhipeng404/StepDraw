@@ -9,13 +9,15 @@ StepDraw/
 ├── web/                          # Web 版 (React + TypeScript)
 ├── ipad/                         # iPad 版 (Swift / SwiftUI，ipeddle 交叉构建未签名 IPA)
 ├── android/                      # Android 平板版 (Kotlin，与 iPad 版同构移植)
-└── miniprogram/                  # 小程序版 (预留)
+├── miniprogram/                  # 微信小程序版
+└── douyin/                       # 抖音小程序版 (从 miniprogram/ 移植)
 ```
 
 各端共用同一份图案数据（远程 GitHub Pages，`web/public/data/`）。
 - Web 版见 [web/](web)
 - iPad 版见 [ipad/README.md](ipad/README.md)
 - Android 版见 [android/README.md](android/README.md)
+- 抖音小程序版见 [douyin/](douyin)（字节/抖音开发者工具打开 `douyin/` 目录即可；`wx.`→`tt.`、`.wxml`→`.ttml`、`.wxss`→`.ttss`，分享改用 `onShareAppMessage` 的 `extra` 传参，微信独有的 `onShareTimeline` 已移除）
 
 ### web 子目录
 

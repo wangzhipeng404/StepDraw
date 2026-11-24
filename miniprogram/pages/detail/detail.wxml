@@ -75,12 +75,13 @@
           <view class="control-btn" bindtap="onReset">
             <image class="btn-icon" src="/images/refresh.png" mode="aspectFit" style="right: -6rpx;width: 56rpx;height: 56rpx;" />
           </view>
+          <view class="control-btn loop-btn {{loopCurrentStep ? 'active' : ''}}" bindtap="onToggleLoop">
+            <image class="loop-icon" src="{{loopCurrentStep ? '/images/stepLoopActive.png' : '/images/stepLoop.png'}}" mode="aspectFit" style="top: -4rpx;width: 56rpx;height: 56rpx;"  />
+          </view>
           <view class="control-btn speed-btn" bindtap="onSpeedChange">
             <text class="speed-text">{{speedText}}x</text>
           </view>
-          <view class="control-btn loop-btn {{loopCurrentStep ? 'active' : ''}}" bindtap="onToggleLoop">
-            <image class="loop-icon" src="{{loopCurrentStep ? '/images/stepLoopActive.png' : '/images/stepLoop.png'}}" mode="aspectFit" />
-          </view>
+          
         </view>
       </view>
 
@@ -167,6 +168,9 @@
         <view class="draw-tool-btn save-btn" bindtap="onExportDrawing">
           <image class="tool-btn-icon" src="/images/save.png" mode="aspectFit" />
         </view>
+        <view class="draw-tool-btn replay-btn" bindtap="onShowAction" hover-class="tool-btn-hover">
+          <image class="tool-btn-icon" src="/images/showroom.png" mode="aspectFit" />
+        </view>
         <button class="draw-tool-btn share-btn" open-type="share" bindtap="onShareButtonTap">
           <image class="tool-btn-icon" src="/images/share.png" mode="aspectFit" />
         </button>
@@ -187,7 +191,6 @@
       <color-picker id="colorPicker" value="{{strokeColor}}" bind:change="onColorPickerChange"></color-picker>
     </scroll-view>
     <view class="cp-panel-footer">
-      <view class="cp-footer-btn cancel" bindtap="onCancelColorPicker">取消</view>
       <view class="cp-footer-btn confirm" bindtap="onConfirmColorPicker">确定</view>
     </view>
   </view>

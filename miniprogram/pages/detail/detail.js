@@ -172,6 +172,11 @@ Page({
       this._panLastX = 0;
       this._panLastY = 0;
       this._pinchLastDist = 0;
+      // 绘制模式双指缩放/平移：手势起始状态（距离/中点/视图），见 onTouchStart 的 pinchpan 分支
+      this._pinchStartDist = 0;
+      this._pinchStartMidX = 0;
+      this._pinchStartMidY = 0;
+      this._pinchStartView = null;
 
       // 加载完成后绘制
       if (this.data.drawing) {
@@ -294,7 +299,8 @@ Page({
 
   // ========== 视图变换（缩放/移动） ==========
   // 图像坐标系：viewScale=1、viewTx=0、viewTy=0 时与画布像素坐标一致
-  // 非绘制模式下双指捏合以画布中心为缩放中心，单指拖动平移整个图像
+  // 非绘制模式：双指捏合缩放（画布中心为锚点），单指拖动平移整个图像
+  // 绘制模式：双指也可缩放/平移（起始中点为锚点），单指绘制
   withViewTransform(ctx, fn) {
     const width = this.canvasWidth;
     const height = this.canvasHeight;
@@ -461,23 +467,42 @@ Page({
   },
 
   // 合成"填充用底图"（墨线合成图，透明底，画布 CSS 像素尺寸）。
-  // 墙 = 整幅图案所有步骤的线条（画浓作墙）+ 用户内容（填充位图 + 笔画）。
-  // 为什么不复用 outlineCache/doneCache：引导层 15% 半透明 alpha < 墙阈值不算墙，
-  // doneCache 只缓存 < currentStep 的步。这里直接从数据渲染"墙"（只用于找墙，不上屏）。
+  // 墙 = 屏幕上实际可见的线条：已完成步骤（全量）+ 当前步骤已生长部分 + 用户笔画。
+  // 不把未播放步骤画进墙：油漆桶的封闭区域应和用户在画布上看到的一致，
+  // 未画出来的线条不该围出"隐形区域"（与 web 端 buildUnderlay 同逻辑）。
   buildUnderlay() {
-    const { drawing } = this.data;
+    const { drawing, currentStep, progress } = this.data;
     if (!drawing) return null;
     const { scale, offsetX, offsetY } = this.getTransform();
     const under = this.createLayer();
     const ctx = under.getContext('2d');
     if (!ctx) return null;
 
+    // 前序步骤：完整画浓（作为墙）
     ctx.save();
     ctx.translate(offsetX, offsetY);
     ctx.scale(scale, scale);
-    for (const step of drawing.steps) {
+    for (let i = 0; i < currentStep; i++) {
+      const step = drawing.steps[i];
+      if (!step) continue;
       for (const stroke of step.strokes) {
         this.drawStroke(ctx, stroke, 1, '#000', false, scale);
+      }
+    }
+    // 当前步骤：只画已生长的部分。进度映射与 drawOutlineLayer 完全一致
+    // （按笔数均分：strokesProgress = progress * totalStrokes），保证墙 = 屏幕所见。
+    // progress >= 1 时当前步已完整画出，整步进墙。
+    const currentStepData = drawing.steps[currentStep];
+    if (currentStepData && currentStepData.strokes.length > 0 && progress > 0) {
+      const totalStrokes = currentStepData.strokes.length;
+      const strokesProgress = Math.min(progress, 1) * totalStrokes;
+      const completedStrokes = Math.floor(strokesProgress);
+      const currentStrokeProgress = strokesProgress - completedStrokes;
+      for (let i = 0; i < completedStrokes; i++) {
+        this.drawStroke(ctx, currentStepData.strokes[i], 1, '#000', false, scale);
+      }
+      if (currentStrokeProgress > 0 && completedStrokes < totalStrokes) {
+        this.drawStroke(ctx, currentStepData.strokes[completedStrokes], currentStrokeProgress, '#000', true, scale);
       }
     }
     ctx.restore();
@@ -500,12 +525,15 @@ Page({
 
   // 拾取点 (imageX, imageY)（图像 CSS 像素）下最上层的一条线条，返回"复制换色"后
   // 的 UserStroke（图像坐标、新颜色）；点不到线条返回 null。
-  // 拾取顺序：用户笔迹（上层，后画的优先）→ 图案线条（从顶层往底层）。
+  // 拾取顺序：用户笔迹（上层，后画的优先）→ 图案线条（只取已播放的步骤，从顶层往底层）。
   // 油漆桶点中线条改色：复制一份线盖在原线上，撤销时副本消失、原线还原。
+  // currentStep/stepProgress 限定图案线条的"可点范围"：前序步骤整条、当前步只到已生长
+  // 部分（副本也只复制已生长前缀），未播放步骤不参与——否则点在淡色引导轮廓上，
+  // 会把一根看不见的线复制成彩线冒出来（与 buildUnderlay 的墙范围一致）。
   // 仅在点击时调用一次（逐条画到探针画布查像素 alpha），开销可忽略。
   // 副本用 drawUserStroke 绘制（图像 CSS 像素坐标），宽度按原线实际渲染宽度换算以对齐。
   pickLineForRecolor(imageX, imageY, newColor) {
-    const { drawing } = this.data;
+    const { drawing, currentStep, progress } = this.data;
     if (!drawing || !drawing.steps || drawing.steps.length === 0) return null;
     const w = this.canvasWidth, h = this.canvasHeight;
     const probeX = Math.floor(imageX), probeY = Math.floor(imageY);
@@ -539,23 +567,40 @@ Page({
     }
 
     // 2) 图案线条（viewBox 坐标 -> 图像坐标，宽度换算成原线实际渲染宽度以对齐）
+    //    当前步按 progress 均分到笔（与 drawOutlineLayer 映射一致），取已生长前缀。
     const { scale, offsetX, offsetY } = this.getTransform();
-    for (let si = drawing.steps.length - 1; si >= 0; si--) {
+    const topStep = Math.min(currentStep, drawing.steps.length - 1);
+    for (let si = topStep; si >= 0; si--) {
       const step = drawing.steps[si];
       if (!step) continue;
+      let strokesProgress = null, completedStrokes = 0, currentStrokeProgress = 1;
+      if (si === currentStep && progress < 1) {
+        const totalStrokes = step.strokes.length;
+        strokesProgress = Math.max(0, progress) * totalStrokes;
+        completedStrokes = Math.floor(strokesProgress);
+        currentStrokeProgress = strokesProgress - completedStrokes;
+      }
       for (let li = step.strokes.length - 1; li >= 0; li--) {
         const stroke = step.strokes[li];
         if (!stroke || stroke.points.length < 2) continue;
+        // 当前步未生长到的笔画：不拾取
+        if (strokesProgress !== null && li > completedStrokes) continue;
+        // 当前步正在生长的笔画：只取已生长前缀
+        let visible = stroke;
+        if (strokesProgress !== null && li === completedStrokes && currentStrokeProgress < 1) {
+          visible = this.sliceStrokeByProgress(stroke, currentStrokeProgress);
+          if (!visible || visible.points.length < 2) continue;
+        }
         const hit = probeHit(() => {
           ctx.save();
           ctx.translate(offsetX, offsetY);
           ctx.scale(scale, scale);
-          this.drawStroke(ctx, stroke, 1, '#000', false, scale);
+          this.drawStroke(ctx, visible, 1, '#000', false, scale);
           ctx.restore();
         });
         if (hit) {
           return {
-            points: stroke.points.map(([vx, vy]) => [vx * scale + offsetX, vy * scale + offsetY]),
+            points: visible.points.map(([vx, vy]) => [vx * scale + offsetX, vy * scale + offsetY]),
             // 原图案线 drawStroke 的渲染宽度 = stroke.width / canvasWidth * 256 * scale
             width: stroke.width / this.canvasWidth * 256 * scale,
             color: newColor,
@@ -565,6 +610,37 @@ Page({
       }
     }
     return null;
+  },
+
+  // 按进度截取笔画的已生长前缀（0 < progress < 1）：保留原始路径形状（折线，
+  // 不是起点到端点的直线弦），端点插值与 drawStroke 的长度映射一致；
+  // progress >= 1 返回原笔画。供油漆桶"改色拾取"使用。
+  sliceStrokeByProgress(stroke, progress) {
+    if (progress >= 1) return stroke;
+    const points = stroke.points;
+    if (!points || points.length < 2) return stroke;
+    const totalLength = this.getStrokeLength(points);
+    const prefix = [points[0]];
+    if (totalLength === 0) return { width: stroke.width, points: prefix };
+
+    const targetLength = progress * totalLength;
+    let accumulatedLength = 0;
+    for (let i = 1; i < points.length; i++) {
+      const dx = points[i][0] - points[i - 1][0];
+      const dy = points[i][1] - points[i - 1][1];
+      const segmentLength = Math.sqrt(dx * dx + dy * dy);
+      if (accumulatedLength + segmentLength >= targetLength) {
+        const segmentProgress = (targetLength - accumulatedLength) / segmentLength;
+        prefix.push([
+          points[i - 1][0] + (points[i][0] - points[i - 1][0]) * segmentProgress,
+          points[i - 1][1] + (points[i][1] - points[i - 1][1]) * segmentProgress
+        ]);
+        break;
+      }
+      prefix.push(points[i]);
+      accumulatedLength += segmentLength;
+    }
+    return { width: stroke.width, points: prefix };
   },
 
   // 拾取点 (imageX, imageY)（图像 CSS 像素）处最上层的一个用户操作，
@@ -1085,13 +1161,21 @@ Page({
     const touches = e.touches;
 
     if (this.data.drawingMode) {
-      // 绘制模式双指：收尾当前笔，转入双指平移（画着画着想挪画面）
+      // 绘制模式双指：收尾当前笔，转入双指缩放/平移（画着画着想挪画面/放大细节）
       if (touches.length >= 2) {
         if (this.currentStroke) {
           this.commitCurrentStroke();
         }
-        this._pinchMidX = (touches[0].clientX + touches[1].clientX) / 2;
-        this._pinchMidY = (touches[0].clientY + touches[1].clientY) / 2;
+        const midX = (touches[0].clientX + touches[1].clientX) / 2;
+        const midY = (touches[0].clientY + touches[1].clientY) / 2;
+        this._pinchMidX = midX;
+        this._pinchMidY = midY;
+        // 记录手势起始状态：缩放按起始距离比（锚定起始中点），
+        // 平移按中点位移，二者都基于起始视图合成，避免逐帧累加漂移
+        this._pinchStartDist = this.getTouchDistance(touches);
+        this._pinchStartMidX = midX;
+        this._pinchStartMidY = midY;
+        this._pinchStartView = { scale: this.viewScale, tx: this.viewTx, ty: this.viewTy };
         this._currentTouchMode = 'pinchpan';
         return;
       }
@@ -1187,12 +1271,21 @@ Page({
     }
 
     if (mode === 'pinchpan' && touches.length >= 2) {
-      // 绘制模式双指平移：按两指中点位移平移画布（不缩放）
+      // 绘制模式双指缩放/平移：缩放倍率来自两指间距变化（锚定起始中点），
+      // 平移来自两指中点位移；都基于"起始视图"合成，不逐帧累加
+      const dist = this.getTouchDistance(touches);
       const midX = (touches[0].clientX + touches[1].clientX) / 2;
       const midY = (touches[0].clientY + touches[1].clientY) / 2;
-      if (this._pinchMidX !== undefined) {
-        this.viewTx += midX - this._pinchMidX;
-        this.viewTy += midY - this._pinchMidY;
+      const startView = this._pinchStartView;
+      if (startView && this._pinchStartDist > 0 && dist > 0 && this.canvasRect) {
+        const newScale = Math.min(5, Math.max(0.3, (startView.scale * dist) / this._pinchStartDist));
+        // 锚点 = 起始中点（相对画布中心）：缩放时该点处的图像内容保持不动
+        const anchorX = this._pinchStartMidX - this.canvasRect.left - this.canvasWidth / 2;
+        const anchorY = this._pinchStartMidY - this.canvasRect.top - this.canvasHeight / 2;
+        const factor = newScale / startView.scale;
+        this.viewScale = newScale;
+        this.viewTx = anchorX - factor * (anchorX - startView.tx) + (midX - this._pinchStartMidX);
+        this.viewTy = anchorY - factor * (anchorY - startView.ty) + (midY - this._pinchStartMidY);
         this.renderView();
       }
       this._pinchMidX = midX;
@@ -1265,6 +1358,8 @@ Page({
     if (remaining === 0) {
       this._currentTouchMode = null;
       this._pinchLastDist = 0;
+      this._pinchStartDist = 0;
+      this._pinchStartView = null;
     }
   },
 
@@ -1321,7 +1416,7 @@ Page({
     this.setData({ 
       strokeColor: hex,
       isCustomColor: true,
-      showColorPicker: false
+      // showColorPicker: false
     });
   },
 
@@ -1529,6 +1624,23 @@ Page({
         wx.showToast({ title: '保存失败', icon: 'none' });
       }
     });
+  },
+
+  // 放映：跳转到 show 页，先播放参考图案，再按时间序回放用户内容（笔画+填充）。
+  // 数据经 globalData 传递（笔画点列可能上百个、填充掩码是位图，走 URL query 又长又丑）。
+  // 传完整的 userActions（时间序混排的笔画与填充）：show 页回放时笔画按弧长生长、
+  // 填充直接填入，且填充垫在图案黑线之下（与详情页涂色本效果一致）。
+  onShowAction() {
+    if (!this.data.drawing) return;
+    const app = getApp();
+    app.globalData.replayPayload = {
+      drawing: this.data.drawing,
+      userActions: this.userActions.slice(),
+      // 放映上限：show 页只回放 detail 已播到的步骤（含该步），不提前露出未播步骤
+      playedStep: this.data.currentStep,
+      id: this.drawingId // show 页分享用（放映分享只回放图案，用户内容是本地数据无法随链接走）
+    };
+    wx.navigateTo({ url: '/pages/show/show' });
   },
 
   // 用户笔画/画面变化后，缓存的分享封面作废，延时后台重新生成
