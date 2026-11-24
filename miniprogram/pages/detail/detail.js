@@ -1164,7 +1164,15 @@ Page({
       // 绘制模式双指：收尾当前笔，转入双指缩放/平移（画着画着想挪画面/放大细节）
       if (touches.length >= 2) {
         if (this.currentStroke) {
-          this.commitCurrentStroke();
+          // 只有一个点 = 手指刚落下还没移动：直接丢弃，避免在落点留下杂点
+          // （第二指落下说明是捏合手势，第一笔多半是误触）
+          if (this.currentStroke.points.length > 1) {
+            this.commitCurrentStroke();
+          } else {
+            this.currentStroke = null;
+            this._drawFingerId = null;
+            this.drawBrushLayer();
+          }
         }
         const midX = (touches[0].clientX + touches[1].clientX) / 2;
         const midY = (touches[0].clientY + touches[1].clientY) / 2;
@@ -1337,22 +1345,8 @@ Page({
     }
 
     if (mode === 'pinchpan') {
-      // 绘制模式双指平移结束：单指仍在画布上则从该指继续画新一笔（沿用当前画笔）
-      if (remaining === 1 && this.data.strokeType !== 'fill' && this.data.strokeType !== 'eraser') {
-        const t = e.touches[0];
-        const [x, y] = this.toImagePoint(t.clientX, t.clientY);
-        const { strokeColor, strokeWidth, strokeType } = this.data;
-        this.currentStroke = {
-          points: [[x, y]],
-          width: strokeWidth,
-          color: strokeColor,
-          type: strokeType
-        };
-        this._drawFingerId = t.identifier;
-        this._currentTouchMode = 'draw';
-        this.drawBrushLayer();
-        return;
-      }
+      // 绘制模式双指缩放/移动结束：不在剩余手指处自动起新笔（会落下杂点），
+      // 新的一笔从下次 touchstart 开始
     }
 
     if (remaining === 0) {

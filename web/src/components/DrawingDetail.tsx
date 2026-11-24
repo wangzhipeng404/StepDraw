@@ -308,7 +308,16 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     if (pointers.length === 2) {
       if (drawingMode) {
         // 绘制模式双指：收尾可能残留的一笔，转入双指缩放/平移（画着画着想挪画面/放大细节）
-        commitStroke();
+        if (currentStrokeRef.current) {
+          if (currentStrokeRef.current.points.length > 1) {
+            commitStroke();
+          } else {
+            // 只有一个点 = 手指刚落下还没移动：直接丢弃，避免在落点留下杂点
+            // （第二指落下说明是捏合手势，第一笔多半是误触）
+            currentStrokeRef.current = null;
+            drawPointerIdRef.current = null;
+          }
+        }
         const [a, b] = pointers;
         const midX = (a.x + b.x) / 2;
         const midY = (a.y + b.y) / 2;
@@ -475,33 +484,14 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       }
       if (remaining < 2) pinchStartRef.current = null;
     } else if (mode === 'pinchpan') {
-      // 绘制模式双指平移结束
-      if (remaining === 1 && strokeType !== 'fill' && strokeType !== 'eraser') {
-        // 单指仍在画布上：从该指继续画新一笔（沿用当前画笔）
-        const [last] = Array.from(activePointersRef.current.values());
-        if (last) {
-          const p = toImage(last.x, last.y);
-          if (p) {
-            currentStrokeRef.current = {
-              points: [p],
-              width: strokeWidth,
-              color: strokeColor,
-              type: strokeType
-            };
-            drawPointerIdRef.current = last.id;
-            gestureModeRef.current = 'draw';
-          }
-        }
-      }
+      // 绘制模式双指缩放/移动结束：不在剩余手指处自动起新笔（会落下杂点），
+      // 新的一笔从下次按下开始
       if (remaining < 2) pinchStartRef.current = null;
-      // 未转入绘制（填充/橡皮擦/落点越界）且双指已结束：复位手势，避免卡在 pinchpan
-      if (gestureModeRef.current === 'pinchpan') {
-        gestureModeRef.current = 'none';
-      }
+      if (remaining < 2) gestureModeRef.current = 'none';
     } else if ((mode === 'pan' || mode === 'erase') && remaining === 0) {
       gestureModeRef.current = 'none';
     }
-  }, [commitStroke, toImage, strokeWidth, strokeColor, strokeType]);
+  }, [commitStroke]);
 
   // 撤销上一操作（笔画/填充/擦除共用增量栈）。
   // add 的逆操作=删最后一条；erase 的逆操作=把擦掉的按原下标放回；

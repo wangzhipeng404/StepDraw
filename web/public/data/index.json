@@ -47,7 +47,7 @@
     },
     {
       "id": "coloring/AmongUs",
-      "name": "太空杀",
+      "name": "宇航员",
       "emoji": "👨‍🚀",
       "count": 33,
       "dir": "coloring/AmongUs"
@@ -109,11 +109,18 @@
       "dir": "coloring/SantaClaus"
     },
     {
-      "id": "coloring/animals",
+      "id": "coloring/animal",
       "name": "动物",
-      "emoji": "🐾",
-      "count": 38,
-      "dir": "coloring/animals"
+      "emoji": "🦁",
+      "count": 2468,
+      "dir": "coloring/animal"
+    },
+    {
+      "id": "coloring/architecture",
+      "name": "建筑",
+      "emoji": "🏛️",
+      "count": 123,
+      "dir": "coloring/architecture"
     },
     {
       "id": "coloring/axolotl",
@@ -123,18 +130,221 @@
       "dir": "coloring/axolotl"
     },
     {
-      "id": "coloring/mandal",
+      "id": "coloring/books",
+      "name": "书籍",
+      "emoji": "📖",
+      "count": 59,
+      "dir": "coloring/books"
+    },
+    {
+      "id": "coloring/butterfly",
+      "name": "蝴蝶",
+      "emoji": "🦋",
+      "count": 109,
+      "dir": "coloring/butterfly"
+    },
+    {
+      "id": "coloring/car",
+      "name": "汽车",
+      "emoji": "🚗",
+      "count": 58,
+      "dir": "coloring/car"
+    },
+    {
+      "id": "coloring/cat",
+      "name": "猫",
+      "emoji": "🐱",
+      "count": 147,
+      "dir": "coloring/cat"
+    },
+    {
+      "id": "coloring/celestial",
+      "name": "天体",
+      "emoji": "🌙",
+      "count": 188,
+      "dir": "coloring/celestial"
+    },
+    {
+      "id": "coloring/dinosaur",
+      "name": "恐龙",
+      "emoji": "🦕",
+      "count": 129,
+      "dir": "coloring/dinosaur"
+    },
+    {
+      "id": "coloring/dog",
+      "name": "狗",
+      "emoji": "🐶",
+      "count": 128,
+      "dir": "coloring/dog"
+    },
+    {
+      "id": "coloring/dragon",
+      "name": "龙",
+      "emoji": "🐉",
+      "count": 83,
+      "dir": "coloring/dragon"
+    },
+    {
+      "id": "coloring/fairy",
+      "name": "精灵",
+      "emoji": "🧚",
+      "count": 113,
+      "dir": "coloring/fairy"
+    },
+    {
+      "id": "coloring/fantasy",
+      "name": "奇幻",
+      "emoji": "🐲",
+      "count": 303,
+      "dir": "coloring/fantasy"
+    },
+    {
+      "id": "coloring/flower",
+      "name": "花",
+      "emoji": "🌺",
+      "count": 47,
+      "dir": "coloring/flower"
+    },
+    {
+      "id": "coloring/food",
+      "name": "食物",
+      "emoji": "🍽️",
+      "count": 48,
+      "dir": "coloring/food"
+    },
+    {
+      "id": "coloring/geomtric",
+      "name": "几何",
+      "emoji": "📐",
+      "count": 316,
+      "dir": "coloring/geomtric"
+    },
+    {
+      "id": "coloring/hearts",
+      "name": "爱心",
+      "emoji": "💗",
+      "count": 67,
+      "dir": "coloring/hearts"
+    },
+    {
+      "id": "coloring/holiday",
+      "name": "节日",
+      "emoji": "🎉",
+      "count": 485,
+      "dir": "coloring/holiday"
+    },
+    {
+      "id": "coloring/horse",
+      "name": "马",
+      "emoji": "🐴",
+      "count": 46,
+      "dir": "coloring/horse"
+    },
+    {
+      "id": "coloring/landspace",
+      "name": "风景",
+      "emoji": "🏞️",
+      "count": 293,
+      "dir": "coloring/landspace"
+    },
+    {
+      "id": "coloring/mandala",
       "name": "曼陀罗",
       "emoji": "🕸️",
-      "count": 30,
-      "dir": "coloring/mandal"
+      "count": 288,
+      "dir": "coloring/mandala"
+    },
+    {
+      "id": "coloring/mushroom",
+      "name": "蘑菇",
+      "emoji": "🍄",
+      "count": 54,
+      "dir": "coloring/mushroom"
     },
     {
       "id": "coloring/nature",
       "name": "自然",
       "emoji": "🌸",
-      "count": 7,
+      "count": 142,
       "dir": "coloring/nature"
+    },
+    {
+      "id": "coloring/objects",
+      "name": "物品",
+      "emoji": "📦",
+      "count": 18,
+      "dir": "coloring/objects"
+    },
+    {
+      "id": "coloring/patterns",
+      "name": "图案",
+      "emoji": "🌀",
+      "count": 77,
+      "dir": "coloring/patterns"
+    },
+    {
+      "id": "coloring/people",
+      "name": "人物",
+      "emoji": "🧑",
+      "count": 78,
+      "dir": "coloring/people"
+    },
+    {
+      "id": "coloring/pricess",
+      "name": "公主",
+      "emoji": "👸",
+      "count": 1,
+      "dir": "coloring/pricess"
+    },
+    {
+      "id": "coloring/seasons",
+      "name": "季节",
+      "emoji": "🍂",
+      "count": 220,
+      "dir": "coloring/seasons"
+    },
+    {
+      "id": "coloring/space",
+      "name": "太空",
+      "emoji": "🚀",
+      "count": 45,
+      "dir": "coloring/space"
+    },
+    {
+      "id": "coloring/stainedglass",
+      "name": "彩窗",
+      "emoji": "🪟",
+      "count": 14,
+      "dir": "coloring/stainedglass"
+    },
+    {
+      "id": "coloring/trippy",
+      "name": "迷幻",
+      "emoji": "🫧",
+      "count": 46,
+      "dir": "coloring/trippy"
+    },
+    {
+      "id": "coloring/underwater",
+      "name": "水下",
+      "emoji": "🐠",
+      "count": 119,
+      "dir": "coloring/underwater"
+    },
+    {
+      "id": "coloring/unicorn",
+      "name": "独角兽",
+      "emoji": "🦄",
+      "count": 71,
+      "dir": "coloring/unicorn"
+    },
+    {
+      "id": "coloring/zodiac",
+      "name": "星座",
+      "emoji": "♌",
+      "count": 6,
+      "dir": "coloring/zodiac"
     },
     {
       "id": "featured",

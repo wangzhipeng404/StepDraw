@@ -45,7 +45,9 @@ Page({
     // 用户是否画过（放映回放模式下决定是否在图案播完后接用户内容回放）
     hasUserStrokes: false,
     // 用户内容回放阶段的提示文案（非空时覆盖右下角步骤提示）
-    phaseText: ''
+    phaseText: '',
+    // 录制中：true 时隐藏 2D 画布、露出 WebGL 画布（wxml 切换），用户看到的是正在录制的画面
+    recording: false
   },
 
   // 单层画布：只播放图案，没有用户绘制，不需要三层
@@ -69,12 +71,21 @@ Page({
   // （不提前露出未播步骤）；长按卡片进入 = null，无上限
   _patternEndStep: null,
 
-  // ========== 隐藏彩蛋：下拉保存视频（Canvas 2D 画面录制，基础库 2.11.0+） ==========
-  // 触发方式：页面下拉 -> 弹确认框 -> 确认后从头重播并同步录制 outlineCanvas，
-  // 播完自动 stop 存相册。无按钮、无入口，纯隐藏功能。
-  _recorder: null,
-  _recording: false,     // start() 后为 true；一旦请求 stop() 立刻置 false（兼作防重复 stop 的闸）
-  _recordDiscard: false, // 录制中点画布 = 取消，stop 回来后丢弃不存相册
+  // ========== 隐藏彩蛋：长按画布 -> 询问 -> 保存当前播放为视频 ==========
+  // 用 wx.createMediaRecorder（WebGL 画面录制器，基础库 2.11.0+）录页面内 WebGL 画布
+  // （#recordCanvas，录制时露出盖住 2D 画布）：场景由 2D 画布 blit 到离屏 scratch ->
+  // 传成 WebGL 纹理 -> 画全屏四边形。
+  // 为什么录页面内画布而不是离屏：官方文档主示例录的就是页面内 canvas 节点，
+  // 录离屏画布实测"前 1 秒正常、之后冻结"（capture 路径不可靠）。
+  // 抓帧策略：挂进 drawOutlineLayer（与播放 tick 同频 50ms）——不开独立定时器
+  // （独立 30fps 定时器实测跟播放抢单线程，把播放饿死）。
+  _recorder: null,        // wx.createMediaRecorder 实例（WebGL 录制器）
+  _recordMirror: null,    // 录制镜像 {canvas(页面内WebGL), gl, prog, tex, scratch, scratchCtx}
+  _recording: false,      // start 成功后为 true；请求 stop 时立刻置 false（兼作防重复 stop 的闸）
+  _recordStarting: false, // start() 的 await 窗口内为 true，防二次进入
+  _recordDiscard: false,  // 长按 = 取消，stop 回来后丢弃不存相册
+  _recordCtxRecovering: false, // GL 上下文丢失、异步重建镜像中（防重复重建）
+  _recordFpLog: null,     // 诊断日志游标 {at, count, lastFp, changed}
 
   onLoad(options) {
     const drawingId = options.id ? decodeURIComponent(options.id) : '';
@@ -314,6 +325,13 @@ Page({
     // 放映回放 phase 2：用户笔画画在图案黑线之上（与详情页一致）。
     // phase='done' 时定格最终画面（图案 + 全部填充 + 全部笔画）。
     if (inUserPhase) this.drawUserStrokes(ctx);
+
+    // 隐藏彩蛋：录制中，每次播放重绘（= 每个播放 tick，50ms）都抓一帧。
+    // 与播放同频、共用同一定时器：抓到的必是刚画完的新画面，
+    // 且不会像独立 30fps 定时器那样跟播放抢线程把播放饿死。
+    if (this._recording && this._recordMirror) {
+      this._recordFrame(this._recordMirror);
+    }
   },
 
   // 用户填充回放：按时间序画已"到达"的填充（垫在图案黑线之下，涂色本效果）。
@@ -630,54 +648,49 @@ Page({
     };
   },
 
-  // ========== 隐藏彩蛋：页面下拉 -> 询问 -> 保存当前播放为视频 ==========
-  // 用 wx.createCanvasRecorderManager（Canvas 2D 画面录制器，基础库 2.11.0+）。
-  // wx.createMediaRecorder 是 WebGL 录制器，录不了 type="2d" 画布，不可用。
-  // 录制内容 = show 页当前画面：放映入口是"已播步骤 + 用户作品"，长按入口是完整图案。
-  onPullDownRefresh() {
-    // 没有图案/画布未就绪/正在录：直接收尾下拉
-    if (!this.data.drawing || !this.canvasesReady || this._recording) {
-      wx.stopPullDownRefresh();
+  // ========== 隐藏彩蛋：长按画布 -> 询问 -> 保存当前播放为视频 ==========
+  // 用 wx.createMediaRecorder（WebGL 画面录制器，基础库 2.11.0+）录页面内的 WebGL 画布
+  // （#recordCanvas）：场景由 2D 画布 blit 到离屏 scratch -> 传成 WebGL 纹理 -> 画全屏四边形。
+  // 录制时隐藏 2D 画布、露出 WebGL 画布（wxml 里 recording 切换）。
+  // 录制内容 = show 页当前画面：放映入口是"已播步骤 + 用户作品"，长按卡片入口是完整图案。
+  async onCanvasLongPress() {
+    // 录制中再长按 = 取消（丢弃不存），避免暂停/切轮廓录进视频
+    if (this._recording && this._recorder) {
+      this._stopRecording(true);
       return;
     }
-    // 创建/复用录制器（一次性绑定 stop/error 回调）
-    if (wx.createCanvasRecorderManager) {
-      if (!this._recorder) {
-        const recorder = wx.createCanvasRecorderManager();
-        recorder.onStop((res) => {
-          this._recording = false;
-          // 录制中点画布取消的：丢弃不存相册
-          if (this._recordDiscard) {
-            this._recordDiscard = false;
-            wx.showToast({ title: '已取消保存', icon: 'none' });
-            return;
-          }
-          this._onRecordStopped(res && res.tempVideoPath);
-        });
-        recorder.onError(() => {
-          this._recording = false;
-          if (this.playTimer) {
-            clearInterval(this.playTimer);
-            this.playTimer = null;
-          }
-          this.setData({ playing: false });
-          wx.showModal({
-            title: '提示',
-            content: '当前环境不支持画面录制',
-            showCancel: false
-          });
-        });
-        this._recorder = recorder;
-      }
-    } else {
+    // 正在启动/没有图案/画布未就绪：忽略
+    if (!this.data.drawing || !this.canvasesReady || this._recordStarting) {
+      return;
+    }
+    // 环境能力检查：createMediaRecorder + 离屏 WebGL 上下文，缺一不可
+    if (typeof wx.createMediaRecorder !== 'function' || !wx.createOffscreenCanvas) {
       wx.showModal({
         title: '提示',
         content: '当前微信版本较低，暂不支持保存视频',
         showCancel: false
       });
-      wx.stopPullDownRefresh();
       return;
     }
+    let result;
+    try {
+      result = await this.buildRecordMirror();
+    } catch (e) {
+      console.warn('创建 WebGL 录制镜像异常', e);
+      result = { ok: false, reason: '创建镜像异常：' + (e && e.message || e) };
+    }
+    if (!result.ok) {
+      // 如实上报具体原因（之前笼统报"设备不支持"是误报——设备通常支持，
+      // 多为取不到画布节点/建 WebGL 上下文失败）
+      console.warn('[record] 录制镜像创建失败：' + result.reason);
+      wx.showModal({
+        title: '提示',
+        content: '无法初始化录制：' + result.reason,
+        showCancel: false
+      });
+      return;
+    }
+    const mirror = result.mirror;
 
     wx.showModal({
       title: '保存视频',
@@ -685,10 +698,299 @@ Page({
       confirmText: '保存',
       cancelText: '取消',
       success: (m) => {
-        wx.stopPullDownRefresh();
-        if (m.confirm) this.startRecording();
+        if (m.confirm) {
+          this.startRecording(mirror);
+        } else {
+          this.releaseRecordMirror(mirror);
+        }
       }
     });
+  },
+
+  // 页面下拉 = 重新播放（从头开始：图案 + 用户作品）。隐藏彩蛋已挪到长按画布。
+  onPullDownRefresh() {
+    if (!this.data.drawing || !this.canvasesReady) {
+      wx.stopPullDownRefresh();
+      return;
+    }
+    this.replayFromStart();
+    wx.stopPullDownRefresh();
+  },
+
+  // 从头重新播放（下拉触发）。复位播放与用户回放状态，清掉进行中的定时器再开播。
+  // 若正在录制则先取消录制（丢弃），避免重播被录进视频。
+  replayFromStart() {
+    if (this._recording && this._recorder) {
+      this._stopRecording(true);
+    }
+    if (this.playTimer) {
+      clearInterval(this.playTimer);
+      this.playTimer = null;
+    }
+    this._fillTintCache = {};
+    this.userIndex = 0;
+    this.userProgress = 0;
+    this._phase = 'pattern';
+    this._doneStep = -1;
+    this.setData({
+      currentStep: 0,
+      progress: 0,
+      globalProgress: 0,
+      phaseText: '',
+      showOutline: false,
+      playing: true
+    });
+    this.drawOutlineLayer();
+    this.startPlay();
+  },
+
+  // 创建"录制镜像"：页面内的 WebGL canvas（#recordCanvas，供录制）+ 离屏 2D scratch（场景绘制源）。
+  // 为什么 WebGL 画布放页面里而不是离屏：wx.createMediaRecorder 的官方主示例录的就是页面内
+  // canvas 节点，离屏只是次要路径；录离屏画布实测"前 1 秒正常、之后冻结"，换回页面内 canvas。
+  // 画布常驻页面（不 display:none，隐藏 canvas 取节点/建上下文会失败），平时垫在 2D 画布后面。
+  // 返回 {ok, mirror, reason}：失败时带具体原因，调用方如实上报（不要笼统说"设备不支持"）。
+  async buildRecordMirror() {
+    const w = this.canvasWidth, h = this.canvasHeight;
+    if (!w || !h) return { ok: false, reason: '画布尺寸未就绪' };
+
+    // 取页面内 WebGL 画布节点（异步）
+    const glCanvas = await new Promise((resolve) => {
+      wx.createSelectorQuery().in(this).select('#recordCanvas')
+        .fields({ node: true, size: true })
+        .exec((res) => resolve(res && res[0] ? res[0].node : null));
+    });
+    if (!glCanvas) return { ok: false, reason: '取不到 #recordCanvas 节点' };
+    glCanvas.width = w;
+    glCanvas.height = h;
+    // preserveDrawingBuffer：录制器在 requestFrame() 时读 drawing buffer，
+    // 不开启该选项 buffer 会在合成后被清（表现就是"画面冻结成最后一帧"）。
+    let gl = null;
+    try {
+      gl = glCanvas.getContext('webgl', { preserveDrawingBuffer: true });
+    } catch (e) {
+      console.warn('[record] getContext(webgl) 异常', e);
+    }
+    if (!gl) return { ok: false, reason: 'WebGL 上下文创建失败' };
+
+    // 顶点同时带 (x, y, u, v)：位置取 xy，纹理坐标取 zw
+    const VERT = 'attribute vec4 aPos;varying vec2 vUV;void main(){vUV=aPos.zw;gl_Position=vec4(aPos.xy,0.,1.);}';
+    const FRAG = [
+      'precision mediump float;',
+      'uniform sampler2D uTex;',
+      'varying vec2 vUV;',
+      'void main(){gl_FragColor=texture2D(uTex,vUV);}'
+    ].join('\n');
+    const mkShader = (type, src) => {
+      const sh = gl.createShader(type);
+      gl.shaderSource(sh, src);
+      gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+        console.warn('shader 编译失败', gl.getShaderInfoLog(sh));
+        return null;
+      }
+      return sh;
+    };
+    const vs = mkShader(gl.VERTEX_SHADER, VERT);
+    const fs = mkShader(gl.FRAGMENT_SHADER, FRAG);
+    if (!vs || !fs) return { ok: false, reason: 'shader 编译失败' };
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.warn('program 链接失败', gl.getProgramInfoLog(prog));
+      return { ok: false, reason: 'shader 链接失败' };
+    }
+
+    // 全屏四边形
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1, 0, 1,
+      1, -1, 1, 1,
+      -1, 1, 0, 0,
+      1, 1, 1, 0
+    ]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(prog, 'aPos');
+    const uTex = gl.getUniformLocation(prog, 'uTex');
+    gl.useProgram(prog);
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 4, gl.FLOAT, false, 0, 0);
+    gl.uniform1i(uTex, 0);
+    gl.viewport(0, 0, w, h);
+
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    // 离屏 2D 画布：场景绘制源（把可见 2D 画布的内容 blit 上来再传 WebGL 纹理）
+    const scratch = wx.createOffscreenCanvas({ type: '2d', width: w, height: h });
+    const scratchCtx = scratch.getContext('2d');
+
+    return { ok: true, mirror: { canvas: glCanvas, gl, prog, tex, scratch, scratchCtx } };
+  },
+
+  // 把"当前可见画面"喂给 WebGL 镜像：可见画布是透明底（CSS 白底不在位图里），
+  // 所以先把 scratch 填白，再把可见画布整体 blit 上去（单次 GPU 拷贝，不重跑矢量绘制），
+  // 然后上传成 WebGL 纹理并画全屏四边形。只读，不改任何播放进度。
+  drawRecordFrame(mirror) {
+    const ctx = mirror.scratchCtx;
+    const w = this.canvasWidth, h = this.canvasHeight;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, w, h);
+    if (this.outlineCanvas) ctx.drawImage(this.outlineCanvas, 0, 0);
+
+    // 上传纹理 + 画全屏四边形。
+    // 朝向：2D 画布 getImageData() 的首个像素是左上角，不翻转上传则纹理 v=0 对应画布顶边；
+    // 四边形顶点已让屏幕顶边(y=+1)采 v=0、底边采 v=1，故画面与屏幕同向，无需 FLIP_Y。
+    // 用"裸 Uint8Array + 显式宽高"的 texImage2D 重载（比直接传 ImageData 兼容性更好）。
+    const gl = mirror.gl;
+    const img = ctx.getImageData(0, 0, w, h);
+    // 源画面指纹：按固定间隔采样像素做散列（不遍历全图，开销可忽略）。
+    // 画面在动则逐帧变化，冻结则停滞——供 _logRecordFrame 判断"源是否还在画"。
+    let fp = 0;
+    const px = img.data;
+    const stride = 1024 * 4; // 每 1024 个像素采 1 个
+    for (let i = 0; i < px.length; i += stride) {
+      fp = (Math.imul(fp, 31) + px[i]) | 0;
+    }
+    gl.useProgram(mirror.prog);
+    gl.bindTexture(gl.TEXTURE_2D, mirror.tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, img.data);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    // GL 错误检查：texImage2D/drawArrays 静默失败时（上下文问题等），录制器会一直
+    // 抓同一帧旧 buffer——表现为"帧在产、画面冻结"。只打一次防刷屏
+    if (!mirror._glErrLogged) {
+      const err = gl.getError();
+      if (err !== gl.NO_ERROR) {
+        console.warn('[record] GL 错误 0x' + err.toString(16) + '（画面会冻结）');
+        mirror._glErrLogged = true;
+      }
+    }
+    return fp;
+  },
+
+  // 启动录制器（兼容低版本）：基础库 ≥2.16.1 的 start() 返回 Promise；
+  // 更早版本没有 Promise，用文档给的 on('start') 兼容写法。3s 超时兜底，防止未知事件挂死。
+  _mediaRecorderStart(recorder) {
+    const p = recorder.start();
+    if (p && typeof p.then === 'function') {
+      return new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error('start timeout')), 3000);
+        p.then((r) => { clearTimeout(t); resolve(r); }, (e) => { clearTimeout(t); reject(e); });
+      });
+    }
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('start timeout')), 3000);
+      const ok = () => { clearTimeout(t); resolve(); };
+      const bad = (e) => { clearTimeout(t); reject(e || new Error('start error')); };
+      if (recorder.on) {
+        recorder.on('start', ok);
+        recorder.on('error', bad);
+      } else {
+        // 极端兜底：无事件也无 Promise，直接视为已启动
+        ok();
+      }
+    });
+  },
+
+  // 抓帧（同步调用，"永不抛出"）：把可见画面 blit 进 WebGL 镜像并驱动录制器捕获一帧。
+  // 由 drawOutlineLayer（播放 tick）每 50ms 调用一次，返回源画面指纹供诊断日志。
+  _recordFrame(mirror) {
+    let fp = 0;
+    try {
+      fp = this.drawRecordFrame(mirror);
+    } catch (e) {
+      // 绘制失败：若是 GL 上下文丢失，则异步重建镜像（不阻塞播放 tick）；
+      // 其他异常丢弃这一帧（但仍驱动 requestFrame 保持视频帧数）
+      if (mirror.gl && mirror.gl.isContextLost && mirror.gl.isContextLost() && !this._recordCtxRecovering) {
+        this._recordCtxRecovering = true;
+        this.buildRecordMirror().then((result) => {
+          this._recordCtxRecovering = false;
+          if (!this._recording) return;
+          if (result.ok) {
+            const m2 = result.mirror;
+            this.releaseRecordMirror(mirror);
+            this._recordMirror = m2;
+            try { this._recordFrame(m2); } catch (e2) { console.warn('[record] 重建后绘制仍失败', e2); }
+          } else {
+            // 重建失败：停止录制并丢弃，避免录出一段空白视频
+            console.warn('[record] 重建镜像失败：' + result.reason);
+            this._stopRecording(true);
+          }
+        }).catch(() => { this._recordCtxRecovering = false; });
+      }
+      console.warn('[record] 帧绘制失败（丢弃该帧）', e);
+    }
+    // 先记诊断日志再驱动录制器：即使 requestFrame 挂死，也能看到"源画面是否还在动"
+    this._logRecordFrame(fp);
+    // 驱动录制器捕获一帧（fire-and-forget：低版本回调式/高版本 Promise 式都兼容，
+    // 内部 try/catch 兜住；不 await，避免阻塞播放 tick）
+    this._driveRequestFrame().catch(() => {});
+    return fp;
+  },
+
+  // 诊断日志：每 1 秒汇总一次——上一秒产帧数 + 该窗口内源指纹是否变化 + 当前播放状态。
+  // 定位"前1秒正常、之后冻结"用：
+  //   指纹逐秒"变化" & 状态在推进  -> 源画面在动，冻结在录制器/WebGL 侧
+  //   状态停滞（step/progress 不动） -> 播放在第 1 秒就停了（查 startPlay 定时器/setData）
+  //   状态推进 & 指纹【停滞】        -> 可见画布没跟上 data（查 drawOutlineLayer/缓存失效）
+  _logRecordFrame(fp) {
+    const now = Date.now();
+    let cur = this._recordFpLog;
+    if (!cur || now - cur.at >= 1000) {
+      // 打印"上一个窗口"的汇总（首窗无历史，跳过）
+      if (cur) {
+        const d = this.data;
+        console.log(
+          '[record] 上1s ' + cur.count + ' 帧, 源指纹' + (cur.changed ? '变化' : '【停滞】') +
+          ' | step=' + d.currentStep + ' progress=' + d.progress.toFixed(2) +
+          ' phase=' + this._phase
+        );
+      }
+      cur = { at: now, count: 0, lastFp: null, changed: false };
+      this._recordFpLog = cur;
+    }
+    // 窗口内任一帧与上一帧不同 => 该窗口"源画面在动"
+    if (cur.lastFp !== null && fp !== cur.lastFp) cur.changed = true;
+    cur.lastFp = fp;
+    cur.count += 1;
+  },
+
+  // 驱动录制器捕获一帧。低版本（<2.16.1）requestFrame 是回调式、高版本返回 Promise。
+  // 按形参个数区分，且只调用一次（避免重复抓帧/无回调调用抛错），统一返回 Promise 便于 await。
+  _driveRequestFrame() {
+    const r = this._recorder;
+    if (!r || typeof r.requestFrame !== 'function') return Promise.resolve();
+    if (r.requestFrame.length >= 1) {
+      // 回调式：requestFrame(callback)
+      return new Promise((resolve) => {
+        try { r.requestFrame(resolve); } catch (e) { resolve(); }
+      });
+    }
+    // Promise 式：requestFrame() -> Promise
+    try {
+      const p = r.requestFrame();
+      return (p && typeof p.then === 'function') ? p : Promise.resolve();
+    } catch (e) {
+      return Promise.resolve();
+    }
+  },
+
+  // 释放录制镜像（取消 / 失败 / 结束后）
+  releaseRecordMirror(mirror) {
+    if (!mirror || !mirror.gl) return;
+    try {
+      mirror.gl.deleteTexture(mirror.tex);
+      mirror.gl.deleteProgram(mirror.prog);
+    } catch (e) { /* 忽略 */ }
+    this._recordMirror = null;
   },
 
   // 估算播放总时长（秒）：图案已播部分（100px/基准速度）+ 用户笔画总长，
@@ -708,10 +1010,53 @@ Page({
     return Math.max(1, Math.round(px / (100 / speed)));
   },
 
-  // 从头重播并同步开录。录制从播放第一帧开始，保证视频 = 完整播放过程
-  startRecording() {
-    if (this._recording || !this._recorder || !this.outlineCanvas) return;
-    this._recordDiscard = false;
+  // 从头重播并同步开录。
+  // 关键顺序：先 setData({recording:true}) 且等视图更新完成（画布真的可见）后，
+  // 再 createMediaRecorder + start —— display:none 的 canvas 可能没有可捕获的合成 buffer。
+  async startRecording(mirror) {
+    if (this._recording || this._recordStarting || !mirror) return;
+    this._recordStarting = true;
+    this._recordMirror = mirror;
+
+    // 1) 让 WebGL 画布显示（盖住 2D 画布），并绘制首帧白底，等视图更新完成
+    await new Promise((resolve) => {
+      this.setData({ recording: true }, resolve);
+    });
+    this._recordFrame(mirror); // 同步绘制到 WebGL，供录制器捕获第一帧
+
+    // 2) 创建录制器并启动（此时 WebGL 画布已在页面中可见）
+    let recorder = null;
+    try {
+      recorder = wx.createMediaRecorder(mirror.canvas, {
+        // 兜底时长（秒）：预估 * 1.5，按文档要求钳在 [5, 600]。正常由播放结束主动 stop()
+        duration: Math.max(5, Math.min(600, Math.ceil(this.estimatePlaybackDuration() * 1.5))),
+        // 与播放 tick 同频（50ms）：抓帧挂在播放 tick 上，帧率 20，
+        // 视频时长 = 帧数/20 = 播放时长，不会偏快
+        fps: 20
+      });
+      await this._mediaRecorderStart(recorder);
+    } catch (e) {
+      console.warn('createMediaRecorder 启动失败', e);
+      this.setData({ recording: false });
+      this.releaseRecordMirror(mirror);
+      this._recordMirror = null;
+      wx.showModal({
+        title: '提示',
+        content: '当前设备不支持画面录制',
+        showCancel: false
+      });
+      this._recordStarting = false;
+      return;
+    }
+    this._recorder = recorder;
+    this._recording = true;
+    this._recordStarting = false;
+
+    // 3) 复位播放状态，从头开播
+    if (this.playTimer) {
+      clearInterval(this.playTimer);
+      this.playTimer = null;
+    }
     this._fillTintCache = {};
     this.userIndex = 0;
     this.userProgress = 0;
@@ -724,34 +1069,57 @@ Page({
       phaseText: '',
       showOutline: false
     });
-    this.drawOutlineLayer();
+    this.drawOutlineLayer(); // 末尾钩子抓一帧（录制已启动）
 
-    // 清掉可能还在跑的播放定时器（用户可能在播放中触发了录制），避免双定时器双倍速
-    if (this.playTimer) {
-      clearInterval(this.playTimer);
-      this.playTimer = null;
-    }
-
-    // timeLimit 单位为毫秒：取预估时长的 1.5 倍兜底（封顶 10 分钟），
-    // 正常路径由播放结束分支主动 stop()
-    const limit = Math.min(600000, Math.ceil(this.estimatePlaybackDuration() * 1.5 * 1000));
-    this._recorder.start({
-      canvas: this.outlineCanvas,
-      timeLimit: limit
-    });
-    this._recording = true;
     this.setData({ playing: true });
     this.startPlay();
-    // 一次性告知取消方式（隐藏功能不常驻提示，只在录制启动时提示一次）
-    wx.showToast({ title: '录制中，点画布可取消', icon: 'none', duration: 1800 });
+    wx.showToast({ title: '录制中，长按画布可取消', icon: 'none', duration: 1800 });
   },
 
   // 播放全部结束（startPlay / startUserPlayback 的两个收尾分支都会调到这里）
   onPlaybackFinished() {
-    if (this._recording && this._recorder) {
-      this._recording = false;
-      this._recorder.stop();
+    this._stopRecording(false);
+  },
+
+  // 停止录制并收尾（正常结束 / 长按取消共用）。异步：等 stop 出结果再释放资源。
+  // 抓帧挂在播放 tick 上，_recording=false 后 drawOutlineLayer 的钩子自动停抓，无需清定时器。
+  async _stopRecording(discard) {
+    if (!this._recording || !this._recorder) return;
+    this._recording = false;
+    this._recordDiscard = discard;
+    if (this.playTimer) {
+      clearInterval(this.playTimer);
+      this.playTimer = null;
     }
+    const recorder = this._recorder;
+    const mirror = this._recordMirror;
+    this._recorder = null;
+    // 立即切回 2D 画布（2D 一直在后台重绘、与 WebGL 同步，恢复显示即当前画面）；
+    // 存相册在下方 done 之后异步进行
+    this.setData({ recording: false });
+    // 低版本兼容：<2.16.1 的 stop 不返回 Promise（文档给了 on('stop') 兼容写法），两种都兜住；
+    // 结果路径字段以官方文档的 tempFilePath 为准
+    const done = new Promise((resolve) => {
+      if (recorder.on) recorder.on('stop', resolve);
+      try {
+        const p = recorder.stop();
+        if (p && typeof p.then === 'function') p.then(resolve, resolve);
+        else resolve();
+      } catch (e) {
+        resolve();
+      }
+    });
+    const res = await done;
+    this.releaseRecordMirror(mirror);
+    if (recorder && typeof recorder.destroy === 'function') {
+      try { recorder.destroy(); } catch (e) { /* 忽略 */ }
+    }
+    if (this._recordDiscard) {
+      this._recordDiscard = false;
+      wx.showToast({ title: '已取消保存', icon: 'none' });
+      return;
+    }
+    this._onRecordStopped(res && res.tempFilePath);
   },
 
   // 录制停止：存相册（首次弹授权，拒绝则给引导）
@@ -797,16 +1165,16 @@ Page({
     if (this._tapTimer) {
       clearTimeout(this._tapTimer);
     }
-    // 录制中退出页面：停掉定时器，录制器随页面销毁
+    // 录制中退出页面：丢弃（不存相册），释放 WebGL 资源
     this._recording = false;
+    this.releaseRecordMirror(this._recordMirror);
   },
 
   // 画布点击：单击 停止/启动播放，双击 显示/隐藏轮廓
   onCanvasTap() {
     // 录制中点一下 = 取消录制（丢弃，不存相册），避免暂停/切轮廓录进视频
     if (this._recording && this._recorder) {
-      this._recordDiscard = true;
-      this._recorder.stop();
+      this._stopRecording(true);
       return;
     }
     if (this._tapTimer) {
