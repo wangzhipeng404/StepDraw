@@ -6,20 +6,23 @@
     <view class="canvas-wrapper">
       <view class="canvas-container">
         <view class="canvas-stack" style="width: {{canvasSize}}px; height: {{canvasSize}}px;">
-          <!-- 录制用 WebGL 画布（隐藏彩蛋）：常驻页面、始终可见（白底），垫在 2D 画布后面，
-               平时被前面透明的 2D 画布 + 白色容器完全盖住，视觉无差别。
-               关键：不能 display:none——隐藏状态的 canvas 取节点/建 WebGL 上下文会失败，
-               导致"长按后提示不支持录制"。录制时 z-index 提到最上层盖住 2D 画布。 -->
+          <!-- 录制用 WebGL 画布（隐藏彩蛋）：常驻页面、始终参与布局（不 display:none——
+               隐藏状态取节点/建 WebGL 上下文会失败）。平时 opacity:0 垫在 2D 画布下面，
+               录制时 2D 画布透明化、露出它：录制器录这个画布，同时用户能同步观察
+               WebGL 绘制内容（排查"视频只有开头画面"是绘制还是抓帧问题）。 -->
           <canvas
+            type="webgl"
             id="recordCanvas"
+            canvas-id="recordCanvas"
             class="drawing-canvas"
-            style="{{recording ? 'z-index:2;' : ''}}"
-            bindlongpress="onCanvasLongPress"
+            style="{{recording ? '' : 'opacity:0;'}}"
           ></canvas>
           <canvas
             type="2d"
+            canvas-id="outlineCanvas"
             id="outlineCanvas"
             class="drawing-canvas"
+            style="{{recording ? 'opacity:0;' : ''}}"
             bindtap="onCanvasTap"
             bindlongpress="onCanvasLongPress"
           ></canvas>
