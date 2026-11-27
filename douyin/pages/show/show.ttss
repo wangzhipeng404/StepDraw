@@ -60,19 +60,99 @@
   height: 100%;
 }
 
-/* 步骤提示固定在右下角（纯展示） */
+/* 步骤提示固定在左下角（纯展示）；右下角留给录制悬浮按钮，避免重叠 */
 .step-tip-overlay {
   position: absolute;
   bottom: 20rpx;
-  right: 20rpx;
+  left: 20rpx;
+  right: auto;
   padding: 12rpx 20rpx;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 8rpx;
   z-index: 10;
+  max-width: 70%;
 }
 
 .tip-text {
   font-size: 28rpx;
   color: #333;
   font-weight: 500;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/* ========== 右下角录制/发布悬浮按钮（open-type="uploadDouyinVideo"） ========== */
+/* <button> 默认样式撑满宽度、自带边距/边框/::after，这里全部重置为圆形悬浮 */
+.record-fab {
+  position: fixed;
+  right: 32rpx;
+  bottom: calc(48rpx + env(safe-area-inset-bottom));
+  width: 104rpx;
+  height: 104rpx;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  overflow: visible;
+  line-height: 1;
+}
+
+.record-fab::after {
+  border: none;
+}
+
+.record-fab:active {
+  transform: scale(0.94);
+}
+
+.record-fab-icon {
+  width: 60rpx;
+  height: 60rpx;
+}
+
+/* 录制中：按钮变红底 + 呼吸光晕，提示"正在录制，再点一次取消" */
+.record-fab.recording {
+  background: #fe2c55; /* 抖音品牌红 */
+}
+
+.record-fab.recording::before {
+  content: '';
+  position: absolute;
+  inset: -10rpx;
+  border-radius: 50%;
+  border: 4rpx solid rgba(254, 44, 85, 0.55);
+  animation: fabPulse 1.2s ease-out infinite;
+}
+
+/* 录制中右上角红点（带闪烁），与光晕区分"进行中" */
+.record-fab-dot {
+  position: absolute;
+  top: 4rpx;
+  right: 4rpx;
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 50%;
+  background: #ff2e43;
+  border: 4rpx solid #fff;
+  box-sizing: border-box;
+  animation: fabBlink 1s ease-in-out infinite;
+}
+
+@keyframes fabPulse {
+  0%   { transform: scale(0.9); opacity: 0.9; }
+  70%  { transform: scale(1.25); opacity: 0; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+@keyframes fabBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
 }

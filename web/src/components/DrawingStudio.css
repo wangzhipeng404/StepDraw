@@ -1,0 +1,405 @@
+/* 一笔一笔 StepDraw - 分栏(横屏/平板/PC)绘制工作台样式
+   布局：上=绘画工具 / 右=保存按钮 / 下=播放控制 / 中=绘制区(填满、整块可画) */
+
+.studio {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+/* ===== 上：绘画工具（单行：画笔 + 自定义颜色 + 自定义粗细 + 撤销/清除） ===== */
+.studio-top {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.studio-stroke-types {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.studio-stroke-types .stroke-type-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 7px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.studio-stroke-types .stroke-type-item.active {
+  background: #f0f0f0;
+  border-color: #aa3bff;
+}
+
+.studio-stroke-types .stroke-type-icon {
+  width: 26px;
+  height: 26px;
+}
+
+/* 自定义颜色（取色用原生 color input，圆点显示当前色） */
+.studio-top .color-picker-label {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.studio-top .color-picker-label .color-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 0 2px #fff inset;
+  box-sizing: border-box;
+}
+
+.studio-top .color-picker-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* 自定义粗细滑块 */
+.studio-width-slider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.studio-width-slider .stroke-width-slider {
+  width: 90px;
+}
+
+.studio-width-slider .stroke-width-value {
+  font-size: 12px;
+  color: #666;
+  min-width: 20px;
+  text-align: center;
+}
+
+.studio-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex: none;
+}
+
+/* 图案导航抽屉开关：顶栏最左（绝对定位，不影响其余工具的水平居中） */
+.studio-top .nav-toggle-btn {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.studio-tool-btn:hover {
+  background: #f0f0f0;
+}
+
+.studio .tool-btn-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.studio-tool-sep {
+  width: 1px;
+  height: 20px;
+  background: #e0e0e0;
+  margin: 0 2px;
+  flex: none;
+}
+
+/* ===== 中：绘制区 + 右：保存 ===== */
+.studio-body {
+  flex: 1;
+  display: flex;
+  min-height: 0; /* 让内部 flex 子项可收缩，canvas 才能填满而非撑爆 */
+}
+
+.studio-canvas {
+  flex: 1;
+  position: relative;
+  margin: 10px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* 绘制区三层画布：占满整个区域(矩形，不强制方形)，整块都可以绘制。
+   图案由 renderLayers/getTransform 按 viewBox 居中、留 10% 边距，边距区也能画。 */
+.studio-canvas-stack {
+  position: absolute;
+  inset: 0;
+}
+
+.studio-canvas-stack .drawing-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.studio-canvas-stack .drawing-canvas + .drawing-canvas {
+  background: transparent;
+}
+
+.studio-step-tip {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  max-width: 60%;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border-radius: 16px;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.studio-step-tip:empty {
+  display: none;
+}
+
+.studio-fill-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 18px;
+  font-size: 13px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+
+/* 右侧保存按钮列 */
+.studio-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: #fff;
+  border-left: 1px solid #eee;
+}
+
+.studio-save-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  background: #fafafa;
+  cursor: pointer;
+  color: #333;
+  font-size: 13px;
+}
+
+.studio-save-btn:hover {
+  background: #f0f0f0;
+  border-color: #aa3bff;
+}
+
+.studio-save-btn .tool-btn-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* 回放/录制中的激活态 */
+.studio-save-btn.active {
+  border-color: #aa3bff;
+  background: #f5f0ff;
+  color: #aa3bff;
+}
+
+.studio-save-btn.recording {
+  border-color: #e53935;
+  background: #fdecec;
+  color: #e53935;
+}
+
+.studio-save-btn.recording .tool-btn-icon {
+  color: #e53935;
+}
+
+.studio-save-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 画布右上角的回放/录制状态徽标 */
+.studio-status-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ===== 下：播放控制（单行：按钮 + 进度条） ===== */
+.studio-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+.studio-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.studio-controls::-webkit-scrollbar {
+  display: none;
+}
+
+.studio .control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 8px;
+  border-radius: 19px;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  cursor: pointer;
+  position: relative;
+  flex: none;
+}
+
+.studio .control-btn.active {
+  border-color: #aa3bff;
+  background: #f5f0ff;
+}
+
+.studio .control-btn .btn-icon,
+.studio .control-btn .outline-icon,
+.studio .control-btn .loop-icon {
+  width: 22px;
+  height: 22px;
+  position: static;
+}
+
+.studio .control-btn.speed-btn {
+  min-width: 48px;
+}
+
+.studio .speed-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.studio .progress-bar {
+  flex: 1;
+  min-width: 60px;
+  accent-color: #aa3bff;
+  cursor: pointer;
+}
+
+/* ===== 分栏布局 ===== */
+.split-layout {
+  display: flex;
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* 左侧抽屉：绝对定位盖在绘制区之上，默认 translateX(-100%) 收起，.open 滑入 */
+.split-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 85vw; /* 窄平板上别盖住整个绘制区 */
+  z-index: 30;
+  overflow-y: auto;
+  border-right: 1px solid #e0e0e0;
+  background: #fff;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.12);
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+
+.split-left.open {
+  transform: translateX(0);
+}
+
+/* 抽屉展开时的半透明遮罩：点它收起 */
+.split-nav-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.split-right {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+/* 占位提示（分栏左栏落在 /detail/* 时用） */
+.studio-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #999;
+  font-size: 16px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+}

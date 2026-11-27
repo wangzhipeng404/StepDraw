@@ -36,4 +36,9 @@
       </view>
     </block>
   </view>
+
+  <!-- 底部 ICP 备案号：点击复制查询官网网址 -->
+  <view class="icp-footer" bindtap="onIcpTap">
+    <text class="icp-text">{{icpNumber}}</text>
+  </view>
 </view>

@@ -22,6 +22,24 @@ function getStepLength(step) {
   return step.strokes.reduce((sum, stroke) => sum + getStrokeLength(stroke), 0);
 }
 
+// 颜色加透明度：#RRGGBB 或 #RRGGBBAA -> rgba() 字符串。
+// 不能直接 hex + '00' 拼透明度 —— 自定义 8 位色拼完是 10 位，addColorStop 会抛错。
+function withAlpha(hex, alpha) {
+  let r, g, b;
+  if (hex && hex.length === 9) {
+    r = parseInt(hex.slice(1, 3), 16);
+    g = parseInt(hex.slice(3, 5), 16);
+    b = parseInt(hex.slice(5, 7), 16);
+  } else if (hex && hex.length === 7) {
+    r = parseInt(hex.slice(1, 3), 16);
+    g = parseInt(hex.slice(3, 5), 16);
+    b = parseInt(hex.slice(5, 7), 16);
+  } else {
+    return hex; // 无法解析的原样返回（调用方用标准 hex 时不会走到这）
+  }
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
 // 一笔一笔 StepDraw - 小程序详情页
 const config = require('../../config');
 const { floodFill, isPointInMask, tintMask } = require('../../utils/fill');
@@ -50,11 +68,12 @@ Page({
       { key: 'marker', name: '马克笔', icon: '/images/markpen.png', iconActive: '/images/mark_pen_active.png' },
       { key: 'brush', name: '毛笔', icon: '/images/ink_brush.png', iconActive: '/images/ink_brush_active.png' },
       { key: 'fill', name: '填充', icon: '/images/bucket.png', iconActive: '/images/bucket_active.png' },
-      { key: 'eraser', name: '橡皮擦', icon: '/images/erayz.png', iconActive: '/images/erayz_active.png' }
+      { key: 'eraser', name: '橡皮擦', icon: '/images/erayz.png', iconActive: '/images/erayz_active.png' },
+      { key: 'colorpick', name: '取色器', icon: '/images/color-picker.png', iconActive: '/images/color-picker_active.png' }
     ],
     // 绘制模式：先选中画笔进入，再点同一支画笔退出；非绘制模式下画布支持缩放/移动
     drawingMode: false,
-    colorOptions: ['#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#000000', '#FFFFFFF'],
+    colorOptions: ['#E53935', '#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#000000', '#FFFFFF'],
     // 自定义颜色弹层
     showColorPicker: false,
     isCustomColor: false, // 当前颜色是否为自定义（不在预设色板中）
@@ -445,12 +464,20 @@ Page({
 
   // 重建"用户填充"离屏缓存（画在图案线条之下，涂色本效果）。
   // 同一区域再次喷涂 = 多一层 (mask, color)，共享同一份 mask；按时间序叠色。
+  // tintMask 开销大（整幅逐像素上色），fill 对象不可变（key 唯一、创建后不改），
+  // 按 fill.key 缓存上色结果（同 show 页 _fillTintCache），整层重建只需 drawImage。
   rebuildFillCache() {
     const cache = this.createLayer();
     const ctx = cache.getContext('2d');
+    if (!this._fillTintCache) this._fillTintCache = {};
     for (const a of this.userActions) {
       if (a.kind === 'fill') {
-        ctx.drawImage(tintMask(a.fill.mask, a.fill.color, () => this.createLayer()), 0, 0);
+        let tinted = this._fillTintCache[a.fill.key];
+        if (!tinted) {
+          tinted = tintMask(a.fill.mask, a.fill.color, () => this.createLayer());
+          this._fillTintCache[a.fill.key] = tinted;
+        }
+        ctx.drawImage(tinted, 0, 0);
       }
     }
     this.fillCache = cache;
@@ -751,6 +778,46 @@ Page({
     this.invalidateShareCover();
   },
 
+  // 取色器：在落点处采样当前画面颜色，设为当前画笔颜色。
+  // 采样源 = 三层可见画布（outline/history/brush）+ 当前动画笔画的临时合成图，
+  // 与屏幕所见一致；命中纯白（图案外背景/纯白区域）时无义，提示后不改变颜色。
+  applyColorPick(clientX, clientY) {
+    if (!this.canvasRect || !this.outlineCanvas) return;
+    // 采样坐标必须是【画布/视口坐标】（client - rect），不能过 toImagePoint：
+    // 三层可见画布上的内容是经过视图变换（缩放/平移）的，所见即所采；
+    // 图像坐标只在恒等视图下与画布坐标重合，缩放/平移后会取错位置。
+    const probeX = Math.floor(clientX - this.canvasRect.left);
+    const probeY = Math.floor(clientY - this.canvasRect.top);
+    const w = this.canvasWidth, h = this.canvasHeight;
+    if (probeX < 0 || probeY < 0 || probeX >= w || probeY >= h) return;
+
+    const probe = this.createLayer();
+    const ctx = probe.getContext('2d');
+    if (!ctx) return;
+
+    // 与屏幕同层次合成：底层 -> 中层 -> 顶层。
+    // 三层可见画布已含全部内容（图案 + 当前动画笔画 + 用户内容，且已应用视图变换），
+    // 所见即所采，无需再补画任何一层。
+    for (const layer of [this.outlineCanvas, this.historyCanvas, this.brushCanvas]) {
+      if (layer) ctx.drawImage(layer, 0, 0);
+    }
+
+    const d = ctx.getImageData(probeX, probeY, 1, 1).data;
+    // 画布空白区是透明的（alpha=0，RGB 无意义，背景由容器白色 CSS 提供）。
+    // 采到透明 = 点在空白上，无颜色可取，提示而非取黑。
+    if (d[3] < 16) {
+      this.setFillHint('这里没有颜色（是空白）');
+      return;
+    }
+    const [r, g, b] = [d[0], d[1], d[2]];
+    const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+    this.setData({
+      strokeColor: hex,
+      // 吸出来的颜色不在预设色板里：色板高亮取消，自定义入口显示该色
+      isCustomColor: !this.data.colorOptions.includes(hex)
+    });
+  },
+
   // 填充失败提示：画布上轻量显示，2.6s 后自动消失
   setFillHint(msg) {
     this.setData({ fillHint: msg });
@@ -878,7 +945,7 @@ Page({
         ctx.globalAlpha = 0.6;
         const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
         gradient.addColorStop(0, color);
-        gradient.addColorStop(1, color + '00'); // 透明
+        gradient.addColorStop(1, withAlpha(color, 0)); // 透明（8 位自定义色不能直接 + '00'）
         ctx.fillStyle = gradient;
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
@@ -891,10 +958,21 @@ Page({
       }
     } else {
       // 多个点：绘制路径
+      // 平滑：中点二次贝塞尔（控制点=采样点、曲线过相邻点中点）。
+      // 原始触摸点是锯齿折线，中点法在贴着原轨迹的前提下把笔画抹平，
+      // 与 web 端 renderUserStroke 同算法（双端画出来一致）。
       ctx.moveTo(points[0][0], points[0][1]);
 
-      for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i][0], points[i][1]);
+      if (points.length === 2) {
+        ctx.lineTo(points[1][0], points[1][1]);
+      } else {
+        for (let i = 1; i < points.length - 1; i++) {
+          const midX = (points[i][0] + points[i + 1][0]) / 2;
+          const midY = (points[i][1] + points[i + 1][1]) / 2;
+          ctx.quadraticCurveTo(points[i][0], points[i][1], midX, midY);
+        }
+        const last = points[points.length - 1];
+        ctx.lineTo(last[0], last[1]);
       }
 
       if (strokeType === 'pencil') {
@@ -914,17 +992,29 @@ Page({
         ctx.stroke();
         ctx.globalAlpha = 1;
       } else if (strokeType === 'brush') {
-        // 毛笔：渐变透明效果
-        const gradient = ctx.createLinearGradient(
-          points[0][0], points[0][1],
-          points[points.length - 1][0], points[points.length - 1][1]
-        );
-        gradient.addColorStop(0, color + '40'); // 半透明
-        gradient.addColorStop(1, color);
-        ctx.strokeStyle = gradient;
+        // 毛笔：沿笔迹方向由淡入浓（起笔淡、收笔浓）。
+        // 旧实现是"首点->末点"的单一渐变：画 Z 字形/折返笔时浓淡方向与手势错位。
+        // 现按段绘制，每段透明度按它在笔迹中的位置插值（0.15 -> 0.6），
+        // 淡浓永远跟着手走；段与段之间用中点二次曲线衔接（平滑，同钢笔路径）。
+        ctx.strokeStyle = color;
         ctx.lineWidth = width * 1.5;
-        ctx.globalAlpha = 0.6;
-        ctx.stroke();
+        const n = points.length;
+        const mid = (i, j) => [(points[i][0] + points[j][0]) / 2, (points[i][1] + points[j][1]) / 2];
+        for (let i = 0; i < n - 1; i++) {
+          const t = n > 2 ? i / (n - 2) : 1;
+          ctx.beginPath();
+          const from = i === 0 ? points[0] : mid(i - 1, i);
+          const to = i === n - 2 ? points[n - 1] : mid(i, i + 1);
+          if (i === 0) {
+            ctx.moveTo(from[0], from[1]);
+            ctx.lineTo(to[0], to[1]);
+          } else {
+            ctx.moveTo(from[0], from[1]);
+            ctx.quadraticCurveTo(points[i][0], points[i][1], to[0], to[1]);
+          }
+          ctx.globalAlpha = 0.6 * (0.25 + 0.75 * t);
+          ctx.stroke();
+        }
         ctx.globalAlpha = 1;
       } else {
         // 钢笔：实线
@@ -1132,21 +1222,6 @@ Page({
     this.drawOutlineLayer();
   },
 
-  onStepTap(e) {
-    const step = e.currentTarget.dataset.step;
-    this.setData({
-      currentStep: step,
-      progress: 0,
-      playing: false,
-      globalProgress: step / this.data.totalSteps
-    });
-    this.drawOutlineLayer();
-
-    if (this.playTimer) {
-      clearInterval(this.playTimer);
-    }
-  },
-
   onUnload() {
     if (this.playTimer) {
       clearInterval(this.playTimer);
@@ -1188,6 +1263,11 @@ Page({
         return;
       }
       const t = touches[0];
+      // 取色器：单指单击落点吸色（采样画布该处颜色设为当前色），不拖拽
+      if (this.data.strokeType === 'colorpick') {
+        this.applyColorPick(t.clientX, t.clientY);
+        return;
+      }
       // 填充工具：单指单击落点即填充当前颜色，不拖拽（第二指落下忽略）
       if (this.data.strokeType === 'fill') {
         this.applyFill(t.clientX, t.clientY);
@@ -1230,16 +1310,59 @@ Page({
     this._currentTouchMode = 'pan';
   },
 
-  // 收尾当前笔画：入操作栈并刷新画面（绘制/双指平移交接共用）
+  // 收尾当前笔画：入操作栈并刷新画面（绘制/双指平移交接共用）。
+  // 提交前做两步后处理（对显示/导出/放映回放全链路一致生效）：
+  //  抽稀 —— 去掉离上一个点 <2px 的采样点（触摸抖动点，纯噪声），数据量减小、线更干净；
+  //  直线化 —— 想画直线时手抖是常态，整体几乎沿一条线（偏差 <6%）就替换成首尾直线段。
   commitCurrentStroke() {
     const stroke = this.currentStroke;
     this.currentStroke = null;
     this._drawFingerId = null;
     if (stroke) {
+      if (stroke.points.length > 2) {
+        const thinned = this.thinStrokePoints(stroke.points);
+        const snapped = this.trySnapToLine(thinned);
+        stroke.points = snapped || thinned;
+      }
+      // 抽稀后可能只剩单点（短笔画抖动点全被滤掉），单点画笔仍能画成圆点，保留
       this.pushUserAction({ kind: 'stroke', stroke });
       this.drawBrushLayer(); // currentStroke 已置空，清掉顶层正在绘制的笔
       this.invalidateShareCover();
     }
+  },
+
+  // 抽稀：相邻两点距离 <2px 的采样点直接丢弃（保留首点；移动超过阈值才记录）。
+  // 返回新点列（首点保留；可能只剩 1 个点）。
+  thinStrokePoints(points) {
+    const out = [points[0]];
+    for (let i = 1; i < points.length; i++) {
+      const [px, py] = out[out.length - 1];
+      const [x, y] = points[i];
+      const dx = x - px, dy = y - py;
+      if (dx * dx + dy * dy >= 4) out.push([x, y]);
+    }
+    return out;
+  },
+
+  // 直线化：笔画整体几乎沿一条直线（每个采样点离首尾连线的距离都 < max(2px, 6%总长)）
+  // 时，替换成首尾两点 —— 手绘直线变得平直。明显弯曲的笔画原样返回 null。
+  trySnapToLine(points) {
+    if (points.length < 3) return null;
+    const [x1, y1] = points[0];
+    const [x2, y2] = points[points.length - 1];
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 12) return null; // 太短的笔画没有"直线化"的意义
+    const tol = Math.max(2, len * 0.06);
+    const tol2 = tol * tol;
+    for (let i = 1; i < points.length - 1; i++) {
+      const [x, y] = points[i];
+      // 点到线段距离的平方（避免开方）：d = |cross| / len
+      const cross = dx * (y - y1) - dy * (x - x1);
+      const d2 = (cross * cross) / (len * len);
+      if (d2 > tol2) return null;
+    }
+    return [[x1, y1], [x2, y2]];
   },
 
   // 追加一个用户操作（笔画/填充），并记录撤销增量（add 的逆操作=删最后一条）
@@ -1247,8 +1370,36 @@ Page({
     this.userActions.push(action);
     if (!this._undoStack) this._undoStack = [];
     this._undoStack.push({ type: 'add' });
+    // 先把操作数对齐到最新：drawOutlineLayer/drawHistoryLayer 的缓存失配检查
+    // 才不会触发全量重建（增量路径的前提；删/换操作不会预对齐，仍走全量重建）
+    this._actionCount = this.userActions.length;
+    if (action.kind === 'stroke') {
+      // 增量优化：append 时不重画全部笔画 —— 只把这一条画进现有 strokeCache
+      // （画 50 笔后每笔提交都 O(n) 全量重绘，低端机会卡）
+      this._appendStrokeToCache(action);
+    } else {
+      // 填充：重建填充缓存（stroke 缓存不受影响）
+      this.rebuildFillCache();
+    }
     this.drawOutlineLayer();
     this.drawHistoryLayer();
+  },
+
+  // 把一条新追加的笔画画进现有 strokeCache（append 专用增量路径）。
+  // 只有缓存"已包含全部既有操作"时才能直接追加；缓存缺失/尺寸不符则整层
+  // 重建一次（重建本身会画全部操作，含这条新笔画），不能追加后再补画。
+  _appendStrokeToCache(action) {
+    if (action.kind !== 'stroke') return;
+    const cache = this.strokeCache;
+    const valid = !!(cache && cache.getContext && cache.width === this.canvasWidth && cache.height === this.canvasHeight);
+    if (!valid) {
+      this.rebuildStrokeCache();
+      return;
+    }
+    const ctx = cache.getContext('2d');
+    ctx.save();
+    this.drawUserStroke(ctx, action.stroke);
+    ctx.restore();
   },
 
   // 触摸移动

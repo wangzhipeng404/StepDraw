@@ -1,320 +1,288 @@
 import SwiftUI
 
-// MARK: - 顶部信息栏
+// MARK: - 顶部工具栏（与 web 端 DrawingStudio 的 studio-top 一致）
+//
+// logo（最左，点它展开图案抽屉）｜ 绘制/移动 · 笔种图标 · 自定义颜色 · 粗细 · 撤销/清除/复位
 
-/// 左侧：返回空白 / 图案名 + 步骤提示；右侧：模式切换 + 选图案 + 视图复位
 struct TopBar: View {
     @ObservedObject var vm: DrawingViewModel
 
     var body: some View {
-        HStack(spacing: 14) {
-            // 左：当前图案
-            HStack(spacing: 10) {
-                if let d = vm.drawing {
-                    Text(d.displayName)
-                        .font(.headline)
-                        .lineLimit(1)
-                    Text("\(vm.currentStep + 1)/\(max(vm.totalSteps, 1)) 步")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+        ZStack {
+            // 中间工具区（水平居中，不受 logo 影响）
+            HStack(spacing: 6) {
+                // 笔种图标（web 图标：钢笔/铅笔/马克/毛笔；点已选中的笔 → 退出绘制回到移动模式）
+                ForEach(BrushKind.allCases) { kind in
+                    let active = vm.brushKind == kind && vm.drawingMode
                     Button {
-                        vm.showRemovePatternConfirm = true
+                        // 与 web handleStrokeTypeSelect 一致：
+                        // 点已选中的笔 → 退出绘制（移动/平移）；点其它笔 → 选中并进入绘制
+                        if active {
+                            vm.drawingMode = false
+                        } else {
+                            vm.brushKind = kind
+                            vm.drawingMode = true
+                        }
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.body)
-                            .foregroundStyle(.tertiary)
+                        AppAssets.image(active ? kind.activeIconName : kind.iconName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 24, height: 24)
+                            .frame(width: 38, height: 38)
+                            .background(
+                                active ? Color(white: 0.94) : .clear,
+                                in: RoundedRectangle(cornerRadius: 10)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .strokeBorder(active ? Color.accentColor : .clear, lineWidth: 1)
+                            )
                     }
                     .buttonStyle(.plain)
-                    if let tip = d.steps[vm.currentStep].tip, !tip.isEmpty {
-                        Text(tip)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                } else {
-                    Text("一笔一笔")
-                        .font(.headline)
-                    Text("自由绘制")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    .opacity(vm.drawingMode ? 1 : 0.5)
+                    .help(kind.displayName)
+                }
+
+                // 自定义颜色（原生取色器圆点，显示当前色）
+                ColorPicker("", selection: $vm.brushColor, supportsOpacity: false)
+                    .labelsHidden()
+                    .frame(width: 28, height: 28)
+                    .opacity(vm.drawingMode ? 1 : 0.5)
+
+                // 粗细（滑块 + 数值，无"粗细"文字）
+                Slider(value: $vm.brushWidth, in: 1...24)
+                    .frame(width: 110)
+                Text("\(Int(vm.brushWidth))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, alignment: .trailing)
+                .opacity(vm.drawingMode ? 1 : 0.5)
+
+                Divider().frame(height: 22)
+
+                // 撤销 / 清除 / 复位（web 图标）
+                TopIconButton(name: "undo", disabled: !vm.canUndo) {
+                    vm.undo()
+                }
+                TopIconButton(name: "clear", disabled: !vm.canUndo) {
+                    vm.showClearConfirm = true
+                }
+                TopIconButton(name: "reset", disabled: vm.view == .identity) {
+                    vm.resetView()
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // 右：操作
-            HStack(spacing: 8) {
-                // 模式切换：绘制 / 导航
+            // 最左：logo（点击展开图案抽屉）
+            HStack {
                 Button {
-                    withAnimation(.snappy) { vm.toggleDrawMode() }
+                    withAnimation(.easeInOut(duration: 0.22)) { vm.showBrowser.toggle() }
                 } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: vm.drawingMode ? "hand.draw" : "hand.point.up")
-                        Text(vm.drawingMode ? "绘制" : "移动")
-                            .font(.subheadline.weight(.medium))
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(
-                        vm.drawingMode ? Color.accentColor.opacity(0.15) : Color(.systemGray6),
-                        in: RoundedRectangle(cornerRadius: 9)
-                    )
-                    .foregroundColor(vm.drawingMode ? Color.accentColor : .primary)
-                }
-
-                // 选图案
-                Button {
-                    vm.showPatternSheet = true
-                } label: {
-                    Label("图案", systemImage: "square.grid.2x2")
-                        .font(.subheadline.weight(.medium))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 9))
-                }
-
-                // 视图复位
-                Button {
-                    vm.resetView()
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.body.weight(.semibold))
+                    AppAssets.image("logo")
+                        .resizable()
+                        .scaledToFit()
                         .frame(width: 36, height: 36)
-                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 9))
+                        .clipShape(Circle())
+                        .overlay(Circle().strokeBorder(Color(.systemGray5), lineWidth: 1))
                 }
-                .disabled(vm.view == .identity)
+                .buttonStyle(.plain)
+                .help("图案")
+                Spacer()
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(.bar)
     }
 }
 
-// MARK: - 右侧操作栏
-
-/// 保存 / 分享 / 撤销 / 清空
-struct RightSidebar: View {
-    @ObservedObject var vm: DrawingViewModel
-
-    var body: some View {
-        VStack(spacing: 14) {
-            SideButton(icon: "square.and.arrow.down", label: "保存") {
-                vm.saveToPhotos()
-            }
-            SideButton(icon: "square.and.arrow.up", label: "分享") {
-                Task { await vm.shareImage() }
-            }
-            Divider().frame(width: 22)
-            SideButton(icon: "arrow.uturn.backward", label: "撤销", disabled: !vm.canUndo) {
-                vm.undo()
-            }
-            SideButton(icon: "trash", label: "清空", disabled: !vm.canUndo) {
-                vm.showClearConfirm = true
-            }
-        }
-        .padding(.vertical, 14)
-        .padding(.trailing, 14)
-        .frame(width: 64)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(.regularMaterial)
-        )
-        .padding(.trailing, 10)
-    }
-}
-
-private struct SideButton: View {
-    let icon: String
-    let label: String
+/// 顶栏小工具图标（撤销/清除/复位）
+private struct TopIconButton: View {
+    let name: String
     var disabled: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
-                Text(label)
-                    .font(.system(size: 10))
-            }
-            .frame(width: 44, height: 46)
-            .foregroundColor(disabled ? Color(.systemGray3) : Color.accentColor)
-            .contentShape(Rectangle())
+            AppAssets.image(name)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 20, height: 20)
+                .frame(width: 34, height: 34)
+                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 9))
+                .opacity(disabled ? 0.4 : 1)
         }
+        .buttonStyle(.plain)
         .disabled(disabled)
+    }
+}
+
+// MARK: - 笔种 web 图标名
+
+extension BrushKind {
+    /// 普通态图标（web/src/assets）
+    var iconName: String {
+        switch self {
+        case .pen: return "fountain_pen"
+        case .pencil: return "pencil"
+        case .marker: return "markpen"
+        case .brush: return "ink_brush"
+        }
+    }
+    /// 选中态图标（web 的 *_active 高亮版）
+    var activeIconName: String {
+        switch self {
+        case .pen: return "fountain_active"
+        case .pencil: return "pencil_active"
+        case .marker: return "mark_pen_active"
+        case .brush: return "ink_brush_active"
+        }
+    }
+}
+
+// MARK: - 右侧全高操作栏（与 web 的 studio-right 一致：白底 + 左边线，占满高度）
+
+struct RightSidebar: View {
+    @ObservedObject var vm: DrawingViewModel
+
+    var body: some View {
+        VStack(spacing: 12) {
+            SideAction(name: "save", label: "保存") {
+                vm.saveToPhotos()
+            }
+            SideAction(name: "share", label: "分享") {
+                Task { await vm.shareImage() }
+            }
+            Spacer()
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 8)
+        .frame(width: 64)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Color(.systemBackground))
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Color(.systemGray5))
+                .frame(width: 1)
+        }
+    }
+}
+
+/// 右侧栏按钮：图标 + 文字（web studio-save-btn 样式）
+private struct SideAction: View {
+    let name: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                AppAssets.image(name)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                Text(label)
+                    .font(.system(size: 11))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .foregroundStyle(Color(white: 0.2))
+            .background(Color(white: 0.98), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(.systemGray5), lineWidth: 1))
+        }
         .buttonStyle(.plain)
     }
 }
 
-// MARK: - 底部工具栏
+// MARK: - 底部播放控制（单行，web 图标）
 
-/// 播放控制 + 进度条 + 画笔选择（颜色/粗细/笔种）
 struct BottomToolbar: View {
     @ObservedObject var vm: DrawingViewModel
 
+    private var noDrawing: Bool { vm.drawing == nil }
+
     var body: some View {
-        VStack(spacing: 10) {
-            // 上排：播放控制 + 进度
-            HStack(spacing: 10) {
-                // 引导轮廓开关
-                toggleButton(
-                    icon: vm.showGuide ? "square.dashed.inset.filled" : "square.dashed",
-                    label: "轮廓",
-                    active: vm.showGuide
-                ) { vm.toggleGuide() }
-
-                Divider().frame(height: 24)
-
-                // 上一步
-                playButton(icon: "chevron.left", disabled: vm.currentStep == 0 && vm.stepProgress == 0) {
-                    vm.prevStep()
-                }
-                // 播放/暂停
-                Button {
-                    vm.togglePlay()
-                } label: {
-                    Image(systemName: vm.playing ? "pause.fill" : "play.fill")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
-                        .background(Color.accentColor, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(vm.drawing == nil)
-                // 下一步
-                playButton(icon: "chevron.right", disabled: vm.currentStep == vm.totalSteps - 1 && vm.stepProgress >= 1) {
-                    vm.nextStep()
-                }
-                // 重播
-                playButton(icon: "arrow.counterclockwise") {
-                    vm.replay()
-                }
-                // 倍速
-                Button {
-                    vm.cycleSpeed()
-                } label: {
-                    Text("\(vm.speed.formatted())x")
-                        .font(.subheadline.weight(.semibold).monospacedDigit())
-                        .frame(width: 44, height: 44)
-                        .background(Color(.systemGray6), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(vm.drawing == nil)
-
-                // 进度条
-                ProgressSlider(vm: vm)
-                    .frame(maxWidth: .infinity)
-                    .disabled(vm.drawing == nil)
+        HStack(spacing: 10) {
+            // 轮廓开关（cat_solid / cat_solid_active）
+            BottomIconButton(
+                name: vm.showGuide ? "cat-solid-active" : "cat-solid",
+                size: 40,
+                disabled: noDrawing
+            ) {
+                vm.toggleGuide()
             }
 
-            // 下排：画笔
-            HStack(spacing: 12) {
-                // 颜色
-                HStack(spacing: 6) {
-                    ForEach(paletteColors, id: \.self) { c in
-                        Circle()
-                            .fill(c)
-                            .frame(width: 24, height: 24)
-                            .overlay(
-                                Circle()
-                                    .stroke(vm.brushColor == c ? Color.accentColor : .clear, lineWidth: 2.5)
-                                    .padding(-3)
-                            )
-                            .onTapGesture { vm.brushColor = c }
-                    }
-                    // 自定义色
-                    ColorPicker("", selection: $vm.brushColor)
-                        .labelsHidden()
-                        .frame(width: 24, height: 24)
-                }
-                .disabled(!vm.drawingMode)
+            Divider().frame(height: 24)
 
-                Divider().frame(height: 24)
-
-                // 粗细
-                HStack(spacing: 4) {
-                    Image(systemName: "pencil.tip.crop.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Slider(value: $vm.brushWidth, in: 1...24)
-                        .frame(maxWidth: 180)
-                    Text("\(Int(vm.brushWidth))")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .frame(width: 22, alignment: .trailing)
-                }
-                .disabled(!vm.drawingMode)
-
-                Divider().frame(height: 24)
-
-                // 笔种
-                HStack(spacing: 4) {
-                    ForEach(BrushKind.allCases) { kind in
-                        Button {
-                            vm.brushKind = kind
-                            if !vm.drawingMode { vm.drawingMode = true }
-                        } label: {
-                            Image(systemName: kind.symbol)
-                                .font(.body)
-                                .frame(width: 38, height: 38)
-                                .background(
-                                    vm.brushKind == kind && vm.drawingMode
-                                        ? Color.accentColor.opacity(0.18)
-                                        : Color(.systemGray6),
-                                    in: RoundedRectangle(cornerRadius: 9)
-                                )
-                                .foregroundColor(vm.brushKind == kind && vm.drawingMode ? Color.accentColor : .primary)
-                        }
-                        .buttonStyle(.plain)
-                        .help(kind.displayName)
-                    }
-                }
-                .disabled(!vm.drawingMode)
-
-                Spacer(minLength: 0)
-
-                // 提示：当前手势说明
-                Text(vm.drawingMode
-                     ? "单指绘制 · 双指缩放/移动"
-                     : "单指移动 · 双指缩放 · 点「绘制」开始画")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            BottomIconButton(
+                name: "pre",
+                size: 40,
+                disabled: noDrawing || (vm.currentStep == 0 && vm.stepProgress == 0)
+            ) {
+                vm.prevStep()
             }
+            // 播放 / 暂停（play.png / stop.png）
+            BottomIconButton(
+                name: vm.playing ? "stop" : "play",
+                size: 44,
+                disabled: noDrawing
+            ) {
+                vm.togglePlay()
+            }
+            BottomIconButton(
+                name: "next",
+                size: 40,
+                disabled: noDrawing || (vm.currentStep == vm.totalSteps - 1 && vm.stepProgress >= 1)
+            ) {
+                vm.nextStep()
+            }
+            // 重播
+            BottomIconButton(name: "refresh", size: 40, disabled: noDrawing) {
+                vm.replay()
+            }
+
+            // 倍速
+            Button {
+                vm.cycleSpeed()
+            } label: {
+                Text("\(vm.speed.formatted())x")
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .frame(width: 46, height: 40)
+                    .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
+                    .opacity(noDrawing ? 0.4 : 1)
+            }
+            .buttonStyle(.plain)
+            .disabled(noDrawing)
+
+            // 进度条
+            ProgressSlider(vm: vm)
+                .frame(maxWidth: .infinity)
+                .disabled(noDrawing)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(.bar)
     }
+}
 
-    private func playButton(icon: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
+/// 底部播放图标按钮（圆形，web 图标）
+private struct BottomIconButton: View {
+    let name: String
+    var size: CGFloat = 40
+    var disabled: Bool = false
+    let action: () -> Void
+
+    var body: some View {
         Button(action: action) {
-            Image(systemName: icon)
-                .font(.body.weight(.semibold))
-                .frame(width: 40, height: 40)
-                .background(disabled ? Color(.systemGray5) : Color(.systemGray6), in: Circle())
-                .foregroundColor(disabled ? Color(.systemGray3) : .primary)
+            AppAssets.image(name)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size * 0.56, height: size * 0.56)
+                .frame(width: size, height: size)
+                .background(Color(.systemGray6), in: Circle())
+                .opacity(disabled ? 0.4 : 1)
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-    }
-
-    private func toggleButton(icon: String, label: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 2) {
-                Image(systemName: icon)
-                    .font(.body.weight(.medium))
-                Text(label)
-                    .font(.system(size: 10))
-            }
-            .frame(width: 46, height: 44)
-            .foregroundColor(active ? Color.accentColor : Color(.systemGray))
-            .background(
-                active ? Color.accentColor.opacity(0.15) : Color(.systemGray6),
-                in: RoundedRectangle(cornerRadius: 9)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 

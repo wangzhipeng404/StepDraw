@@ -17,6 +17,8 @@
 		2A00000000000000000000B8 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000F8 /* MainView.swift */; };
 		2A00000000000000000000B9 /* Toolbars.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000F9 /* Toolbars.swift */; };
 		2A00000000000000000000BA /* PatternBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000FA /* PatternBrowser.swift */; };
+		2A00000000000000000000BB /* AppAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000FD /* AppAssets.swift */; };
+		2A00000000000000000000C9 /* Assets in Resources */ = {isa = PBXBuildFile; fileRef = 1A00000000000000000000FE /* Assets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +32,8 @@
 		1A00000000000000000000F8 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		1A00000000000000000000F9 /* Toolbars.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbars.swift; sourceTree = "<group>"; };
 		1A00000000000000000000FA /* PatternBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternBrowser.swift; sourceTree = "<group>"; };
+		1A00000000000000000000FD /* AppAssets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAssets.swift; sourceTree = "<group>"; };
+		1A00000000000000000000FE /* Assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Assets; sourceTree = "<group>"; };
 		1A00000000000000000000FB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1A00000000000000000000FC /* StepDraw.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StepDraw.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -63,6 +67,7 @@
 				3A00000000000000000000C6 /* Drawing */,
 				3A00000000000000000000C7 /* ViewModels */,
 				3A00000000000000000000C8 /* UI */,
+				1A00000000000000000000FE /* Assets */,
 				1A00000000000000000000FB /* Info.plist */,
 			);
 			path = StepDraw;
@@ -123,6 +128,7 @@
 				1A00000000000000000000F8 /* MainView.swift */,
 				1A00000000000000000000F9 /* Toolbars.swift */,
 				1A00000000000000000000FA /* PatternBrowser.swift */,
+				1A00000000000000000000FD /* AppAssets.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -186,6 +192,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2A00000000000000000000C9 /* Assets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -206,6 +213,7 @@
 				2A00000000000000000000B8 /* MainView.swift in Sources */,
 				2A00000000000000000000B9 /* Toolbars.swift in Sources */,
 				2A00000000000000000000BA /* PatternBrowser.swift in Sources */,
+				2A00000000000000000000BB /* AppAssets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loadCategoryIndex, loadDrawing, DATA_BASE_URL } from '../data/drawings';
 import { Navbar } from './Navbar';
+import { useStudio } from '../context/StudioContext';
 import './CategoryList.css';
 
 interface DrawingItem {
@@ -28,6 +29,7 @@ export function CategoryList() {
   // categoryId 可能带路径，如 "quickdraw/cat"
   const categoryId = params['*'] || '';
   const navigate = useNavigate();
+  const { isSplit, selectDrawing } = useStudio();
   const [category, setCategory] = useState<CategoryData | null>(null);
   const [items, setItems] = useState<DrawingItem[]>([]);
   const [displayCount, setDisplayCount] = useState(LOAD_MORE_COUNT);
@@ -77,7 +79,13 @@ export function CategoryList() {
     try {
       const drawing = await loadDrawing(categoryId!, item.id);
       if (drawing) {
-        navigate(`/detail/${categoryId}/${item.id}`);
+        if (isSplit) {
+          // 分栏(横屏/平板/PC)模式：不跳转，直接把图案交给右侧绘制组件
+          selectDrawing(drawing);
+        } else {
+          // 手机竖屏：保持原逻辑整页跳转详情页
+          navigate(`/detail/${categoryId}/${item.id}`);
+        }
       }
     } catch (err) {
       console.error('加载图案失败:', err);

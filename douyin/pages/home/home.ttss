@@ -2,52 +2,8 @@
 .home {
   background: #fafafa;
   min-height: 100vh;
-}
-
-/* 导航栏 */
-.navbar {
-  display: flex;
-  align-items: center;
-  padding: 24rpx 30rpx;
-  background: linear-gradient(180deg, #aa3bff 0%, #7c3aed 100%);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.navbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.navbar-icon {
-  width: 72rpx;
-  height: 72rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-}
-
-.navbar-text {
   display: flex;
   flex-direction: column;
-}
-
-.navbar-title {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: #fff;
-  line-height: 1.2;
-}
-
-.navbar-subtitle {
-  font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 4rpx;
 }
 
 /* 页面标题 */
@@ -77,6 +33,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 24rpx;
   padding: 0 20rpx 100rpx;
+  flex: 1; /* 卡片区占满剩余高度，把底部备案号顶到页面最底（内容不足一屏时也占满） */
 }
 
 .group-card {
@@ -116,4 +73,19 @@
   font-size: 22rpx;
   color: #999;
   display: block;
+}
+
+/* 底部 ICP 备案号 */
+.icp-footer {
+  /* 贴到页面最底部，底部留安全距离避让全面屏 home indicator */
+  padding: 24rpx 0 env(safe-area-inset-bottom);
+  text-align: center;
+}
+
+.icp-text {
+  font-size: 22rpx;
+  color: #999;
+  letter-spacing: 1rpx;
+  text-decoration: underline;
+  text-underline-offset: 4rpx;
 }

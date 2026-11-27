@@ -13,11 +13,21 @@ import bucketIcon from '../assets/bucket.png';
 import bucketIconActive from '../assets/bucket_active.png';
 import eraserIcon from '../assets/erayz.png';
 import eraserIconActive from '../assets/erayz_active.png';
+import colorPickIcon from '../assets/color-picker.png';
+import colorPickIconActive from '../assets/color-picker_active.png';
+import lassoIcon from '../assets/scope.png';
+import lassoIconActive from '../assets/scope_active.png';
 
 // 笔画：一组点构成的线条
 export interface Stroke {
   width: number;
   points: [number, number][];
+  // 可选（涂色本数据，如 img2json.py 生成）：
+  // color = 线条颜色，fill = 填充颜色（"none" = 不填充）；
+  // type === 'fill' 为填色步骤：points 是封闭多边形，播放时按 fill/color 整块填色、不描边。
+  color?: string;
+  fill?: string;
+  type?: string;
 }
 
 // 步骤：包含多个笔画和文字提示
@@ -65,8 +75,10 @@ export interface UserStroke {
   type: StrokeType;
 }
 
-// 画笔类型（eraser 是整笔擦除：点/拖命中哪个用户笔画或填充就删哪个，不产生笔画）
-export type StrokeType = 'pen' | 'pencil' | 'marker' | 'brush' | 'fill' | 'eraser';
+// 画笔类型（eraser 是整笔擦除：点/拖命中哪个用户笔画或填充就删哪个，不产生笔画；
+// colorpick 是取色器：点击采样画面颜色设为当前色，不产生笔画；
+// lassofill 是套索填充：圈一圈区域，与区域内线条取交集形成封闭区域后填充，不产生笔画）
+export type StrokeType = 'pen' | 'pencil' | 'marker' | 'brush' | 'fill' | 'lassofill' | 'eraser' | 'colorpick';
 
 // 画笔类型定义
 export const STROKE_TYPES: { key: StrokeType; name: string; icon: string; iconActive: string }[] = [
@@ -75,7 +87,9 @@ export const STROKE_TYPES: { key: StrokeType; name: string; icon: string; iconAc
   { key: 'marker', name: '马克笔', icon: markerIcon, iconActive: markerIconActive },
   { key: 'brush', name: '毛笔', icon: brushIcon, iconActive: brushIconActive },
   { key: 'fill', name: '填充', icon: bucketIcon, iconActive: bucketIconActive },
-  { key: 'eraser', name: '橡皮擦', icon: eraserIcon, iconActive: eraserIconActive }
+  { key: 'lassofill', name: '套索填充', icon: lassoIcon, iconActive: lassoIconActive },
+  { key: 'eraser', name: '橡皮擦', icon: eraserIcon, iconActive: eraserIconActive },
+  { key: 'colorpick', name: '取色器', icon: colorPickIcon, iconActive: colorPickIconActive }
 ];
 
 // 绘图模式

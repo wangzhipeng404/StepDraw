@@ -1,13 +1,33 @@
 import SwiftUI
 
-/// 主界面：顶部信息栏 + 中间画布 + 右侧操作栏 + 底部工具栏
+// MARK: - 主界面：全屏画布 + 左侧抽屉式图案浏览
+//
+// 画布默认全屏（矩形，图案按适配变换居中留边距，边距区也能画）。
+// 顶栏「图案」图标切换左侧抽屉（分组→分类→图案网格）；
+// 点图案载入画布并自动收起抽屉，抽屉内浏览不跳转（保持当前层级）。
+
 struct MainView: View {
     @StateObject private var vm = DrawingViewModel()
 
     var body: some View {
+        DrawingPane(vm: vm)
+            .preferredColorScheme(.light)
+            .task {
+                try? await DataStore.shared.loadMainIndex()
+            }
+    }
+}
+
+// MARK: - 绘制工作台
+
+/// 顶栏/底栏/右侧栏是 safeAreaInset，会收缩安全区；
+/// 用 safeAreaInsets 算出真正可用的画布区域，画布填满该区域（矩形）。
+/// 图案抽屉叠在画布左侧（顶栏之下），默认藏在屏幕外，点击顶栏图标滑入。
+struct DrawingPane: View {
+    @ObservedObject var vm: DrawingViewModel
+
+    var body: some View {
         GeometryReader { geo in
-            // 顶栏/底栏/右侧栏是 safeAreaInset，会收缩安全区；
-            // 用 safeAreaInsets 算出真正可用的画布区域，避免被顶栏/底栏遮住。
             let inset = geo.safeAreaInsets
             let avail = CGRect(
                 x: inset.leading,
@@ -15,19 +35,15 @@ struct MainView: View {
                 width: max(1, geo.size.width - inset.leading - inset.trailing),
                 height: max(1, geo.size.height - inset.top - inset.bottom)
             )
-            let canvasRect = canvasRect(in: avail)
+            // 抽屉宽度：按比例，窄屏收窄
+            let drawerW = min(400, max(300, geo.size.width * 0.4))
             ZStack {
                 Color(.systemGroupedBackground).ignoresSafeArea()
 
-                // 画布（正方形，居中于可用空间）
+                // 画布（填满可用空间，矩形；图案按适配变换居中留边距）
                 CanvasContainer(viewModel: vm)
-                    .frame(width: canvasRect.width, height: canvasRect.height)
-                    .position(x: canvasRect.midX, y: canvasRect.midY)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.black.opacity(0.12), lineWidth: 1)
-                    )
+                    .frame(width: avail.width, height: avail.height)
+                    .position(x: avail.midX, y: avail.midY)
 
                 // 加载态
                 if vm.loadingDrawing {
@@ -35,29 +51,9 @@ struct MainView: View {
                         ProgressView().controlSize(.large)
                         Text("图案加载中…").foregroundStyle(.secondary)
                     }
-                    .frame(width: canvasRect.width, height: canvasRect.height)
-                    .position(x: canvasRect.midX, y: canvasRect.midY)
+                    .frame(width: avail.width, height: avail.height)
+                    .position(x: avail.midX, y: avail.midY)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                } else if vm.drawing == nil && !vm.canUndo {
-                    // 顶部小提示（不覆盖画布，不挡绘制）
-                    HStack(spacing: 10) {
-                        Image(systemName: "pencil.and.outline")
-                            .foregroundStyle(.secondary)
-                        Text("空白画布，直接开画")
-                            .font(.subheadline.weight(.medium))
-                        Button {
-                            vm.showPatternSheet = true
-                        } label: {
-                            Label("或选择图案临摹", systemImage: "square.grid.2x2")
-                                .font(.subheadline.weight(.medium))
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    .position(x: canvasRect.midX, y: canvasRect.minY + 44)
                 }
 
                 // 缩放指示（视图偏离 1x 时短暂显示，画布右上角）
@@ -67,10 +63,37 @@ struct MainView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                        .position(x: canvasRect.maxX - 44, y: canvasRect.minY + 28)
+                        .position(x: avail.maxX - 44, y: avail.minY + 28)
                         .allowsHitTesting(false)
                         .transition(.opacity)
                 }
+
+                // 步骤提示（画布右下角，与 web studio-step-tip 一致）
+                if let tip = vm.drawing?.steps[vm.currentStep].tip, !tip.isEmpty {
+                    Text(tip)
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.black.opacity(0.55), in: Capsule())
+                        .padding([.trailing, .bottom], 12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                // 图案抽屉：默认藏在画布左侧外（offset 移出屏幕），点击顶栏图标滑入
+                PatternBrowser(currentDrawingId: vm.drawing?.id) { categoryId, item in
+                    vm.showBrowser = false
+                    Task { await vm.loadDrawing(categoryId: categoryId, item: item) }
+                }
+                .frame(width: drawerW, height: avail.height)
+                .background(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.18), radius: 10, x: 4, y: 0)
+                .offset(x: vm.showBrowser ? 0 : -drawerW - 24, y: inset.top)
+                .allowsHitTesting(vm.showBrowser)
+                .animation(.easeInOut(duration: 0.22), value: vm.showBrowser)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -83,11 +106,6 @@ struct MainView: View {
             BottomToolbar(vm: vm)
         }
         .ignoresSafeArea(.keyboard)
-        .sheet(isPresented: $vm.showPatternSheet) {
-            PatternBrowserSheet { categoryId, item in
-                Task { await vm.loadDrawing(categoryId: categoryId, item: item) }
-            }
-        }
         .confirmationDialog(
             "确定要清除所有绘制内容吗？",
             isPresented: $vm.showClearConfirm,
@@ -95,15 +113,6 @@ struct MainView: View {
         ) {
             Button("清空画布", role: .destructive) { vm.clearAll() }
             Button("取消", role: .cancel) {}
-        }
-        .alert(
-            "清除图案并回到空白画布？",
-            isPresented: $vm.showRemovePatternConfirm
-        ) {
-            Button("回到空白画布", role: .destructive) { vm.removePattern() }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("图案与你的笔迹会一并清除。")
         }
         .overlay(alignment: .bottom) {
             if let toast = vm.toast {
@@ -120,20 +129,5 @@ struct MainView: View {
             }
         }
         .animation(.spring(duration: 0.3), value: vm.toast)
-        .preferredColorScheme(.light)
-        .task {
-            try? await DataStore.shared.loadMainIndex()
-        }
-    }
-
-    /// 在可用区域内取最大正方形并居中
-    private func canvasRect(in area: CGRect) -> CGRect {
-        let side = max(1, min(area.width, area.height))
-        return CGRect(
-            x: area.midX - side / 2,
-            y: area.midY - side / 2,
-            width: side,
-            height: side
-        )
     }
 }

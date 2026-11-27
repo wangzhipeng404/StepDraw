@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 主界面：顶部信息栏 + 中间画布（正方形居中）+ 右侧操作栏 + 底部工具栏
-     布局与 iPad 版 MainView 对齐 -->
+<!-- 主界面：全屏画布 + 左侧抽屉式图案浏览（与 web 端 DrawingStudio 布局一致）
+     顶栏：logo(展开抽屉) + 绘制/移动 + 笔种图标 + 自定义颜色 + 粗细 + 撤销/清除/复位
+     右侧：全高操作栏（保存/分享）
+     底部：播放控制（轮廓/上一步/播放/下一步/重播/倍速/进度条）
+     画布：全屏矩形，图案按适配变换居中留边距，边距区也能画 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
@@ -9,171 +12,169 @@
     android:fitsSystemWindows="true"
     android:background="@color/canvas_bg">
 
-    <!-- ===== 顶部栏 ===== -->
-    <LinearLayout
+    <!-- ===== 顶部栏（绘画工具，单行；logo 在最左，工具区可横向滚动，与 web studio-top 的 overflow-x:auto 一致）===== -->
+    <FrameLayout
         android:id="@+id/top_bar"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="14dp"
-        android:paddingEnd="12dp"
         android:background="@color/bar_bg">
 
-        <TextView
-            android:id="@+id/tv_pattern_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="一笔一笔"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-            android:maxLines="1" />
-
-        <TextView
-            android:id="@+id/tv_step_info"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <!-- logo（点击展开左侧图案抽屉） -->
+        <ImageView
+            android:id="@+id/iv_logo"
+            style="@style/LogoBtn"
+            android:layout_gravity="start|center_vertical"
             android:layout_marginStart="10dp"
-            android:textSize="13sp"
-            android:textColor="@color/text_secondary"
-            android:maxLines="1" />
+            android:src="@drawable/logo"
+            android:contentDescription="一笔一笔" />
 
-        <TextView
-            android:id="@+id/tv_tip"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="10dp"
+        <!-- 工具区（logo 之后，内容不够宽时横向滚动，避免窄屏上笔种图标被裁掉） -->
+        <HorizontalScrollView
+            android:id="@+id/top_tools_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginStart="56dp"
             android:layout_marginEnd="8dp"
-            android:textSize="13sp"
-            android:textColor="@color/text_secondary"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:fillViewport="true"
+            android:scrollbars="none">
 
-        <TextView
-            android:id="@+id/btn_mode"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:gravity="center"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="绘制"
-            android:textSize="13sp"
-            android:background="@drawable/chip_bg" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="6dp"
+                android:paddingEnd="46dp">
 
-        <TextView
-            android:id="@+id/btn_pattern"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:gravity="center"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:layout_marginStart="8dp"
-            android:text="图案"
-            android:textSize="13sp"
-            android:background="@drawable/chip_bg" />
+            <!-- 笔种图标（钢笔/铅笔/马克/毛笔；点已选中的笔 → 退出绘制回到移动模式） -->
+            <ImageView
+                android:id="@+id/iv_brush_pen"
+                style="@style/BrushIconBtn"
+                android:src="@drawable/fountain_pen"
+                android:contentDescription="钢笔" />
 
-        <TextView
-            android:id="@+id/btn_reset"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:gravity="center"
-            android:layout_marginStart="8dp"
-            android:text="↺"
-            android:textSize="17sp"
-            android:background="@drawable/chip_bg" />
-    </LinearLayout>
+            <ImageView
+                android:id="@+id/iv_brush_pencil"
+                style="@style/BrushIconBtn"
+                android:src="@drawable/pencil"
+                android:contentDescription="铅笔" />
 
-    <!-- ===== 中间画布区域（画布 gravity 居中，右侧栏悬浮覆盖）===== -->
+            <ImageView
+                android:id="@+id/iv_brush_marker"
+                style="@style/BrushIconBtn"
+                android:src="@drawable/markpen"
+                android:contentDescription="马克笔" />
+
+            <ImageView
+                android:id="@+id/iv_brush_brush"
+                style="@style/BrushIconBtn"
+                android:src="@drawable/ink_brush"
+                android:contentDescription="毛笔" />
+
+            <!-- 自定义颜色（圆点显示当前色，点击取色） -->
+            <View
+                android:id="@+id/color_dot"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/ripple_circle" />
+
+            <!-- 粗细（滑块 + 数值，无"粗细"文字） -->
+            <SeekBar
+                android:id="@+id/seek_width"
+                android:layout_width="84dp"
+                android:layout_height="wrap_content"
+                android:max="23"
+                android:progress="3" />
+
+            <TextView
+                android:id="@+id/tv_width"
+                android:layout_width="24dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="4"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="22dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="6dp"
+                android:background="#33000000" />
+
+            <!-- 撤销 / 清除 / 复位 -->
+            <ImageView
+                android:id="@+id/iv_undo"
+                style="@style/TopIconBtn"
+                android:src="@drawable/undo"
+                android:contentDescription="撤销" />
+
+            <ImageView
+                android:id="@+id/iv_clear"
+                style="@style/TopIconBtn"
+                android:src="@drawable/clear"
+                android:contentDescription="清除" />
+
+            <ImageView
+                android:id="@+id/iv_reset"
+                style="@style/TopIconBtn"
+                android:src="@drawable/reset"
+                android:contentDescription="复位视图" />
+            </LinearLayout>
+        </HorizontalScrollView>
+    </FrameLayout>
+
+    <!-- ===== 画布区域（画布全屏，抽屉叠在左侧，右栏全高）===== -->
     <FrameLayout
         android:id="@+id/main_area"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <!-- 三层离屏渲染画布（正方形，gravity 居中；尺寸代码里设置） -->
+        <!-- 三层离屏渲染画布（填满 main_area，矩形） -->
         <com.stepdraw.android.drawing.CanvasHostView
             android:id="@+id/canvas"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:layout_gravity="center" />
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
-        <!-- 右侧操作栏：保存/分享/撤销/清空 -->
+        <!-- 图案抽屉：常驻左侧，默认 GONE；宽度代码里按屏幕比例设置 -->
+        <com.stepdraw.android.PatternBrowserPane
+            android:id="@+id/left_pane"
+            android:layout_width="360dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="start"
+            android:elevation="8dp"
+            android:visibility="gone" />
+
+        <!-- 右侧操作栏：全高（保存/分享） -->
         <LinearLayout
             android:id="@+id/right_bar"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end|center_vertical"
-            android:layout_marginEnd="10dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="end"
             android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:background="@drawable/right_bar_bg">
+            android:gravity="top"
+            android:paddingTop="14dp"
+            android:paddingBottom="14dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="10dp"
+            android:background="#F5FFFFFF">
 
-            <TextView
+            <ImageView
                 android:id="@+id/btn_save"
-                style="@style/SideBtn"
-                android:text="保存" />
+                style="@style/SideIconBtn"
+                android:layout_gravity="center_horizontal"
+                android:src="@drawable/save"
+                android:contentDescription="保存" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/btn_share"
-                style="@style/SideBtn"
-                android:text="分享" />
-
-            <View
-                android:layout_width="22dp"
-                android:layout_height="1dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
-                android:background="#33000000" />
-
-            <TextView
-                android:id="@+id/btn_undo"
-                style="@style/SideBtn"
-                android:text="撤销" />
-
-            <TextView
-                android:id="@+id/btn_clear"
-                style="@style/SideBtn"
-                android:text="清空" />
-        </LinearLayout>
-
-        <!-- 空白画布提示（顶栏下方，不挡绘制） -->
-        <LinearLayout
-            android:id="@+id/empty_hint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|center_horizontal"
-            android:layout_marginTop="40dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="6dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:background="@drawable/hint_bg">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="✎  空白画布，直接开画"
-                android:textSize="13sp"
-                android:textColor="@color/text_primary" />
-
-            <TextView
-                android:id="@+id/btn_empty_pick"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:gravity="center"
-                android:layout_marginStart="10dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="或选择图案临摹"
-                android:textSize="12sp"
-                android:textColor="#FFFFFF"
-                android:background="@drawable/chip_accent" />
+                style="@style/SideIconBtn"
+                android:layout_gravity="center_horizontal"
+                android:src="@drawable/share"
+                android:contentDescription="分享" />
         </LinearLayout>
 
         <!-- 缩放指示（画布右上角，短暂显示） -->
@@ -183,7 +184,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="top|end"
             android:layout_marginTop="12dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="56dp"
             android:paddingStart="10dp"
             android:paddingEnd="10dp"
             android:paddingTop="4dp"
@@ -192,6 +193,24 @@
             android:textStyle="bold"
             android:textColor="@color/text_primary"
             android:background="@drawable/hint_bg"
+            android:visibility="gone" />
+
+        <!-- 步骤提示（画布右下角，与 web studio-step-tip 一致） -->
+        <TextView
+            android:id="@+id/tv_tip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="56dp"
+            android:layout_marginBottom="14dp"
+            android:maxWidth="260dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:textSize="13sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/toast_bg"
             android:visibility="gone" />
 
         <!-- 图案加载遮罩 -->
@@ -243,194 +262,81 @@
             android:visibility="gone" />
     </FrameLayout>
 
-    <!-- ===== 底部工具栏 ===== -->
+    <!-- ===== 底部工具栏（仅播放控制 + 进度条）===== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:background="@color/bar_bg"
         android:paddingTop="8dp"
-        android:paddingBottom="10dp">
+        android:paddingBottom="8dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="16dp">
 
-        <!-- 上排：播放控制 + 进度条 -->
-        <LinearLayout
-            android:layout_width="match_parent"
+        <!-- 轮廓开关 -->
+        <ImageView
+            android:id="@+id/btn_guide"
+            style="@style/TransportIconBtn"
+            android:src="@drawable/cat_solid_active"
+            android:contentDescription="轮廓" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="#33000000" />
+
+        <ImageView
+            android:id="@+id/btn_prev"
+            style="@style/TransportIconBtn"
+            android:src="@drawable/pre"
+            android:contentDescription="上一步" />
+
+        <ImageView
+            android:id="@+id/btn_play"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/play"
+            android:background="@drawable/ripple_circle"
+            android:contentDescription="播放" />
+
+        <ImageView
+            android:id="@+id/btn_next"
+            style="@style/TransportIconBtn"
+            android:src="@drawable/next"
+            android:contentDescription="下一步" />
+
+        <ImageView
+            android:id="@+id/btn_replay"
+            style="@style/TransportIconBtn"
+            android:src="@drawable/refresh"
+            android:contentDescription="重播" />
+
+        <TextView
+            android:id="@+id/btn_speed"
+            android:layout_width="44dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:gravity="center"
+            android:text="1x"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:background="@drawable/circle_chip" />
+
+        <SeekBar
+            android:id="@+id/seek_progress"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="14dp">
-
-            <TextView
-                android:id="@+id/btn_guide"
-                android:layout_width="48dp"
-                android:layout_height="42dp"
-                android:gravity="center"
-                android:text="轮廓"
-                android:textSize="12sp"
-                android:background="@drawable/chip_bg_active" />
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="10dp"
-                android:background="#33000000" />
-
-            <TextView
-                android:id="@+id/btn_prev"
-                style="@style/TransportBtn"
-                android:text="◀︎" />
-
-            <TextView
-                android:id="@+id/btn_play"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:gravity="center"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:text="▶︎"
-                android:textSize="20sp"
-                android:textColor="#FFFFFF"
-                android:background="@drawable/circle_accent" />
-
-            <TextView
-                android:id="@+id/btn_next"
-                style="@style/TransportBtn"
-                android:text="▶︎" />
-
-            <TextView
-                android:id="@+id/btn_replay"
-                style="@style/TransportBtn"
-                android:text="↺︎" />
-
-            <TextView
-                android:id="@+id/btn_speed"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:gravity="center"
-                android:layout_marginStart="8dp"
-                android:text="1x"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:background="@drawable/circle_chip" />
-
-            <SeekBar
-                android:id="@+id/seek_progress"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="14dp"
-                android:max="1000"
-                android:progress="0" />
-        </LinearLayout>
-
-        <!-- 下排：画笔（颜色 / 粗细 / 笔种） -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="14dp"
-            android:layout_marginTop="6dp">
-
-            <LinearLayout
-                android:id="@+id/palette"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <View android:id="@+id/pal_0" style="@style/ColorDot" />
-                <View android:id="@+id/pal_1" style="@style/ColorDot" />
-                <View android:id="@+id/pal_2" style="@style/ColorDot" />
-                <View android:id="@+id/pal_3" style="@style/ColorDot" />
-                <View android:id="@+id/pal_4" style="@style/ColorDot" />
-                <View android:id="@+id/pal_5" style="@style/ColorDot" />
-                <!-- 自定义色 -->
-                <FrameLayout
-                    android:id="@+id/pal_custom"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_marginStart="6dp">
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@drawable/color_dot_rainbow" />
-                </FrameLayout>
-            </LinearLayout>
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="14dp"
-                android:layout_marginEnd="14dp"
-                android:background="#33000000" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="粗细"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
-
-            <SeekBar
-                android:id="@+id/seek_width"
-                android:layout_width="150dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:max="23"
-                android:progress="3" />
-
-            <TextView
-                android:id="@+id/tv_width"
-                android:layout_width="24dp"
-                android:layout_height="wrap_content"
-                android:gravity="end"
-                android:text="4"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="14dp"
-                android:layout_marginEnd="14dp"
-                android:background="#33000000" />
-
-            <TextView
-                android:id="@+id/brush_pen"
-                style="@style/BrushBtn"
-                android:text="钢笔" />
-
-            <TextView
-                android:id="@+id/brush_pencil"
-                style="@style/BrushBtn"
-                android:text="铅笔" />
-
-            <TextView
-                android:id="@+id/brush_marker"
-                style="@style/BrushBtn"
-                android:text="马克" />
-
-            <TextView
-                android:id="@+id/brush_brush"
-                style="@style/BrushBtn"
-                android:text="毛笔" />
-
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <TextView
-                android:id="@+id/tv_gesture_hint"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="单指绘制 · 双指缩放/移动"
-                android:textSize="11sp"
-                android:textColor="@color/text_secondary" />
-        </LinearLayout>
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:max="1000"
+            android:progress="0" />
     </LinearLayout>
 </LinearLayout>

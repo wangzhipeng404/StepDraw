@@ -88,3 +88,4 @@ quickdraw_animals/
 quickdraw_animals_json/
 linedrawer_json_out/
 */**/.build/
+web/lasso-test-deps

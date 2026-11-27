@@ -92,11 +92,33 @@ data class CategoryIndex(
 
 // MARK: - 用户笔画
 
+/** 绘图工具（与 web 的 STROKE_TYPES 一一对应，共 8 种） */
+enum class Tool(val displayName: String, val isPaint: Boolean) {
+    PEN("钢笔", true),
+    PENCIL("铅笔", true),
+    MARKER("马克笔", true),
+    BRUSH("毛笔", true),
+    FILL("填充", false),
+    LASSOFILL("套索填充", false),
+    ERASER("橡皮擦", false),
+    COLORPICK("取色器", false),
+}
+
+/** 笔种（仅绘制类工具产生笔画；填充/套索/橡皮/取色不产生笔画） */
 enum class BrushKind(val displayName: String) {
     PEN("钢笔"),
     PENCIL("铅笔"),
     MARKER("马克笔"),
     BRUSH("毛笔");
+}
+
+/** Tool -> BrushKind（非绘制工具无笔种） */
+fun Tool.brushKindOrNull(): BrushKind? = when (this) {
+    Tool.PEN -> BrushKind.PEN
+    Tool.PENCIL -> BrushKind.PENCIL
+    Tool.MARKER -> BrushKind.MARKER
+    Tool.BRUSH -> BrushKind.BRUSH
+    else -> null
 }
 
 /**
@@ -108,6 +130,34 @@ data class UserStroke(
     val color: Int,
     val kind: BrushKind,
 )
+
+/**
+ * 用户填充（油漆桶 / 套索）。mask 是「层空间」区域位图（255=区域内），
+ * 与颜色解耦；渲染时按 mask 上色。层空间 = layerWidth×layerHeight（视图变换未叠加），
+ * 渲染时按当前视图 blit，与引导/已完成线同坐标系。
+ */
+data class UserFill(
+    val mask: ByteArray,
+    val w: Int,
+    val h: Int,
+    val color: Int,
+) {
+    override fun equals(other: Any?) = other is UserFill && other.w == w && other.h == h && other.color == color && other.mask.contentEquals(mask)
+    override fun hashCode(): Int { var h = mask.contentHashCode(); h = 31 * h + w; h = 31 * h + this.h; h = 31 * h + color; return h }
+}
+
+/** 用户操作（按时间序混排：笔画 + 填充）。撤销/擦除都基于此列表。 */
+sealed class UserAction {
+    data class Stroke(val stroke: UserStroke) : UserAction()
+    data class Fill(val fill: UserFill) : UserAction()
+}
+
+/** 撤销增量：add 追加 / erase 按位删除 / clear 整体（撤销即逆操作，与 web 一致） */
+sealed class UndoDelta {
+    object Add : UndoDelta()
+    data class Erase(val index: Int, val action: UserAction) : UndoDelta()
+    data class Clear(val actions: List<UserAction>) : UndoDelta()
+}
 
 // ============================================================
 // 视图变换（缩放 / 平移）—— 与 ipad/ViewTransform.swift 同构

@@ -41,7 +41,7 @@ final class DrawingViewModel: ObservableObject {
 
     // MARK: 面板
 
-    @Published var showPatternSheet: Bool = false
+    @Published var showBrowser: Bool = false   // 左侧图案抽屉是否展开
     @Published var showClearConfirm: Bool = false
     @Published var showRemovePatternConfirm: Bool = false
     @Published var toast: Toast?

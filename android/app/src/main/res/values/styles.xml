@@ -1,41 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 右侧操作栏按钮（图标位 + 文字） -->
-    <style name="SideBtn">
-        <item name="android:layout_width">44dp</item>
-        <item name="android:layout_height">44dp</item>
-        <item name="android:gravity">center</item>
-        <item name="android:textSize">10sp</item>
-        <item name="android:textColor">@color/accent</item>
-        <item name="android:background">@drawable/ripple_chip</item>
+    <!-- 顶栏 logo（点击展开左侧图案抽屉） -->
+    <style name="LogoBtn">
+        <item name="android:layout_width">38dp</item>
+        <item name="android:layout_height">38dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:background">@drawable/ripple_circle</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
     </style>
 
-    <!-- 播放控制小圆钮 -->
-    <style name="TransportBtn">
+    <!-- 顶栏笔种图标按钮（钢笔/铅笔/马克/毛笔，选中换 *_active 图标） -->
+    <style name="BrushIconBtn">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:layout_marginStart">2dp</item>
+        <item name="android:padding">5dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:background">@drawable/ripple_chip</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- 顶栏工具图标按钮（撤销/清除/复位） -->
+    <style name="TopIconBtn">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:layout_marginStart">2dp</item>
+        <item name="android:padding">6dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:background">@drawable/ripple_chip</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- 右侧全高操作栏图标按钮（保存/分享） -->
+    <style name="SideIconBtn">
+        <item name="android:layout_width">42dp</item>
+        <item name="android:layout_height">42dp</item>
+        <item name="android:layout_marginTop">6dp</item>
+        <item name="android:padding">7dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:background">@drawable/ripple_chip</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- 底部播放控制图标按钮（上一步/下一步/重播/轮廓） -->
+    <style name="TransportIconBtn">
         <item name="android:layout_width">40dp</item>
         <item name="android:layout_height">40dp</item>
-        <item name="android:gravity">center</item>
-        <item name="android:textSize">15sp</item>
-        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:scaleType">fitCenter</item>
         <item name="android:background">@drawable/ripple_circle</item>
-    </style>
-
-    <!-- 色板圆点（颜色代码里设置） -->
-    <style name="ColorDot">
-        <item name="android:layout_width">24dp</item>
-        <item name="android:layout_height">24dp</item>
-        <item name="android:layout_marginStart">6dp</item>
-        <item name="android:background">@drawable/ripple_circle</item>
-    </style>
-
-    <!-- 笔种按钮 -->
-    <style name="BrushBtn">
-        <item name="android:layout_width">40dp</item>
-        <item name="android:layout_height">38dp</item>
-        <item name="android:layout_marginStart">4dp</item>
-        <item name="android:gravity">center</item>
-        <item name="android:textSize">12sp</item>
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:background">@drawable/ripple_chip</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
     </style>
 </resources>

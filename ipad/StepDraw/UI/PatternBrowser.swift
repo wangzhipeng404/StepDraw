@@ -1,50 +1,58 @@
 import SwiftUI
 
-/// 图案选择 sheet：分组 → 分类 → 图案网格（搜索/难度筛选/分页）。
+// MARK: - 分栏(平板)左侧：图案浏览面板（常驻，非 sheet）
+
+/// 常驻图案浏览面板：分组 → 分类 → 图案网格（搜索/难度筛选/分页）。
 /// 用 NavigationStack path 管理三级导航。
-struct PatternBrowserSheet: View {
-    @Environment(\.dismiss) private var dismiss
+/// 选中图案后通过 [onSelect] 回调宿主载入右侧画布，面板停留在当前层级
+/// （与 web 端分栏"点图案不跳转、直接载入右侧"的行为一致）。
+struct PatternBrowser: View {
+    var currentDrawingId: String?
     var onSelect: (String, DrawingItem) -> Void
 
     @StateObject private var model = PatternBrowserModel()
-    @State private var path: [Route] = []
-
-    enum Route: Hashable {
-        case group(MainGroup)
-        case category(MainCategory)
-    }
+    @State private var path: [BrowserRoute] = []
 
     var body: some View {
         NavigationStack(path: $path) {
             GroupListView(model: model) { group in
-                path.append(.group(group))
+                // 只有一个分类且就是组本身（如 linedrawer）：直达图案网格，少一次点击（与 web Home 一致）
+                let cats = model.categories(of: group)
+                if cats.count == 1, let only = cats.first, only.id == group.id {
+                    path.append(.category(only))
+                } else {
+                    path.append(.group(group))
+                }
             }
             .navigationTitle("选择图案")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { dismiss() }
-                }
-            }
-            .navigationDestination(for: Route.self) { route in
+            .navigationDestination(for: BrowserRoute.self) { route in
                 switch route {
                 case .group(let group):
                     CategoryListView(model: model, group: group) { cat in
                         path.append(.category(cat))
                     }
                 case .category(let cat):
-                    DrawingGridView(categoryId: cat.id, categoryName: cat.displayName) { item in
-                        dismiss()
+                    DrawingGridView(
+                        categoryId: cat.id,
+                        categoryName: cat.displayName,
+                        currentDrawingId: currentDrawingId
+                    ) { item in
                         onSelect(cat.id, item)
                     }
                 }
             }
         }
-        .frame(minWidth: 760, minHeight: 580)
         .task {
             await model.loadIfNeeded()
         }
     }
+}
+
+/// 浏览器导航路由（文件级，供 navigationDestination 引用）
+enum BrowserRoute: Hashable {
+    case group(MainGroup)
+    case category(MainCategory)
 }
 
 // MARK: - 第一级：分组
@@ -64,14 +72,14 @@ private struct GroupListView: View {
             }
         } else {
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 14)], spacing: 14) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
                     ForEach(model.groups) { group in
                         Button {
                             onSelect(group)
                         } label: {
                             VStack(spacing: 8) {
                                 Text(group.emoji ?? "📦")
-                                    .font(.system(size: 40))
+                                    .font(.system(size: 36))
                                 Text(group.name)
                                     .font(.headline)
                                 Text("\(model.categoryCount(of: group)) 个分类 · \(model.totalCount(of: group)) 个图案")
@@ -79,13 +87,13 @@ private struct GroupListView: View {
                                     .foregroundStyle(.secondary)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 20)
+                            .padding(.vertical, 18)
                             .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 14))
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(16)
+                .padding(14)
             }
         }
     }
@@ -100,14 +108,14 @@ private struct CategoryListView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
                 ForEach(model.categories(of: group)) { cat in
                     Button {
                         onSelect(cat)
                     } label: {
                         VStack(spacing: 6) {
                             Text(cat.emoji ?? "📦")
-                                .font(.system(size: 30))
+                                .font(.system(size: 28))
                             Text(cat.displayName)
                                 .font(.subheadline.weight(.medium))
                                 .lineLimit(1)
@@ -122,7 +130,7 @@ private struct CategoryListView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(14)
+            .padding(12)
         }
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -135,15 +143,17 @@ private struct CategoryListView: View {
 private struct DrawingGridView: View {
     let categoryId: String
     let categoryName: String
+    var currentDrawingId: String?
     var onSelect: (DrawingItem) -> Void
 
     @StateObject private var model: DrawingGridModel
     @State private var searchText = ""
     @State private var difficulty: Int = 0   // 0=全部
 
-    init(categoryId: String, categoryName: String, onSelect: @escaping (DrawingItem) -> Void) {
+    init(categoryId: String, categoryName: String, currentDrawingId: String?, onSelect: @escaping (DrawingItem) -> Void) {
         self.categoryId = categoryId
         self.categoryName = categoryName
+        self.currentDrawingId = currentDrawingId
         self.onSelect = onSelect
         _model = StateObject(wrappedValue: DrawingGridModel(categoryId: categoryId))
     }
@@ -174,7 +184,7 @@ private struct DrawingGridView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .padding(.vertical, 10)
 
             if let msg = model.loadError {
@@ -187,16 +197,17 @@ private struct DrawingGridView: View {
             } else if model.items.isEmpty {
                 ProgressView().padding(.top, 80)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 108), spacing: 10)], spacing: 10) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                     ForEach(visibleItems) { item in
                         ThumbnailCard(
                             item: item,
                             categoryId: categoryId,
+                            isSelected: item.id == currentDrawingId,
                             onSelect: { onSelect(item) }
                         )
                     }
                 }
-                .padding(14)
+                .padding(12)
 
                 if model.loadedCount < model.items.count {
                     HStack {
@@ -233,6 +244,7 @@ private struct DrawingGridView: View {
 struct ThumbnailCard: View {
     let item: DrawingItem
     let categoryId: String
+    var isSelected: Bool = false
     var onSelect: () -> Void
 
     var body: some View {
@@ -255,7 +267,8 @@ struct ThumbnailCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
+                        .stroke(isSelected ? Color.accentColor : Color.black.opacity(0.12),
+                                lineWidth: isSelected ? 2.5 : 0.5)
                 )
 
                 HStack(spacing: 4) {

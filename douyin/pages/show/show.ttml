@@ -1,13 +1,19 @@
 <!-- 一笔一笔 StepDraw - 小程序展示模式页 -->
 <!-- 入口一：长按分类卡片进入；入口二：详情页"放映"按钮（先播图案，再回放用户笔迹） -->
-<!-- 画布交互：单击 停止/启动播放，双击 显示/隐藏轮廓 -->
+<!-- 画布交互：单击 停止/启动播放，双击 显示/隐藏轮廓；页面下拉 重新播放 -->
+<!-- 右下角悬浮按钮：点击录制这段播放 -> 录完自动调抖音发布器发视频；录制中再点 = 取消 -->
 <view class="show">
   <view class="main-content">
     <view class="canvas-wrapper">
       <view class="canvas-container">
         <view class="canvas-stack" style="width: {{canvasSize}}px; height: {{canvasSize}}px;">
+          <!-- 单层 2D 画布：播放图案/用户笔迹，同时也是保存视频的录制场景。
+               视频录制用【离屏】WebGL 画布（tt.createOffscreenCanvas，页面里不放录制画布）：
+               texImage2D 直接以这张 2D 画布为纹理源，省掉 getImageData 的 GPU→CPU→GPU 往返
+               （实机验证：该往返持续 ~58MB/s 会让 WebGL 画布 ~1 秒后停更，直传后视频完整）。 -->
           <canvas
             type="2d"
+            canvas-id="outlineCanvas"
             id="outlineCanvas"
             class="drawing-canvas"
             bindtap="onCanvasTap"
@@ -20,4 +26,12 @@
       </view>
     </view>
   </view>
+
+  <!-- 右下角悬浮按钮：open-type="uploadDouyinVideo" 触发 onUploadDouyinVideo 钩子
+       （钩子内 await 录完这段播放，再把视频交给抖音官方发布器）。
+       录制中加红点，再点一次取消。 -->
+  <button class="record-fab {{recording ? 'recording' : ''}}" open-type="uploadDouyinVideo">
+    <image class="record-fab-icon" src="/images/tiktok.png" mode="aspectFit" />
+    <view tt:if="{{recording}}" class="record-fab-dot"></view>
+  </button>
 </view>

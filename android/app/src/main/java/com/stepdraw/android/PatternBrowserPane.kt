@@ -1,11 +1,10 @@
 package com.stepdraw.android
 
-import android.app.Activity
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.os.Bundle
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -13,15 +12,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.stepdraw.android.data.DataStore
 import com.stepdraw.android.data.DrawingItem
@@ -56,14 +52,24 @@ sealed class Page {
 }
 
 /**
- * 图案选择底部弹窗：分组 → 分类 → 图案网格（搜索/难度筛选/分页加载）。
+ * 常驻图案浏览面板（分栏左栏）：分组 → 分类 → 图案网格（搜索/难度筛选/分页加载）。
  * 与 ipad/PatternBrowser.swift 同构，用单 RecyclerView + 页面栈模拟 NavigationStack。
- * 选中图案后通过 [PatternListener] 回调宿主。
+ *
+ * 与底部弹窗版的区别：这是常驻 View（非 DialogFragment），放在 activity 布局的左栏；
+ * 选中图案后通过 [onSelect] 回调宿主载入右侧画布，面板停留在当前层级
+ * （与 web 端分栏"点图案不跳转、直接载入右侧"的行为一致）。
  */
-class PatternBrowserBottomSheet : DialogFragment() {
+class PatternBrowserPane @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+) : LinearLayout(context, attrs) {
+
+    var onSelect: ((String, DrawingItem) -> Unit)? = null
+    /** 当前右侧画布图案 id（网格中高亮，宿主在图案变化时更新） */
+    var currentDrawingId: String? = null
 
     private val pages = ArrayDeque<Page>()
-    private lateinit var adapter: PatternAdapter
+    private lateinit var adapter: PaneAdapter
     private var gridItems: MutableList<DrawingItem> = mutableListOf()
     private var gridLoaded = 0
     private var gridLoading = false
@@ -71,9 +77,10 @@ class PatternBrowserBottomSheet : DialogFragment() {
     private var mainIndex: MainIndex? = null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val density: Float get() = resources.displayMetrics.density
+    private fun dp(v: Int): Int = (v * density).toInt()
 
     // 头部控件
-    private lateinit var root: LinearLayout
     private lateinit var btnBack: ImageButton
     private lateinit var tvTitle: TextView
     private lateinit var searchBox: EditText
@@ -85,31 +92,22 @@ class PatternBrowserBottomSheet : DialogFragment() {
 
     companion object {
         private const val PAGE = 24
-        fun newInstance(): PatternBrowserBottomSheet = PatternBrowserBottomSheet()
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ): View {
-        val ctx = requireContext()
-
-        root = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            background = GradientDrawable().apply {
-                setColor(Color.WHITE)
-                cornerRadius = dp(16).toFloat()
-            }
+    init {
+        orientation = VERTICAL
+        background = GradientDrawable().apply {
+            setColor(Color.WHITE)
+            cornerRadius = 0f
         }
 
         // ===== 头部 =====
-        val header = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
+        val header = LinearLayout(context).apply {
+            orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(10))
         }
-        btnBack = ImageButton(ctx).apply {
+        btnBack = ImageButton(context).apply {
             setImageResource(android.R.drawable.ic_menu_revert)
             setColorFilter(Color.parseColor("#8E8E93"))
             val p = dp(4)
@@ -118,14 +116,14 @@ class PatternBrowserBottomSheet : DialogFragment() {
             visibility = View.GONE
             setOnClickListener { popPage() }
         }
-        tvTitle = TextView(ctx).apply {
+        tvTitle = TextView(context).apply {
             text = "选择图案"
             textSize = 16f
             setTextColor(Color.parseColor("#1C1C1E"))
             setTypeface(typeface, Typeface.BOLD)
             maxLines = 1
         }
-        searchBox = EditText(ctx).apply {
+        searchBox = EditText(context).apply {
             hint = "搜索图案名称"
             textSize = 13f
             setSingleLine(true)
@@ -145,78 +143,66 @@ class PatternBrowserBottomSheet : DialogFragment() {
         header.addView(btnBack)
         header.addView(
             tvTitle,
-            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).also {
-                it.marginStart = dp(8)
-            },
+            LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).also { it.marginStart = dp(8) },
         )
         header.addView(
             searchBox,
-            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.4f).also {
-                it.marginStart = dp(8)
-            },
+            LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.4f).also { it.marginStart = dp(8) },
         )
-        root.addView(header)
+        addView(
+            header,
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT),
+        )
 
         // ===== 难度筛选（网格页显示）=====
-        diffChips = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
+        diffChips = LinearLayout(context).apply {
+            orientation = HORIZONTAL
             visibility = View.GONE
         }
         val diffLabels = arrayOf("全部", "入门", "简单", "进阶")
         diffButtons = Array(4) { i ->
-            TextView(ctx).apply {
+            TextView(context).apply {
                 text = diffLabels[i]
                 textSize = 12f
                 setPadding(dp(10), dp(5), dp(10), dp(5))
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                layoutParams = LayoutParams(
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
                 ).also { it.marginStart = if (i == 0) 0 else dp(6) }
                 setOnClickListener { applyDifficulty(i) }
             }
         }
         for (b in diffButtons) diffChips.addView(b)
-        root.addView(
+        addView(
             diffChips,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).also { it.topMargin = dp(10) },
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                .also { it.topMargin = dp(6); it.leftMargin = dp(14); it.rightMargin = dp(14) },
         )
 
         // ===== 列表区 =====
-        rv = RecyclerView(ctx).apply {
-            layoutManager = GridLayoutManager(ctx, 3)
+        rv = RecyclerView(context).apply {
+            layoutManager = GridLayoutManager(context, 2)
             isVerticalScrollBarEnabled = true
         }
-        root.addView(
+        addView(
             rv,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f,
-            ).also { it.topMargin = dp(10) },
+            LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f).also { it.topMargin = dp(6) },
         )
 
-        progressView = ProgressBar(ctx).apply { visibility = View.VISIBLE }
-        root.addView(
+        progressView = ProgressBar(context).apply { visibility = View.VISIBLE }
+        addView(
             progressView,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).also {
-                it.topMargin = dp(10)
-                it.gravity = Gravity.CENTER
-            },
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                .also { it.topMargin = dp(10); it.gravity = Gravity.CENTER },
         )
 
-        adapter = PatternAdapter(
-            density = resources.displayMetrics.density,
+        adapter = PaneAdapter(
+            density = density,
             onGroupClick = { pushCategory(it) },
             onCategoryClick = { pushGrid(it) },
             onItemSelect = { item ->
-                val cat = currentGridCategory ?: return@PatternAdapter
-                val host = activity as? PatternListener
-                host?.onPatternSelected(cat, item)
-                dismiss()
+                val cat = currentGridCategory ?: return@PaneAdapter
+                onSelect?.invoke(cat, item)
             },
             onThumbBind = { view, item, catId ->
                 ImageLoader.load(view, DataStore.getInstance().thumbnailURL(catId, item))
@@ -235,8 +221,11 @@ class PatternBrowserBottomSheet : DialogFragment() {
                 showError("加载分类失败，请检查网络后重试")
             }
         }
+    }
 
-        return root
+    override fun onDetachedFromWindow() {
+        scope.cancel()
+        super.onDetachedFromWindow()
     }
 
     // MARK: - 页面栈
@@ -252,8 +241,13 @@ class PatternBrowserBottomSheet : DialogFragment() {
         val cats = idx.categories.filter {
             it.id == group.id || (it.dir ?: "").startsWith(group.id + "/")
         }
-        pages.addLast(Page.CategoryList(group, cats))
-        renderCurrentPage()
+        // 只有一个分类且就是组本身（如 linedrawer）：直达图案网格，少一次点击（与 web Home 一致）
+        if (cats.size == 1) {
+            pushGrid(cats[0])
+        } else {
+            pages.addLast(Page.CategoryList(group, cats))
+            renderCurrentPage()
+        }
     }
 
     private fun pushGrid(cat: MainCategory) {
@@ -291,8 +285,6 @@ class PatternBrowserBottomSheet : DialogFragment() {
         if (pages.size > 1) {
             pages.removeLast()
             renderCurrentPage()
-        } else {
-            dismiss()
         }
     }
 
@@ -329,18 +321,16 @@ class PatternBrowserBottomSheet : DialogFragment() {
     }
 
     private fun loadMore() {
-        val g = pages.last() as? Page.Grid ?: return
+        if (pages.last() !is Page.Grid) return
         if (gridLoaded >= gridItems.size) return
         gridLoaded = (gridLoaded + PAGE).coerceAtMost(gridItems.size)
-        // loadMore 在 onBindViewHolder 期间被触发，notify 必须 post 出去，否则会抛
-        // IllegalStateException（Cannot call this method while RecyclerView is computing a layout）
         rv.post {
-            if (!isAdded) return@post
+            if (!isAttachedToWindow) return@post
             val fresh = pages.last() as? Page.Grid ?: return@post
             val newPage = fresh.copy(loadedCount = gridLoaded)
             pages.removeLast()
             pages.addLast(newPage)
-            adapter.submit(newPage)
+            adapter.submit(newPage, currentDrawingId)
         }
     }
 
@@ -376,8 +366,8 @@ class PatternBrowserBottomSheet : DialogFragment() {
                 btnBack.visibility = View.GONE
                 searchBox.visibility = View.GONE
                 diffChips.visibility = View.GONE
-                rv.layoutManager = GridLayoutManager(requireContext(), 3)
-                adapter.submit(page)
+                rv.layoutManager = GridLayoutManager(context, 2)
+                adapter.submit(page, currentDrawingId)
             }
 
             is Page.CategoryList -> {
@@ -385,8 +375,8 @@ class PatternBrowserBottomSheet : DialogFragment() {
                 btnBack.visibility = View.VISIBLE
                 searchBox.visibility = View.GONE
                 diffChips.visibility = View.GONE
-                rv.layoutManager = GridLayoutManager(requireContext(), 3)
-                adapter.submit(page)
+                rv.layoutManager = GridLayoutManager(context, 2)
+                adapter.submit(page, currentDrawingId)
             }
 
             is Page.Grid -> {
@@ -396,38 +386,17 @@ class PatternBrowserBottomSheet : DialogFragment() {
                 diffChips.visibility = View.VISIBLE
                 refreshDiffChips(page.difficulty)
                 val span = if (rv.width > 0) {
-                    (rv.width / dp(108)).coerceIn(2, 8)
-                } else 4
-                rv.layoutManager = GridLayoutManager(requireContext(), span)
-                adapter.submit(page)
+                    (rv.width / dp(104)).coerceIn(2, 5)
+                } else 2
+                rv.layoutManager = GridLayoutManager(context, span)
+                adapter.submit(page, currentDrawingId)
                 searchBox.setText(page.query)
             }
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        dialog?.window?.let { w ->
-            val wm = requireContext().getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
-            val dm = android.util.DisplayMetrics()
-            wm.defaultDisplay.getMetrics(dm)
-            w.setLayout(
-                (dm.widthPixels * 0.85f).toInt(),
-                (dm.heightPixels * 0.82f).toInt(),
-            )
-        }
-    }
-
-    override fun onDestroyView() {
-        scope.cancel()
-        super.onDestroyView()
-    }
-
-    private fun dp(v: Int): Int =
-        (v * resources.displayMetrics.density).toInt()
-
     private fun hideKeyboard() {
-        val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE)
+        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
             as? android.view.inputmethod.InputMethodManager
         imm?.hideSoftInputFromWindow(searchBox.windowToken, 0)
     }
@@ -436,20 +405,22 @@ class PatternBrowserBottomSheet : DialogFragment() {
 /**
  * 三态适配器：分组卡片 / 分类卡片 / 图案网格卡片。统一用一个 ViewHolder 承载所有子视图。
  */
-private class PatternAdapter(
+private class PaneAdapter(
     private val density: Float,
     private val onGroupClick: (MainGroup) -> Unit,
     private val onCategoryClick: (MainCategory) -> Unit,
     private val onItemSelect: (DrawingItem) -> Unit,
     private val onThumbBind: (ImageView, DrawingItem, String) -> Unit,
     private val onReachEnd: () -> Unit,
-) : RecyclerView.Adapter<PatternAdapter.Holder>() {
+) : RecyclerView.Adapter<PaneAdapter.Holder>() {
 
     private var page: Any? = null
     private var currentCategoryForGrid: MainCategory? = null
+    private var currentDrawingId: String? = null
 
-    fun submit(page: Any) {
+    fun submit(page: Any, currentDrawingId: String?) {
         this.page = page
+        this.currentDrawingId = currentDrawingId
         currentCategoryForGrid = (page as? Page.Grid)?.category
         notifyDataSetChanged()
     }
@@ -467,15 +438,13 @@ private class PatternAdapter(
                 cornerRadius = dp(12).toFloat()
             }
             layoutParams = RecyclerView.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                RecyclerView.LayoutParams.MATCH_PARENT,
+                RecyclerView.LayoutParams.WRAP_CONTENT,
             ).also { it.setMargins(dp(6), dp(6), dp(6), dp(6)) }
         }
         val emoji = TextView(ctx).apply {
-            textSize = 34f
+            textSize = 32f
             gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
         val title = TextView(ctx).apply {
             textSize = 14f
@@ -493,7 +462,7 @@ private class PatternAdapter(
             setPadding(0, dp(2), 0, 0)
         }
         val thumb = ImageView(ctx).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(84), dp(84))
+            layoutParams = LinearLayout.LayoutParams(dp(88), dp(88))
             scaleType = ImageView.ScaleType.CENTER_CROP
             background = GradientDrawable().apply {
                 setColor(0xFFF5F5F7.toInt())
@@ -581,6 +550,7 @@ private class PatternAdapter(
                     name = item.name,
                     difficulty = item.difficulty,
                     thumbItem = item,
+                    selected = item.id == currentDrawingId,
                 )
                 holder.itemView.setOnClickListener { onItemSelect(item) }
                 if (position >= visibleCount(p) - 6) onReachEnd()
@@ -607,6 +577,7 @@ private class PatternAdapter(
         name: String? = null,
         difficulty: Int? = null,
         thumbItem: DrawingItem? = null,
+        selected: Boolean = false,
     ) {
         h.emoji.visibility = if (emoji != null) View.VISIBLE else View.GONE
         if (emoji != null) h.emoji.text = emoji
@@ -617,6 +588,14 @@ private class PatternAdapter(
         h.thumb.visibility = if (showThumb) View.VISIBLE else View.GONE
         h.name.visibility = if (showName) View.VISIBLE else View.GONE
         if (name != null) h.name.text = name
+        // 选中态：网格卡片描边高亮
+        h.thumb.background = GradientDrawable().apply {
+            setColor(0xFFF5F5F7.toInt())
+            cornerRadius = dp(8).toFloat()
+            if (selected) {
+                setStroke(dp(3), Color.parseColor("#1E88E5"))
+            }
+        }
         h.diffTag.visibility = if (difficulty != null) View.VISIBLE else View.GONE
         if (difficulty != null) {
             h.diffTag.text = when (difficulty) {
@@ -648,6 +627,8 @@ private class PatternAdapter(
             h.thumb.setImageDrawable(null)
         }
     }
+
+    private fun dp(v: Int): Int = (v * density).toInt()
 
     class Holder(
         itemView: View,

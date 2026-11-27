@@ -304,3 +304,11 @@
     gap: 12px;
   }
 }
+
+/* 分栏(平板/PC)左栏仅 ~400px 宽：minmax(200px,1fr) 只放得下 1 列，
+   每个图案卡片占满整行太宽。强制至少 2 列。仅作用于 .split-left。 */
+.split-left .drawing-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  padding: 14px;
+}

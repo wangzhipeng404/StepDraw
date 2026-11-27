@@ -4,7 +4,9 @@ const config = require('../../config');
 Page({
   data: {
     groups: [],
-    loading: true
+    loading: true,
+    // ICP 备案号来自 config（各端不同），点一下引导去官网查询
+    icpNumber: config.ICP_NUMBER
   },
 
   onLoad() {
@@ -83,6 +85,29 @@ Page({
         icon: 'none'
       });
     }
+  },
+
+  // 点击备案号：小程序不能直接打开外部网址，把查询官网地址复制到剪贴板并提示去浏览器打开
+  onIcpTap() {
+    wx.setClipboardData({
+      data: config.ICP_VERIFY_URL,
+      success: () => {
+        // setClipboardData 成功后系统会默认弹"内容已复制"，这里补一个更明确的引导
+        wx.showToast({
+          title: '已复制备案查询网址，请到浏览器粘贴打开',
+          icon: 'none',
+          duration: 2600
+        });
+      },
+      fail: () => {
+        // 复制失败（少见）：直接展示网址让用户手动复制
+        wx.showModal({
+          title: 'ICP 备案查询',
+          content: config.ICP_VERIFY_URL,
+          showCancel: false
+        });
+      }
+    });
   },
 
   onGroupTap(e) {

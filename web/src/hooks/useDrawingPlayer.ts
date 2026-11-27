@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { Drawing, PlayState, DemoMode } from '../types';
+import type { Drawing, PlayState, DemoMode, Stroke } from '../types';
+import { getStrokePlayLength } from '../utils/canvas';
 
 interface UseDrawingPlayerProps {
   drawing: Drawing;
@@ -7,28 +8,9 @@ interface UseDrawingPlayerProps {
   initialState?: Partial<PlayState>;
 }
 
-// 计算两点之间的距离
-function distance(p1: [number, number], p2: [number, number]): number {
-  const dx = p2[0] - p1[0];
-  const dy = p2[1] - p1[1];
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-// 计算一个笔画的总长度
-function getStrokeLength(stroke: { points: [number, number][] }): number {
-  const points = stroke.points;
-  if (points.length < 2) return 0;
-
-  let length = 0;
-  for (let i = 1; i < points.length; i++) {
-    length += distance(points[i - 1], points[i]);
-  }
-  return length;
-}
-
-// 计算一个步骤的总长度（所有笔画长度之和）
-function getStepLength(step: { strokes: { points: [number, number][] }[] }): number {
-  return step.strokes.reduce((sum, stroke) => sum + getStrokeLength(stroke), 0);
+// 计算一个步骤的总长度（所有笔画播放时长长度之和；填色笔画记 0）
+function getStepLength(step: { strokes: Stroke[] }): number {
+  return step.strokes.reduce((sum, stroke) => sum + getStrokePlayLength(stroke), 0);
 }
 
 export function useDrawingPlayer({ drawing, initialState }: UseDrawingPlayerProps) {
@@ -214,21 +196,22 @@ export function useDrawingPlayer({ drawing, initialState }: UseDrawingPlayerProp
     };
   }, [state.playing, state.speed, totalSteps, state.loopCurrentStep, stepLengths]);
 
-  // 计算全局进度
+  // 计算全局进度（空图案 totalSteps=0 时分母取 1，避免 NaN）
   const getGlobalProgress = useCallback((): number => {
     const completedStepsLength = state.currentStep;
     const currentStepProgress = state.progress;
-    return (completedStepsLength + currentStepProgress) / totalSteps;
+    return (completedStepsLength + currentStepProgress) / Math.max(1, totalSteps);
   }, [state.currentStep, state.progress, totalSteps]);
 
   // 设置全局进度
   const setGlobalProgress = useCallback((globalProgress: number) => {
     setState(prev => {
+      const safeTotal = Math.max(1, totalSteps);
       const step = Math.min(
-        Math.floor(globalProgress * totalSteps),
-        totalSteps - 1
+        Math.floor(globalProgress * safeTotal),
+        safeTotal - 1
       );
-      const stepProgress = globalProgress * totalSteps - step;
+      const stepProgress = globalProgress * safeTotal - step;
       return {
         ...prev,
         currentStep: step,

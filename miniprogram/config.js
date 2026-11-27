@@ -5,8 +5,13 @@
 
 const BASE_URL = 'https://wangzhipeng404.github.io/StepDraw/data';
 
-// 播放时"正在绘制"笔画的颜色：介于轮廓底图（#333@15%）与最终线条（#000）之间的深灰
-const PLAY_STROKE_COLOR = '#666';
+// 播放时"正在绘制"笔画的颜色
+const PLAY_STROKE_COLOR = '#ff7875';
+
+// ICP 备案号（各端不同：微信小程序与抖音小程序各自备案，故放在各自 config，不写死在页面里）
+const ICP_NUMBER = '粤ICP备2026189971号-1X';
+// ICP 备案查询官网：点击备案号引导用户去查询（小程序不能直接打开外部网址，走复制链接）
+const ICP_VERIFY_URL = 'https://beian.miit.gov.cn/';
 
 /**
  * 获取分类索引地址
@@ -48,6 +53,8 @@ function getAssetUrl(path) {
 module.exports = {
   BASE_URL,
   PLAY_STROKE_COLOR,
+  ICP_NUMBER,
+  ICP_VERIFY_URL,
   getCategoryIndexUrl,
   getCategoryUrl,
   getDrawingUrl,

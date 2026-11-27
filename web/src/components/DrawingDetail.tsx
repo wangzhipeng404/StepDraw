@@ -7,7 +7,7 @@ import { STROKE_TYPES } from '../types';
 import { loadDrawing } from '../data/drawings';
 import { useDrawingPlayer } from '../hooks/useDrawingPlayer';
 import { useDrawingCanvas } from '../hooks/useDrawingCanvas';
-import { toImagePoint, zoomAnchored, IDENTITY_VIEW, buildUnderlay, floodFill, isPointInMask, pickLineForRecolor, pickUserActionIndex } from '../utils/canvas';
+import { toImagePoint, zoomAnchored, IDENTITY_VIEW, buildUnderlay, floodFill, isPointInMask, pickLineForRecolor, pickUserActionIndex, thinStrokePoints, snapStrokeToLine } from '../utils/canvas';
 import type { ViewTransform } from '../utils/canvas';
 import { Navbar } from './Navbar';
 import preIcon from '../assets/pre.png';
@@ -120,6 +120,9 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
   const pinchStartRef = useRef<{ dist: number; view: ViewTransform; cx: number; cy: number } | null>(null);
   // 绘制模式下的双指缩放/平移：手势起始状态（距离/中点/视图），见 handlePointerDown
   const drawPointerIdRef = useRef<number | null>(null);
+  // 右键平移状态：canvas 的 pointermove 会被右键的 contextmenu/pointercancel 打断，
+  // 所以右键平移单独用 document 级 mousemove/mouseup 驱动，状态也独立于此 ref（不受 handlePointerUp 影响）。
+  const rightPanRef = useRef<{ active: boolean; x: number; y: number }>({ active: false, x: 0, y: 0 });
 
   // 获取 Canvas 位置与尺寸（在组件挂载后获取，并在窗口大小变化时更新）
   useEffect(() => {
@@ -172,12 +175,21 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     return toImagePoint(clientX, clientY, rect.left, rect.top, rect.width, rect.height, viewRef.current);
   }, []);
 
-  // 收尾当前笔画：按时间序入操作栈（即使只有一个点也保存）
+  // 收尾当前笔画：按时间序入操作栈（即使只有一个点也保存）。
+  // 提交前做两步后处理（与小程序端 commit 一致，显示/导出/放映回放全链路生效）：
+  //  抽稀 —— 去掉离上个点 <2px 的采样点（触摸抖动噪声），数据量减小、线更干净；
+  //  直线化 —— 整体几乎沿一条线（偏差 <6%）就替换成首尾直线段。
   const commitStroke = useCallback(() => {
     const currentStroke = currentStrokeRef.current;
     if (!currentStroke) return;
+    let points = currentStroke.points;
+    if (points.length > 2) {
+      points = thinStrokePoints(points);
+      const snapped = snapStrokeToLine(points);
+      if (snapped) points = snapped;
+    }
     const newStroke: UserStroke = {
-      points: [...currentStroke.points],
+      points,
       width: currentStroke.width,
       color: currentStroke.color,
       type: currentStroke.type
@@ -294,13 +306,61 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     }
   }, []);
 
+  // 取色器：在落点处采样当前画面颜色，设为当前画笔颜色（与小程序端一致）。
+  // 采样源 = 三层可见画布（已含当前动画笔画与视图变换，所见即所采）。
+  // 命中纯白（图案外背景/纯白区域）时无义，提示后不改变颜色。
+  const applyColorPick = useCallback((clientX: number, clientY: number) => {
+    const rect = canvasRectRef.current;
+    if (!rect) return;
+    const dpr = window.devicePixelRatio || 1;
+    const dx = Math.floor((clientX - rect.left) * dpr);
+    const dy = Math.floor((clientY - rect.top) * dpr);
+    const w = Math.round(rect.width * dpr);
+    const h = Math.round(rect.height * dpr);
+    if (dx < 0 || dy < 0 || dx >= w || dy >= h) return;
+
+    const probe = document.createElement('canvas');
+    probe.width = w;
+    probe.height = h;
+    const ctx = probe.getContext('2d');
+    if (!ctx) return;
+
+    // 与屏幕同层次合成：底层 -> 中层 -> 顶层。
+    // 这三层可见画布已含全部内容（图案 + 当前动画笔画 + 用户内容，且已应用视图变换），
+    // 所见即所采，无需再补画任何一层。
+    for (const layer of [outlineRef.current, historyRef.current, brushRef.current]) {
+      if (layer) ctx.drawImage(layer, 0, 0);
+    }
+
+    const d = ctx.getImageData(dx, dy, 1, 1).data;
+    // 画布空白区是透明的（alpha=0，RGB 无意义，背景由容器白色 CSS 提供）。
+    // 采到透明 = 点在空白上，无颜色可取，提示而非取黑。
+    if (d[3] < 16) {
+      showFillHint('这里没有颜色（是空白）');
+      return;
+    }
+    const [r, g, b] = [d[0], d[1], d[2]];
+    const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+    setStrokeColor(hex);
+  }, [outlineRef, historyRef, brushRef, showFillHint]);
+
   // 开始（指针按下）
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    (e.target as Element).setPointerCapture?.(e.pointerId);
     const rect = canvasRectRef.current;
     if (!rect) return;
 
+    // 右键拖动 = 平移画面（任何模式下都可用）。这里【不捕获指针】——capture 会把指针事件
+    // 重定向到 canvas 并可能触发 pointercancel 打断手势（之前"右键拖动无效"的根因）。
+    // 平移改由 document 级 pointermove 驱动（见下方 effect），状态记在 rightPanRef
+    // （handlePointerUp 不碰它，所以 pointercancel/onPointerCancel 也断不掉）。
+    if (e.button === 2) {
+      gestureModeRef.current = 'pan';
+      rightPanRef.current = { active: true, x: e.clientX, y: e.clientY };
+      return;
+    }
+
+    (e.target as Element).setPointerCapture?.(e.pointerId);
     activePointersRef.current.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY });
     const pointers = Array.from(activePointersRef.current.values());
 
@@ -350,11 +410,6 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
 
     // 单指
     if (drawingMode) {
-      // PC：右键拖动 = 平移画面（不绘制/填充/擦除）
-      if (e.button === 2) {
-        gestureModeRef.current = 'pan';
-        return;
-      }
       if (strokeType === 'fill') {
         // 填充：单击落点即填充当前颜色，不拖拽
         applyFill(e.clientX, e.clientY);
@@ -363,6 +418,10 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
         // 橡皮擦：按下即擦一次，之后拖动持续擦（见 move 分支）
         eraseAt(e.clientX, e.clientY);
         gestureModeRef.current = 'erase';
+      } else if (strokeType === 'colorpick') {
+        // 取色器：单击落点采样颜色设为当前色，不拖拽
+        applyColorPick(e.clientX, e.clientY);
+        gestureModeRef.current = 'none';
       } else {
         // 绘制模式：开始一笔
         const p = toImage(e.clientX, e.clientY);
@@ -380,10 +439,13 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
       // 非绘制模式：单指/鼠标拖动平移
       gestureModeRef.current = 'pan';
     }
-  }, [drawingMode, strokeWidth, strokeColor, strokeType, toImage, applyFill, eraseAt, commitStroke]);
+  }, [drawingMode, strokeWidth, strokeColor, strokeType, toImage, applyFill, eraseAt, applyColorPick, commitStroke]);
 
   // 指针移动：按手势模式分派（绘制 / 平移 / 捏合缩放）
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    // 右键平移由 document 级 mousemove 驱动（pointercancel 会打断 canvas pointer 序列），
+    // 这里跳过，避免同一帧里 canvas pointermove 也平移导致双倍位移。
+    if (rightPanRef.current.active) return;
     const rect = canvasRectRef.current;
     if (!rect) return;
     const mode = gestureModeRef.current;
@@ -705,6 +767,41 @@ function DrawingCanvas({ drawing, onBack }: DrawingCanvasProps) {
     canvas.addEventListener('wheel', onWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', onWheel);
   }, [brushRef]);
+
+  // 禁止画布弹出浏览器右键菜单（绘制模式下右键=平移）。
+  // document 级【捕获阶段】监听：事件从 document 向下派发时先经过这里，早于任何子元素
+  // 处理器，能可靠 preventDefault 掉右键菜单（比只在 canvas 上挂 React onContextMenu 稳）。
+  useEffect(() => {
+    const onContextMenu = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (target && target.closest('.canvas-stack')) e.preventDefault();
+    };
+    document.addEventListener('contextmenu', onContextMenu, true);
+    return () => document.removeEventListener('contextmenu', onContextMenu, true);
+  }, []);
+
+  // 右键平移：canvas 的 pointermove 会被右键触发的 contextmenu/pointercancel 打断
+  // （见 handlePointerDown 里 button===2 分支把状态记到 rightPanRef）。所以右键拖动改用
+  // document 级 mousemove/mouseup 驱动平移——物理鼠标一定派发 mousemove/mouseup，
+  // 不依赖 canvas 的 pointer 事件序列，pointercancel 也不影响。
+  const handleRightPanUp = useCallback(() => {
+    rightPanRef.current.active = false;
+    gestureModeRef.current = 'none';
+  }, []);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const rp = rightPanRef.current;
+      if (!rp.active) return;
+      viewRef.current = { ...viewRef.current, tx: viewRef.current.tx + (e.clientX - rp.x), ty: viewRef.current.ty + (e.clientY - rp.y) };
+      rp.x = e.clientX; rp.y = e.clientY;
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', handleRightPanUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', handleRightPanUp);
+    };
+  }, [handleRightPanUp]);
 
   const currentStepData = drawing.steps[state.currentStep];
   const globalProgress = getGlobalProgress();

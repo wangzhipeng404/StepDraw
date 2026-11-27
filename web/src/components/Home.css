@@ -197,3 +197,33 @@
     font-size: 11px;
   }
 }
+
+/* 分栏(平板/PC)左栏仅 ~400px 宽：minmax(220px,1fr) 只放得下 1 列，
+   导致每个分类占满整行太宽。强制至少 2 列。仅作用于 .split-left，竖屏布局不受影响。 */
+.split-left .group-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.split-left .group-card {
+  padding: 22px 14px;
+}
+
+.split-left .group-icon {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 12px;
+}
+
+.split-left .group-icon span {
+  font-size: 28px;
+}
+
+.split-left .group-name {
+  font-size: 16px;
+}
+
+.split-left .group-meta {
+  font-size: 12px;
+}

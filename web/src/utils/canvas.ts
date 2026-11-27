@@ -1,6 +1,6 @@
 // 一笔一笔 StepDraw - Canvas 渲染工具
 
-import type { Drawing, Stroke, UserAction, UserStroke } from '../types';
+import type { Drawing, Stroke, UserAction, UserStroke, UserFill } from '../types';
 
 /**
  * 将采样点转换为平滑的二次贝塞尔曲线路径
@@ -114,8 +114,100 @@ function sliceStrokeByProgress(stroke: Stroke, progress: number): Stroke {
 }
 
 /**
+ * 抽稀：去掉离上一个点 <minDist 的采样点（触摸抖动噪声）。与小程序端 commit 时一致。
+ */
+export function thinStrokePoints(points: [number, number][], minDist = 2): [number, number][] {
+  if (points.length < 2) return points.slice();
+  const out: [number, number][] = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const [px, py] = out[out.length - 1];
+    const [x, y] = points[i];
+    const dx = x - px, dy = y - py;
+    if (dx * dx + dy * dy >= minDist * minDist) out.push([x, y]);
+  }
+  return out;
+}
+
+/**
+ * 直线化：笔画整体几乎沿一条直线（每个采样点离首尾连线距离都 < max(2, 6%总长)）
+ * 时返回 [首点, 末点]，否则 null。与小程序端 commit 时一致。
+ */
+export function snapStrokeToLine(points: [number, number][]): [number, number][] | null {
+  if (points.length < 3) return null;
+  const [x1, y1] = points[0];
+  const [x2, y2] = points[points.length - 1];
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 12) return null; // 太短没有直线化意义
+  const tol = Math.max(2, len * 0.06);
+  const tol2 = tol * tol;
+  for (let i = 1; i < points.length - 1; i++) {
+    const [x, y] = points[i];
+    const cross = dx * (y - y1) - dy * (x - x1);
+    const d2 = (cross * cross) / (len * len);
+    if (d2 > tol2) return null;
+  }
+  return [[x1, y1], [x2, y2]];
+}
+
+/**
+ * 把点列按"中点二次贝塞尔"平滑连成一条子路径（不 beginPath、不 stroke，只填轨迹）。
+ * 控制点取采样点、曲线过相邻点中点 —— 贴着原轨迹抹平锯齿（与小程序端同算法）。
+ */
+function tracePath(ctx: CanvasRenderingContext2D, points: [number, number][]): void {
+  if (points.length === 0) return;
+  ctx.moveTo(points[0][0], points[0][1]);
+  if (points.length === 2) {
+    ctx.lineTo(points[1][0], points[1][1]);
+    return;
+  }
+  for (let i = 1; i < points.length - 1; i++) {
+    const midX = (points[i][0] + points[i + 1][0]) / 2;
+    const midY = (points[i][1] + points[i + 1][1]) / 2;
+    ctx.quadraticCurveTo(points[i][0], points[i][1], midX, midY);
+  }
+  const last = points[points.length - 1];
+  ctx.lineTo(last[0], last[1]);
+}
+
+/**
  * 渲染单个笔画到 Canvas
  */
+// 填色笔画（涂色本数据，img2json.py 格式）：type==='fill' 或 width===0 且
+// fill 为具体颜色（"none" 是字符串，不是颜色）。points 是封闭多边形（首尾点相同）。
+// 播放时按多边形整块填色，不描边。
+export function isPatternFillStroke(stroke: Stroke | undefined): boolean {
+  if (!stroke) return false;
+  if (stroke.type === 'fill') return true;
+  return stroke.width === 0
+    && typeof stroke.fill === 'string'
+    && stroke.fill !== 'none';
+}
+
+// 笔画的播放时长长度：填色笔画记 0（到达即整块出现，不占时长、多边形周长
+// 不应折算成"生长速度"），普通笔画 = 点列弧长。进度映射/步长计算统一走这里。
+export function getStrokePlayLength(stroke: Stroke): number {
+  if (isPatternFillStroke(stroke)) return 0;
+  return calculateStrokeLengths(stroke.points).totalLength;
+}
+
+// 画一个填色笔画：按 points 多边形填充 fill 色（viewBox 坐标系，调用方已 apply viewBox 变换）。
+export function renderPatternFillStroke(
+  ctx: CanvasRenderingContext2D,
+  stroke: Stroke
+): void {
+  const color = stroke.fill || stroke.color;
+  if (!color || color === 'none' || !Array.isArray(stroke.points) || stroke.points.length < 3) return;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(stroke.points[0][0], stroke.points[0][1]);
+  for (let i = 1; i < stroke.points.length; i++) {
+    ctx.lineTo(stroke.points[i][0], stroke.points[i][1]);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
 export function renderStroke(
   ctx: CanvasRenderingContext2D,
   stroke: Stroke,
@@ -155,7 +247,8 @@ export function renderStroke(
       accumulatedLength += segments[i - 1];
     }
   } else {
-    // 已完成笔画，绘制完整
+    // 已完成笔画，绘制完整（轮廓用直线连接采样点，保持原始直角；
+    // 圆滑只用于用户笔画 renderUserStroke，两者不共用 tracePath）
     ctx.moveTo(stroke.points[0][0], stroke.points[0][1]);
     for (let i = 1; i < stroke.points.length; i++) {
       ctx.lineTo(stroke.points[i][0], stroke.points[i][1]);
@@ -171,7 +264,8 @@ export function renderStroke(
  */
 export function renderUserStroke(
   ctx: CanvasRenderingContext2D,
-  stroke: UserStroke
+  stroke: UserStroke,
+  progress: number = 1
 ): void {
   const color = stroke.color || '#E53935';
   const width = stroke.width || 4;
@@ -180,13 +274,38 @@ export function renderUserStroke(
 
   if (points.length === 0) return;
 
+  // 回放生长：progress<1 时按弧长截断多点点列（单点无长度，直接画）。
+  // 与小程序端 drawUserStroke 的同款长度插值，保证回放/录制画面一致。
+  let target: [number, number][] = points;
+  if (progress < 1 && points.length >= 2) {
+    if (progress <= 0) return;
+    const { totalLength, segments } = calculateStrokeLengths(points);
+    if (totalLength === 0) return;
+    const targetLength = progress * totalLength;
+    target = [points[0]];
+    let acc = 0;
+    for (let i = 1; i < points.length; i++) {
+      const seg = segments[i - 1];
+      if (acc + seg >= targetLength) {
+        const t = seg > 0 ? (targetLength - acc) / seg : 0;
+        const p0 = points[i - 1];
+        const p1 = points[i];
+        target.push([p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t]);
+        break;
+      }
+      target.push(points[i]);
+      acc += seg;
+    }
+    if (target.length < 2) return;
+  }
+
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
   // 单个点：绘制一个圆形
-  if (points.length === 1) {
-    const [x, y] = points[0];
+  if (target.length === 1) {
+    const [x, y] = target[0];
     const radius = width / 2;
 
     if (strokeType === 'pencil') {
@@ -235,13 +354,9 @@ export function renderUserStroke(
       ctx.fill();
     }
   } else {
-    // 多个点：绘制路径
+    // 多个点：平滑路径（中点二次贝塞尔，与小程序端 drawUserStroke 一致）
     ctx.beginPath();
-    ctx.moveTo(points[0][0], points[0][1]);
-
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i][0], points[i][1]);
-    }
+    tracePath(ctx, target);
 
     if (strokeType === 'pencil') {
       // 铅笔：虚线效果
@@ -260,17 +375,29 @@ export function renderUserStroke(
       ctx.stroke();
       ctx.globalAlpha = 1;
     } else if (strokeType === 'brush') {
-      // 毛笔：渐变透明效果
-      const gradient = ctx.createLinearGradient(
-        points[0][0], points[0][1],
-        points[points.length - 1][0], points[points.length - 1][1]
-      );
-      gradient.addColorStop(0, color);
-      gradient.addColorStop(1, color);
-      ctx.strokeStyle = gradient;
+      // 毛笔：沿笔迹方向由淡入浓（起笔淡、收笔浓），与小程序端同逻辑。
+      // 旧实现首末两个 stop 是同一个颜色（渐变根本没生效），且单一首->末渐变在
+      // 折返笔画上浓淡错位；现按段绘制，透明度随笔迹位置插值，淡浓跟着手走。
+      ctx.strokeStyle = color;
       ctx.lineWidth = width * 1.5;
-      ctx.globalAlpha = 0.6;
-      ctx.stroke();
+      const n = target.length;
+      const mid = (i: number, j: number): [number, number] =>
+        [(target[i][0] + target[j][0]) / 2, (target[i][1] + target[j][1]) / 2];
+      for (let i = 0; i < n - 1; i++) {
+        const t = n > 2 ? i / (n - 2) : 1;
+        ctx.beginPath();
+        const from = i === 0 ? target[0] : mid(i - 1, i);
+        const to = i === n - 2 ? target[n - 1] : mid(i, i + 1);
+        if (i === 0) {
+          ctx.moveTo(from[0], from[1]);
+          ctx.lineTo(to[0], to[1]);
+        } else {
+          ctx.moveTo(from[0], from[1]);
+          ctx.quadraticCurveTo(target[i][0], target[i][1], to[0], to[1]);
+        }
+        ctx.globalAlpha = 0.6 * (0.25 + 0.75 * t);
+        ctx.stroke();
+      }
       ctx.globalAlpha = 1;
     } else {
       // 钢笔：实线
@@ -383,6 +510,15 @@ export interface LayerState {
   doneKey: string;
   fillKey: string;
   strokeKey: string;
+  /** 已 bake 进 strokeCache 的笔画对象引用（按序）。增量判定的基准：
+   *  当前笔画序列若以它为"引用前缀"（尾部追加）则增量补画，否则整层重建。
+   *  撤销/擦除/撤销擦除都会破坏前缀 -> 自动回退到重建，不会画错。 */
+  bakedStrokes: UserStroke[];
+  /** 已 bake 进 fillCache 的填充对象引用（按序），同 bakedStrokes 的增量判定。 */
+  bakedFills: UserFill[];
+  /** fill.key -> 上色结果（tintMask 开销大：整幅逐像素。fill 对象不可变、key 唯一，
+   *  缓存上色位图，重建/增量补画只需 drawImage。尺寸变化时 state 重置会随之失效。 */
+  fillTintCache: Map<string, CanvasLike>;
 }
 
 export interface RenderLayersArgs {
@@ -392,6 +528,8 @@ export interface RenderLayersArgs {
   showOutline: boolean;
   userActions: UserAction[];
   currentStroke: UserStroke | null;
+  /** 当前笔画的生长进度 0~1（回放时 <1 按弧长截断生长；默认 1 = 完整一笔） */
+  currentStrokeProgress?: number;
   /** 视图变换（缩放/平移），默认无变换 */
   view?: ViewTransform;
 }
@@ -437,7 +575,8 @@ function rebuildDoneCache(
     const step = drawing.steps[i];
     if (step) {
       for (const stroke of step.strokes) {
-        renderStroke(ctx, stroke, 1, '#000', false);
+        if (isPatternFillStroke(stroke)) renderPatternFillStroke(ctx, stroke);
+        else renderStroke(ctx, stroke, 1, '#000', false);
       }
     }
   }
@@ -468,7 +607,8 @@ function rebuildOutlineCache(
   ctx.globalAlpha = 0.15;
   for (const step of drawing.steps) {
     for (const stroke of step.strokes) {
-      renderStroke(ctx, stroke, 1, '#333', false);
+      if (isPatternFillStroke(stroke)) renderPatternFillStroke(ctx, stroke);
+      else renderStroke(ctx, stroke, 1, '#333', false);
     }
   }
   state.outlineCache = cache;
@@ -620,6 +760,128 @@ export function floodFill(
   return { ok: true, canvas: out };
 }
 
+// ============================================================
+// 套索填充（lasso fill）
+//
+// 与油漆桶（漫水，靠线条自然围合）不同：用户圈一个套索，把"套索内且被线条
+// 完全封闭"的区域填上颜色。套索只是选区，不是墙——套索本身不封闭也合法，
+// 封闭性由线条决定：
+//   掩码 = 套索内 且 与画布边缘不连通的 非墙区域
+// 所以：线条围合的封闭块 -> 填充；线条断口/开放区域（连通到套索边缘外）-> 不填。
+// 与油漆桶共用 buildUnderlay 的"墙"（屏幕上实际可见的线条）。
+// ============================================================
+
+export type LassoFillResult =
+  | { ok: true; canvas: HTMLCanvasElement }
+  | { ok: false; reason: 'empty' | 'nothing' | 'oob' };
+
+/**
+ * 套索填充：套索点列 points（图像 CSS 像素）+ underlay（可见线条，设备像素、透明底）
+ * -> 区域掩码（设备像素、白色 alpha=255）。
+ * 步骤：
+ *  1) 把套索画成实心多边形（fill 抗锯齿天然覆盖套索内所有像素，无需逐点 raycast），
+ *     采样 alpha 得"套索内"位图；
+ *  2) 在 underlay 上二值化墙 + 1px 膨胀（弥合 ≤2px 线条缺口，与 floodFill 同参数）；
+ *  3) 从画布边缘 flood"外部"：非墙且与边缘连通的像素 = 外部（背景/开放区域）；
+ *  4) 掩码 = 套索内 && 非墙 && 非外部（再补 1px halo，与 floodFill 一致消白缝）。
+ */
+export function lassoFill(
+  underlay: HTMLCanvasElement,
+  points: [number, number][],
+  dpr: number
+): LassoFillResult {
+  const w = underlay.width;
+  const h = underlay.height;
+  const src = underlay.getContext('2d');
+  if (!src || w === 0 || h === 0) return { ok: false, reason: 'oob' };
+  if (points.length < 3) return { ok: false, reason: 'empty' };
+
+  // 1) 套索内位图：在 underlay 同尺寸的画布上实心填充套索多边形，采样 alpha
+  const lasso = document.createElement('canvas');
+  lasso.width = w;
+  lasso.height = h;
+  const lctx = lasso.getContext('2d');
+  if (!lctx) return { ok: false, reason: 'oob' };
+  lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  lctx.beginPath();
+  lctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) lctx.lineTo(points[i][0], points[i][1]);
+  lctx.closePath();
+  lctx.fillStyle = '#fff';
+  lctx.fill();
+  const lassoData = lctx.getImageData(0, 0, w, h).data;
+  const inLasso = new Uint8Array(w * h);
+  let lassoPx = 0;
+  for (let i = 0; i < w * h; i++) {
+    inLasso[i] = lassoData[i * 4 + 3] > 0 ? 1 : 0;
+    if (inLasso[i]) lassoPx++;
+  }
+  if (lassoPx === 0) return { ok: false, reason: 'empty' };
+
+  // 2) 墙（与 floodFill 同参数：alpha 二值化 + 1px 膨胀弥合缺口）
+  const baseWall = binarizeWall(src.getImageData(0, 0, w, h));
+  const wall = dilateWall(baseWall, w, h, WALL_DILATE);
+
+  // 3) 从画布边缘 flood 出"外部"：非墙且与边缘连通的像素（背景/开放区域）
+  const outside = new Uint8Array(w * h);
+  const extStack: number[] = [];
+  for (let x = 0; x < w; x++) {
+    for (const y of [0, h - 1]) {
+      const p = y * w + x;
+      if (!wall[p] && !outside[p]) { outside[p] = 1; extStack.push(p); }
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (const x of [0, w - 1]) {
+      const p = y * w + x;
+      if (!wall[p] && !outside[p]) { outside[p] = 1; extStack.push(p); }
+    }
+  }
+  while (extStack.length > 0) {
+    const p = extStack.pop()!;
+    const x = p % w;
+    const y = (p - x) / w;
+    if (x > 0) { const q = p - 1; if (!wall[q] && !outside[q]) { outside[q] = 1; extStack.push(q); } }
+    if (x < w - 1) { const q = p + 1; if (!wall[q] && !outside[q]) { outside[q] = 1; extStack.push(q); } }
+    if (y > 0) { const q = p - w; if (!wall[q] && !outside[q]) { outside[q] = 1; extStack.push(q); } }
+    if (y < h - 1) { const q = p + w; if (!wall[q] && !outside[q]) { outside[q] = 1; extStack.push(q); } }
+  }
+
+  // 4) 掩码 = 套索内 && 非墙 && 非外部（再补 1px halo，不盖线条实体像素）
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h;
+  const outCtx = out.getContext('2d');
+  if (!outCtx) return { ok: false, reason: 'oob' };
+  const od = outCtx.createImageData(w, h).data;
+  let maskPx = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      if (baseWall[p] || !inLasso[p] || outside[p]) continue;
+      const i = p * 4;
+      od[i] = 255; od[i + 1] = 255; od[i + 2] = 255; od[i + 3] = 255;
+      maskPx++;
+    }
+  }
+  // halo 外扩 1px（同 floodFill：visited 离墙 1px，不补的话抗锯齿 halo 下透白缝）
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      if (baseWall[p] || od[p * 4 + 3] >= 128) continue;
+      if ((x > 0 && od[(p - 1) * 4 + 3] >= 128) || (x < w - 1 && od[(p + 1) * 4 + 3] >= 128) ||
+          (y > 0 && od[(p - w) * 4 + 3] >= 128) || (y < h - 1 && od[(p + w) * 4 + 3] >= 128)) {
+        const i = p * 4;
+        od[i] = 255; od[i + 1] = 255; od[i + 2] = 255; od[i + 3] = 255;
+        maskPx++;
+      }
+    }
+  }
+  if (maskPx === 0) return { ok: false, reason: 'nothing' };
+  outCtx.putImageData(new ImageData(od, w, h), 0, 0);
+  return { ok: true, canvas: out };
+}
+
 /**
  * 合成"填充用底图"（设备像素、透明底）。
  * 墙 = 整幅图案所有步骤的线条（画浓作墙）+ 用户内容（填充位图 + 笔画），全部不透明。
@@ -640,7 +902,7 @@ export function getStepStrokesProgress(
   if (stepProgress >= 1) return strokes.map(() => 1);
   if (stepProgress <= 0) return strokes.map(() => 0);
 
-  const lengths = strokes.map(s => calculateStrokeLengths(s.points).totalLength);
+  const lengths = strokes.map(s => getStrokePlayLength(s));
   const totalLength = lengths.reduce((a, b) => a + b, 0);
   if (totalLength === 0) {
     // 零长度笔画：按数量均分
@@ -692,6 +954,7 @@ export function buildUnderlay(
     const step = drawing.steps[i];
     if (!step) continue;
     for (const stroke of step.strokes) {
+      if (isPatternFillStroke(stroke)) continue; // 填色块不是墙（同下方用户填充的注释）
       renderStroke(ctx, stroke, 1, '#000', false);
     }
   }
@@ -702,6 +965,7 @@ export function buildUnderlay(
     const progresses = getStepStrokesProgress(currentStepData.strokes, stepProgress);
     currentStepData.strokes.forEach((stroke, i) => {
       const p = progresses[i];
+      if (isPatternFillStroke(stroke)) return; // 填色块不是墙（同下方用户填充的注释）
       if (p > 0) renderStroke(ctx, stroke, p, '#000', p < 1);
     });
   }
@@ -881,6 +1145,7 @@ export function pickLineForRecolor(
     for (let li = step.strokes.length - 1; li >= 0; li--) {
       const stroke = step.strokes[li];
       if (!stroke || stroke.points.length < 2) continue;
+      if (isPatternFillStroke(stroke)) continue; // 填色块不是线条，不参与改色拾取
       const p = progresses ? progresses[li] : 1;
       if (!p || p <= 0) continue; // 当前步未生长到的笔画不拾取
       const visible = p >= 1 ? stroke : sliceStrokeByProgress(stroke, p);
@@ -908,30 +1173,65 @@ export function pickLineForRecolor(
 function rebuildFillCache(state: LayerState, userActions: UserAction[]): void {
   const cache = createCacheCanvas(state.size);
   const ctx = cache.getContext('2d');
+  const fillsNow = collectFillRefs(userActions);
   if (!ctx) {
     state.fillCache = null;
+    state.bakedFills = [];
     return;
   }
-  for (const a of userActions) {
-    if (a.kind === 'fill') ctx.drawImage(tintMask(a.fill.mask, a.fill.color), 0, 0);
+  for (const f of fillsNow) {
+    const tinted = tintMaskCached(state, f);
+    if (tinted) ctx.drawImage(tinted, 0, 0);
   }
   state.fillCache = cache;
+  state.bakedFills = fillsNow;
+}
+
+// 给填充区域上色，按 fill.key 缓存结果。
+// tintMask 开销大（整幅 getImageData 逐像素上色），而 fill 对象不可变、key 唯一，
+// 每个填充只算一次，重建/增量补画都只 drawImage（与小程序端 _fillTintCache 同思路）。
+function tintMaskCached(state: LayerState, fill: UserFill): CanvasLike | null {
+  let tinted = state.fillTintCache.get(fill.key);
+  if (!tinted) {
+    tinted = tintMask(fill.mask, fill.color);
+    state.fillTintCache.set(fill.key, tinted);
+  }
+  return tinted;
+}
+
+// 按序收集当前 userActions 里的填充对象引用（增量缓存的前缀比对基准）
+function collectFillRefs(userActions: UserAction[]): UserFill[] {
+  const out: UserFill[] = [];
+  for (const a of userActions) {
+    if (a.kind === 'fill') out.push(a.fill);
+  }
+  return out;
 }
 
 // 重建"用户手绘笔画"离屏缓存（设备像素空间，渲染在图案线条之上）
 function rebuildStrokeCache(state: LayerState, userActions: UserAction[]): void {
   const cache = createCacheCanvas(state.size);
   const ctx = cache.getContext('2d');
+  const strokesNow = collectStrokeRefs(userActions);
   if (!ctx) {
     state.strokeCache = null;
+    state.bakedStrokes = [];
     return;
   }
   const dpr = state.size.dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  for (const a of userActions) {
-    if (a.kind === 'stroke') renderUserStroke(ctx, a.stroke);
-  }
+  for (const s of strokesNow) renderUserStroke(ctx, s);
   state.strokeCache = cache;
+  state.bakedStrokes = strokesNow;
+}
+
+// 按序收集当前 userActions 里的笔画对象引用（增量缓存的前缀比对基准）
+function collectStrokeRefs(userActions: UserAction[]): UserStroke[] {
+  const out: UserStroke[] = [];
+  for (const a of userActions) {
+    if (a.kind === 'stroke') out.push(a.stroke);
+  }
+  return out;
 }
 
 // 绘制当前步骤的动画部分（viewBox 变换 + 进度映射）。
@@ -954,14 +1254,15 @@ function renderCurrentStep(
 
   if (stepProgress >= 1) {
     for (const stroke of strokes) {
-      renderStroke(ctx, stroke, 1, '#000', false);
+      if (isPatternFillStroke(stroke)) renderPatternFillStroke(ctx, stroke);
+      else renderStroke(ctx, stroke, 1, '#000', false);
     }
   } else {
     // 基于笔画总长度做进度映射
     const strokeLengths: number[] = [];
     let totalLength = 0;
     for (const stroke of strokes) {
-      const { totalLength: len } = calculateStrokeLengths(stroke.points);
+      const len = getStrokePlayLength(stroke);
       strokeLengths.push(len);
       totalLength += len;
     }
@@ -973,11 +1274,14 @@ function renderCurrentStep(
       const currentStrokeProgress = strokesProgress - completedStrokes;
 
       for (let i = 0; i < completedStrokes; i++) {
-        renderStroke(ctx, strokes[i], 1, '#000', false);
+        const s = strokes[i];
+        if (isPatternFillStroke(s)) renderPatternFillStroke(ctx, s);
+        else renderStroke(ctx, s, 1, '#000', false);
       }
       if (completedStrokes < strokes.length) {
         const current = strokes[completedStrokes];
-        if (current) renderStroke(ctx, current, currentStrokeProgress, PLAY_STROKE_COLOR, true);
+        if (isPatternFillStroke(current)) renderPatternFillStroke(ctx, current);
+        else renderStroke(ctx, current, currentStrokeProgress, PLAY_STROKE_COLOR, true);
       }
     } else {
       const targetLength = stepProgress * totalLength;
@@ -998,11 +1302,19 @@ function renderCurrentStep(
       }
 
       for (let i = 0; i < completedStrokes; i++) {
-        renderStroke(ctx, strokes[i], 1, '#000', false);
+        const s = strokes[i];
+        if (isPatternFillStroke(s)) renderPatternFillStroke(ctx, s);
+        else renderStroke(ctx, s, 1, '#000', false);
       }
       if (completedStrokes < strokes.length) {
         const current = strokes[completedStrokes];
-        if (current) renderStroke(ctx, current, currentStrokeProgress, PLAY_STROKE_COLOR, true);
+        if (isPatternFillStroke(current)) {
+          // 零长度笔画位于弧长位置 accumulatedLength：进度位置到达/越过它才出现
+          // （避免"后面的线还没长到，填充却先冒出来"）
+          if (targetLength >= accumulatedLength) renderPatternFillStroke(ctx, current);
+        } else {
+          renderStroke(ctx, current, currentStrokeProgress, PLAY_STROKE_COLOR, true);
+        }
       }
     }
   }
@@ -1023,8 +1335,8 @@ export function renderLayers(
   state: LayerState | null,
   args: RenderLayersArgs
 ): LayerState | null {
-  const { drawing, currentStep, stepProgress, showOutline, userActions, currentStroke } = args;
-  if (!outlineCanvas || !historyCanvas || !brushCanvas || drawing.steps.length === 0) return state;
+  const { drawing, currentStep, stepProgress, showOutline, userActions, currentStroke, currentStrokeProgress } = args;
+  if (!outlineCanvas || !historyCanvas || !brushCanvas) return state;
 
   const dpr = window.devicePixelRatio || 1;
   const displayWidth = outlineCanvas.clientWidth;
@@ -1042,7 +1354,10 @@ export function renderLayers(
       outlineKey: '',
       doneKey: '',
       fillKey: '',
-      strokeKey: ''
+      strokeKey: '',
+      bakedStrokes: [],
+      bakedFills: [],
+      fillTintCache: new Map()
     };
   }
 
@@ -1078,16 +1393,60 @@ export function renderLayers(
     state.doneKey = doneKey;
   }
 
-  // ---- 用户内容：填充（图案下）与笔画（图案上）分开缓存，各自按 key 重建 ----
-  // 增/撤销/清除都改变数组长度，按操作数做 key 即可
+  // ---- 用户内容：填充（图案下）与笔画（图案上）分开缓存，各自按"引用前缀"增量 ----
+  // 增量优化：提交一笔（append）时只把这一笔画进现有离屏缓存，不重画全部
+  // （画 50 笔后每笔提交都 O(n) 全量重绘，低端机会卡）。
+  // 判定：当前笔画对象序列是否以"已 bake 序列"为引用前缀（尾部追加）——
+  // 是则增量补画；撤销/擦除/撤销擦除都会破坏前缀，自动整层重建。
   const userCount = String(userActions.length);
-  if (state.fillKey !== userCount) {
-    rebuildFillCache(state, userActions);
-    state.fillKey = userCount;
-  }
+  const strokesNow = collectStrokeRefs(userActions);
   if (state.strokeKey !== userCount) {
-    rebuildStrokeCache(state, userActions);
+    const baked = state.bakedStrokes;
+    const canAppend = state.strokeCache != null
+      && baked.length <= strokesNow.length
+      && baked.every((s, i) => strokesNow[i] === s);
+    if (canAppend) {
+      // 增量：补画新追加的笔画（ctx 带 dpr 变换，与 rebuildStrokeCache 一致）
+      const ctx = state.strokeCache!.getContext('2d');
+      if (ctx) {
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        for (let i = baked.length; i < strokesNow.length; i++) {
+          renderUserStroke(ctx, strokesNow[i]);
+        }
+        ctx.restore();
+        state.bakedStrokes = strokesNow;
+      } else {
+        rebuildStrokeCache(state, userActions);
+      }
+    } else {
+      rebuildStrokeCache(state, userActions);
+    }
     state.strokeKey = userCount;
+  }
+
+  const fillsNow = collectFillRefs(userActions);
+  if (state.fillKey !== userCount) {
+    const bakedFills = state.bakedFills;
+    const canAppend = state.fillCache != null
+      && bakedFills.length <= fillsNow.length
+      && bakedFills.every((f, i) => fillsNow[i] === f);
+    if (canAppend) {
+      const ctx = state.fillCache!.getContext('2d');
+      if (ctx) {
+        // 增量：补画新追加的填充（上色结果走 fill.key 缓存，不重算全部）
+        for (let i = bakedFills.length; i < fillsNow.length; i++) {
+          const tinted = tintMaskCached(state, fillsNow[i]);
+          if (tinted) ctx.drawImage(tinted, 0, 0);
+        }
+        state.bakedFills = fillsNow;
+      } else {
+        rebuildFillCache(state, userActions);
+      }
+    } else {
+      rebuildFillCache(state, userActions);
+    }
+    state.fillKey = userCount;
   }
 
   const view = args.view || IDENTITY_VIEW;
@@ -1123,7 +1482,7 @@ export function renderLayers(
   brushCtx.clearRect(0, 0, targetWidth, targetHeight);
   applyViewTransform(brushCtx, dpr, cssW, cssH, view);
   if (currentStroke && currentStroke.points.length >= 1) {
-    renderUserStroke(brushCtx, currentStroke);
+    renderUserStroke(brushCtx, currentStroke, currentStrokeProgress ?? 1);
   }
 
   return state;
@@ -1167,4 +1526,107 @@ export function exportLayersToDataURL(
   renderCurrentStep(ctx, state.size, drawing, currentStep, stepProgress);
 
   return out.toDataURL('image/png');
+}
+
+// ============================================================
+// 视频录制（浏览器版，对应小程序 show 页的 wx.createMediaRecorder + 存相册）。
+//
+// 小程序靠 WebGL 离屏画布 + 手动 requestFrame 逐帧喂给录制器，因为 <canvas> 拿不到
+// webgl 上下文、且录制要存相册。web 里这些都反过来：可见 canvas 有 2d 上下文，
+// canvas.captureStream() 能直接把渲染帧喂给 MediaRecorder，录完直接触发浏览器下载
+// （web 没有"存相册"概念）。所以这里不复刻小程序那套 WebGL/增量层渲染——
+// 让画布照常实时渲染，captureStream 跟帧录制即可（与用户当前所见一致）。
+// ============================================================
+
+export interface CanvasRecorder {
+  stop: () => Promise<Blob | null>;
+  supported: boolean;
+  reason?: string;
+}
+
+// 选一个浏览器都支持的视频编码；都不支持就回退到"任意可用"。
+function pickMimeType(): string {
+  const candidates = [
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+    'video/mp4'
+  ];
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return '';
+  return candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
+
+/**
+ * 开始录制一个 canvas（实时帧）。返回 { stop, supported, reason }：
+ *   supported=false 时 reason 说明原因（调用方如实提示，不要笼统说"不支持"）。
+ *   调 stop() 得到 Blob（webm/mp4），由调用方负责触发下载。
+ */
+export function startCanvasRecording(canvas: HTMLCanvasElement, fps = 30): CanvasRecorder {
+  if (typeof MediaRecorder === 'undefined') {
+    return { stop: async () => null, supported: false, reason: '当前浏览器不支持 MediaRecorder' };
+  }
+  if (typeof canvas.captureStream !== 'function') {
+    return { stop: async () => null, supported: false, reason: '当前浏览器不支持 canvas.captureStream' };
+  }
+
+  const mime = pickMimeType();
+  let stream: MediaStream;
+  try {
+    stream = canvas.captureStream(fps);
+  } catch (e) {
+    return { stop: async () => null, supported: false, reason: '创建视频流失败：' + (e as Error).message };
+  }
+
+  let recorder: MediaRecorder;
+  try {
+    recorder = mime
+      ? new MediaRecorder(stream, { mimeType: mime })
+      : new MediaRecorder(stream);
+  } catch (e) {
+    stream.getTracks().forEach(t => t.stop());
+    return { stop: async () => null, supported: false, reason: '创建录制器失败：' + (e as Error).message };
+  }
+
+  const chunks: BlobPart[] = [];
+  recorder.ondataavailable = (ev) => { if (ev.data && ev.data.size > 0) chunks.push(ev.data); };
+  recorder.onerror = () => { /* stop 时统一处理 */ };
+  recorder.start(); // 默认按 1000ms 分片
+
+  const stop = (): Promise<Blob | null> =>
+    new Promise((resolve) => {
+      if (recorder.state === 'inactive') {
+        stream.getTracks().forEach(t => t.stop());
+        resolve(null);
+        return;
+      }
+      recorder.onstop = () => {
+        const type = recorder.mimeType || mime || 'video/webm';
+        try {
+          resolve(new Blob(chunks, { type }));
+        } catch {
+          resolve(null);
+        }
+        stream.getTracks().forEach(t => t.stop());
+      };
+      try {
+        recorder.stop();
+      } catch {
+        stream.getTracks().forEach(t => t.stop());
+        resolve(null);
+      }
+    });
+
+  return { stop, supported: true };
+}
+
+// 触发浏览器下载一个 Blob（视频/JSON 通用）
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

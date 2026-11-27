@@ -191,7 +191,6 @@
       <color-picker id="colorPicker" value="{{strokeColor}}" bind:change="onColorPickerChange"></color-picker>
     </scroll-view>
     <view class="cp-panel-footer">
-      <view class="cp-footer-btn cancel" bindtap="onCancelColorPicker">取消</view>
       <view class="cp-footer-btn confirm" bindtap="onConfirmColorPicker">确定</view>
     </view>
   </view>

@@ -1,18 +1,5 @@
 <!-- 一笔一笔 StepDraw - 小程序首页（二级分类：分组 + 分类卡片） -->
 <view class="home">
-  <!-- 导航栏 -->
-  <view class="navbar">
-    <view class="navbar-brand">
-      <view class="navbar-icon">
-        <image src="/images/logo.jpg" style="width: 72rpx;height: 72rpx;border-radius: 50%;" />
-      </view>
-      <view class="navbar-text">
-        <text class="navbar-title">Step Draw</text>
-        <text class="navbar-subtitle">一笔一划学画画</text>
-      </view>
-    </view>
-  </view>
-
   <!-- 页面标题 -->
   <view class="page-header">
     <text class="page-title">选择你想画的图案</text>
@@ -35,5 +22,10 @@
         <text class="group-meta">{{item.categoryCount}} 个子分类 · {{item.count}} 个图案</text>
       </view>
     </block>
+  </view>
+
+  <!-- 底部 ICP 备案号：点击复制查询官网网址 -->
+  <view class="icp-footer" bindtap="onIcpTap">
+    <text class="icp-text">{{icpNumber}}</text>
   </view>
 </view>

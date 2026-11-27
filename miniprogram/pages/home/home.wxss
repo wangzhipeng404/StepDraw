@@ -2,6 +2,8 @@
 .home {
   background: #fafafa;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 导航栏 */
@@ -77,6 +79,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 24rpx;
   padding: 0 20rpx 100rpx;
+  flex: 1; /* 卡片区占满剩余高度，把底部备案号顶到页面最底（内容不足一屏时也占满） */
 }
 
 .group-card {
@@ -116,4 +119,19 @@
   font-size: 22rpx;
   color: #999;
   display: block;
+}
+
+/* 底部 ICP 备案号 */
+.icp-footer {
+  /* 贴到页面最底部，底部留安全距离避让全面屏 home indicator */
+  padding: 24rpx 0 env(safe-area-inset-bottom);
+  text-align: center;
+}
+
+.icp-text {
+  font-size: 22rpx;
+  color: #999;
+  letter-spacing: 1rpx;
+  text-decoration: underline;
+  text-underline-offset: 4rpx;
 }
